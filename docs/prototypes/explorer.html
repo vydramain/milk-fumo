@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>milk-fumo — проводник v8</title>
+<style>
+@font-face { font-family: "rv"; src: url("fonts/rvfont5x7.otf"); }
+@font-face { font-family: "WTB"; src: url("fonts/WineTahomaBit.ttf"); }
+@font-face { font-family: "PxVGA"; src: url("fonts/PxPlus_IBM_VGA_9x16.ttf"); }
+html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
+.i {
+  --win: #4C5844; --inset: #3E4637; --btn: #4E5744; --sel: #958831;
+  --hi: #7E8776; --lo: #32392C; --dark: #282E20;
+  --text: #D8DED3; --bright: #F1F2F0; --dim: #758666;
+  --cb: #1e1e2e; --crust: #11111b; --ct: #cdd6f4; --cs: #a6adc8; --csurf: #585b70; --cov: #6c7086;
+  --green: #a6e3a1; --teal: #94e2d5; --peach: #fab387; --blue: #89b4fa; --mauve: #cba6f7;
+  --yellow: #f9e2af; --red: #f38ba8;
+  --dither: conic-gradient(var(--lo) 25%, var(--win) 0 50%, var(--lo) 0 75%, var(--win) 0) 0 0 / 2px 2px;
+  --dither-in: conic-gradient(var(--lo) 25%, var(--inset) 0 50%, var(--lo) 0 75%, var(--inset) 0) 0 0 / 2px 2px;
+  font-family: "rv", monospace; font-size: 8px; line-height: 12px; color: var(--text);
+  -webkit-font-smoothing: none; user-select: none;
+}
+.i * { box-sizing: border-box; }
+.i-screen { background: var(--dark); padding: 4px; display: flex; flex-direction: column; gap: 4px; height: 100vh; }
+.i-row { display: flex; min-height: 0; flex: 1; }
+.split { width: 4px; flex: none; cursor: col-resize; }
+.split:hover, .split.on { background: var(--lo); }
+.raised { border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sunken { border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.raised1 { border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sunken1 { border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.i-tile { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--win); padding: 2px; }
+.i-tile.focus { box-shadow: 0 0 0 2px var(--sel); }
+.i-head { display: flex; align-items: center; gap: 2px; height: 14px; flex: none; background: var(--dither); margin-bottom: 2px; }
+.i-head .bx { width: 12px; height: 12px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--win); color: var(--bright); cursor: default; }
+.i-head .bx.sv { background: linear-gradient(var(--bright), var(--bright)) center / 1px 6px no-repeat, var(--win); }
+.i-head .bx.sh { background: linear-gradient(var(--bright), var(--bright)) center / 6px 1px no-repeat, var(--win); }
+.i-head .bx.pressed { border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--inset); color: var(--sel); }
+.i-head .ttl { background: var(--win); color: var(--bright); padding: 0 6px; height: 14px; line-height: 14px; white-space: nowrap; overflow: hidden; }
+.i-head .grow { flex: 1; }
+.i-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid var(--lo); box-shadow: inset 1px 1px 0 var(--hi), 1px 1px 0 var(--hi); }
+.i-tools { display: flex; align-items: center; gap: 4px; flex: none; }
+.i-wellrow { flex: 1; min-height: 0; display: flex; }
+.i-well { flex: 1; min-width: 0; min-height: 0; background: var(--inset); overflow: hidden; position: relative; }
+.i-well.navy { background: var(--cb); color: var(--ct); }
+.btn { display: inline-flex; align-items: center; height: 14px; padding: 0 6px; background: var(--btn); color: var(--text); white-space: nowrap; cursor: default; }
+.btn.on { border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--inset); color: var(--bright); }
+.ib { width: 18px; height: 16px; display: inline-flex; align-items: center; justify-content: center; background: var(--btn); cursor: default; }
+.field { display: inline-flex; align-items: center; height: 14px; padding: 0 4px; background: var(--inset); color: var(--bright); white-space: nowrap; overflow: hidden; }
+.g { display: inline-block; width: 18px; flex: none; }
+.c-fd { color: var(--sel); } .c-sn { color: var(--teal); } .c-im { color: var(--green); } .c-tx { color: var(--ct); }
+.c-vi { color: var(--mauve); } .c-ap { color: var(--peach); } .c-fi { color: var(--cs); } .c-up { color: var(--cov); }
+.c-pl { color: var(--green); } .c-ps { color: var(--yellow); } .c-sp { color: var(--red); } .c-nv { color: var(--blue); }
+.big { width: 40px; height: 40px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--btn); flex: none; }
+.big .gg { font-size: 16px; line-height: 16px; }
+.big .ll { font-size: 8px; line-height: 8px; color: var(--text); }
+.i-tabs { display: flex; height: 14px; flex: none; margin-top: 2px; padding-left: 6px; }
+.tab { transform: skewX(22deg); height: 14px; line-height: 14px; padding: 0 9px; margin-right: 4px; background: var(--win); border-right: 1px solid var(--lo); box-shadow: 2px 0 0 var(--hi); }
+.tab > span { display: inline-block; transform: skewX(-22deg); }
+.tab.on { background: var(--sel); color: var(--dark); border-right-color: var(--sel); box-shadow: none; }
+.sb { width: 14px; flex: none; display: flex; flex-direction: column; background: var(--dither-in); }
+.sb .a { height: 14px; background: var(--btn); position: relative; flex: none; }
+.sb .a::after { content: ""; position: absolute; left: 3px; border: 4px solid transparent; }
+.sb .a.up::after { top: 1px; border-bottom-color: var(--bright); border-top-width: 0; }
+.sb .a.dn::after { top: 4px; border-top-color: var(--bright); border-bottom-width: 0; }
+.sb .tr { flex: 1; position: relative; }
+.sb .th { position: absolute; left: 0; right: 0; background: var(--btn); }
+.ruler { height: 8px; position: relative; background:
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 30px) 0 0 / 100% 8px no-repeat,
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 6px) 0 4px / 100% 4px no-repeat; }
+.ruler .mark { position: absolute; top: -2px; width: 2px; height: 12px; background: var(--sel); }
+.keys { display: flex; gap: 2px; height: 16px; flex: none; }
+.keys span { flex: 1 0 auto; display: flex; align-items: center; gap: 6px; padding: 0 6px; background: var(--win); white-space: nowrap; overflow: hidden; cursor: default; }
+.keys span.on { border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--inset); }
+.keys b { font-weight: normal; color: var(--sel); }
+.envmsg { height: 14px; flex: none; display: flex; align-items: center; padding: 0 6px; background: var(--inset); color: var(--bright); white-space: nowrap; overflow: hidden; }
+.mckeys { display: flex; gap: 2px; height: 14px; flex: none; }
+.mckeys span { flex: 1; display: flex; align-items: center; gap: 4px; padding: 0 4px; background: var(--btn); white-space: nowrap; overflow: hidden; cursor: default; }
+.mckeys b { font-weight: normal; color: var(--bright); background: var(--dark); padding: 0 3px; }
+.stat { display: flex; gap: 2px; flex: none; }
+.stat span { height: 14px; line-height: 12px; padding: 0 6px; white-space: nowrap; overflow: hidden; }
+.stat .grow { flex: 1; }
+.stat .q { color: var(--bright); background: var(--sel); }
+.vga32 { font-family: "PxVGA", monospace; font-size: 32px; line-height: 32px; }
+.vga16 { font-family: "PxVGA", monospace; font-size: 16px; line-height: 16px; }
+.rv16 { font-family: "rv", monospace; font-size: 16px; line-height: 16px; }
+
+/* two MC panels inside one tile */
+.xpanels { flex: 1; min-height: 0; display: flex; gap: 4px; }
+.xpanel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.xpath { height: 13px; line-height: 13px; text-align: center; background: var(--win); color: var(--text); border-bottom: 1px solid var(--lo); flex: none; white-space: nowrap; overflow: hidden; padding: 0 4px; }
+.xpanel.act .xpath { background: var(--sel); color: var(--dark); }
+.xh, .xr { display: grid; grid-template-columns: 1fr 56px 70px; height: 12px; line-height: 12px; }
+.xh { height: 13px; background: var(--win); color: var(--bright); border-bottom: 1px solid var(--lo); flex: none; }
+.xh > span, .xr > span { padding: 0 4px; white-space: nowrap; overflow: hidden; }
+.xh > span + span { border-left: 1px solid var(--lo); }
+.xr .sz { text-align: right; }
+.xr.d .nm { color: var(--bright); }
+.xr .dt, .xr .sz.k { color: var(--dim); }
+.xbody { flex: 1; min-height: 0; overflow: hidden; background:
+  linear-gradient(var(--lo), var(--lo)) right 126px top / 1px 100% no-repeat,
+  linear-gradient(var(--lo), var(--lo)) right 70px top / 1px 100% no-repeat; }
+.xpanel.act .xr.cur > span { background: var(--lo); }
+.focus .xpanel.act .xr.cur > span, .focus .xpanel.act .xr.cur .g { background: var(--sel); color: var(--dark); }
+.xcol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* viewers */
+.md { padding: 8px 10px; font-family: "WTB", Tahoma, sans-serif; font-size: 11px; line-height: 15px; color: var(--text); }
+.i .md h1 { font-family: "rv", monospace; font-size: 16px; line-height: 16px; font-weight: normal; color: var(--bright); margin: 0 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--lo); box-shadow: 0 1px 0 var(--hi); }
+.i .md p { margin: 0 0 7px; }
+.i .md table { border-collapse: collapse; }
+.i .md th { font-family: "rv", monospace; font-size: 8px; font-weight: normal; text-align: left; color: var(--dim); padding: 2px 10px 2px 0; }
+.i .md td { padding: 2px 0; color: var(--bright); }
+.i .md ul { list-style: none; margin: 0 0 7px; padding: 0; }
+.i .md ul li { position: relative; padding-left: 12px; }
+.i .md ul li::before { content: ""; position: absolute; left: 2px; top: 6px; width: 4px; height: 4px; background: var(--sel); }
+.txt { padding: 6px 8px; font-family: "PxVGA", monospace; font-size: 16px; line-height: 16px; white-space: pre; color: var(--ct); }
+.pic { position: absolute; inset: 10px; background:
+  linear-gradient(160deg, rgba(137,180,250,.35), rgba(203,166,247,.25) 60%, rgba(250,179,135,.3)),
+  repeating-linear-gradient(45deg, #181825 0 6px, #11111b 6px 12px); display: flex; align-items: flex-end; padding: 6px; color: var(--ct); }
+.vframe { position: absolute; left: 10px; right: 10px; top: 10px; bottom: 24px; background: var(--crust); display: flex; align-items: center; justify-content: center; color: var(--cov); }
+.game { position: absolute; inset: 10px; background: var(--crust); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.queue .xr { grid-template-columns: 18px 1fr 40px; color: var(--ct); }
+.queue .xr.cur > span { background: #313244; }
+
+/* too small */
+.small { height: 100vh; display: flex; align-items: center; justify-content: center; }
+.small .i-tile { flex: none; width: 360px; }
+.small .md td { padding-left: 10px; }
+</style>
+</head>
+<body>
+<div class="i" id="xp"></div>
+<script>
+(function () {
+  // Sizes at UI scale 1, by the 3dmppc-editor's rules (rv_editor_workspace.cpp, rv_editor_shell.hpp).
+  const S = 1;
+  const FONT = 8 * S, EM = 6 * S, PAD = 4 * S, FRAME = FONT + 2 * PAD, BEVEL = 2 * S + S, ROW = 12;
+  const CHROME = { w: 2 * (BEVEL + PAD), h: 2 * (BEVEL + PAD) + FRAME + PAD };
+  const BAR = PAD;
+  const WINDOW_MIN = { w: 1280 * S, h: 720 * S };
+  // Pane minimums: the generic one (20 em x 4 frames), and the panes that register their own.
+  const PANE_MIN = {
+    generic: { w: 20 * EM, h: 4 * FRAME },
+    ex: { w: 2 * (20 * EM + 56 + 70 + 14 + 4) + 4, h: FRAME + 26 + 3 * ROW + 14 + 14 + 4 * PAD },
+    sn: { w: 5 * 40 + 4 * 4 + 20, h: 4 * FRAME },
+    ap: { w: 320, h: 180 },
+  };
+  function tileMin(k) { const p = PANE_MIN[k] || PANE_MIN.generic; return { w: p.w + CHROME.w, h: p.h + CHROME.h }; }
+
+  const D = (name, date, kids, app) => ({ name, dir: true, date, kids, app: !!app });
+  const F = (name, size, date) => ({ name, dir: false, size, date });
+  const tree = D('', '2026-10-20', [
+    D('music', '2026-09-14', [
+      D('ambient', '2026-09-20', [
+        F('track_01.mp3', 4212480, '2026-09-14'), F('track_02.mp3', 6815744, '2026-09-14'),
+        F('track_03.ogg', 5347737, '2026-09-20'), F('cover.webp', 1153433, '2026-09-14'),
+        F('liner_notes.md', 3120, '2026-10-03'),
+      ]),
+      D('chiptune', '2026-07-30', [F('boss_theme.mp3', 2936012, '2026-07-30'), F('title_loop.ogg', 1887436, '2026-07-28')]),
+    ]),
+    D('games', '2026-10-12', [
+      D('plug-run', '2026-10-12', [F('index.html', 2048, '2026-10-12'), F('game.js', 182272, '2026-10-12')], true),
+      D('tile-toy', '2026-08-09', [F('index.html', 1536, '2026-08-09')], true),
+    ]),
+    D('images', '2026-09-01', [F('sketch_01.png', 842137, '2026-08-11'), F('sketch_02.webp', 512000, '2026-08-19'), F('poster.jpg', 2306867, '2026-09-01')]),
+    D('video', '2026-10-01', [F('teaser.webm', 13002342, '2026-10-01'), F('making_of.mp4', 48234496, '2026-10-05')]),
+    D('texts', '2026-10-03', [F('about.md', 4096, '2026-10-03'), F('notes.txt', 1800, '2026-09-27')]),
+    F('about.md', 4096, '2026-10-20'),
+  ]);
+  (function link(d) { d.kids.forEach(k => { k.parent = d; if (k.dir) link(k); }); })(tree);
+
+  const EXT = { mp3: 'sn', ogg: 'sn', wav: 'sn', flac: 'sn', png: 'im', jpg: 'im', jpeg: 'im', webp: 'im', mp4: 'vi', webm: 'vi', md: 'tx', txt: 'tx' };
+  const CODE = { up: 'Up', fd: 'Fd', ap: 'Ap', sn: 'Sn', im: 'Im', vi: 'Vi', tx: 'Tx', fi: 'Fi' };
+  const LABEL = { up: 'на уровень выше' };
+  const OPEN_TITLE = { fd: 'Папка', up: 'Папка', ap: 'Приложение', sn: 'Плеер', im: 'Изображение', vi: 'Видео', tx: 'Записка', fi: 'Файл' };
+
+  function kind(it) {
+    if (it.up) return 'up';
+    if (it.dir) return it.app ? 'ap' : 'fd';
+    return EXT[it.name.split('.').pop().toLowerCase()] || 'fi';
+  }
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  function items(dir) {
+    const ds = dir.kids.filter(k => k.dir).sort(byName);
+    const fs = dir.kids.filter(k => !k.dir).sort(byName);
+    return (dir.parent ? [{ name: '..', up: true, dir: true, target: dir.parent, date: dir.parent.date }] : []).concat(ds, fs);
+  }
+  function path(dir) { const p = []; for (let d = dir; d; d = d.parent) if (d.name) p.unshift(d.name); return '/' + p.map(s => s + '/').join(''); }
+  function total(it) { return it.dir ? it.kids.reduce((s, k) => s + total(k), 0) : it.size; }
+  function count(dir) { return dir.kids.length; }
+  function short(n) { if (n >= 1048576) return (n / 1048576).toFixed(1) + 'M'; if (n >= 1024) return Math.round(n / 1024) + 'K'; return n + 'B'; }
+  function spaced(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // state
+  const P = [
+    { mode: 'list', dir: tree, cur: 0, top: 0, q: '', vis: 20 },
+    { mode: 'list', dir: tree.kids.find(k => k.name === 'music'), cur: 0, top: 0, q: '', vis: 20 },
+  ];
+  let act = 0;          // active panel inside the explorer tile
+  let focus = 'ex';     // focused tile: 'ex' or 'view'
+  let opened = null;    // item in the tile on the right, or null
+  let share = 2 / 3;    // explorer's share of the row while both tiles are shown
+  let maxed = null;     // maximized tile, or null
+  let resizing = false; // Shift+R mode
+  let msg = '';
+  const cur = p => items(p.dir)[p.cur];
+
+  // explorer (MC) actions
+  function move(p, d) { p.q = ''; p.cur = clamp(p.cur + d, 0, items(p.dir).length - 1); }
+  function goUp(p) {
+    if (!p.dir.parent) return;
+    const from = p.dir;
+    p.dir = from.parent;
+    p.cur = Math.max(0, items(p.dir).indexOf(from));
+    p.q = '';
+  }
+  function enter(p) {
+    const it = cur(p);
+    p.q = '';
+    if (it.up) goUp(p);
+    else if (it.dir && !it.app) { p.dir = it; p.cur = 0; p.top = 0; }
+    else opened = it;
+  }
+  function toggleQuick() {
+    const p = P[act], o = P[1 - act];
+    if (p.mode !== 'list') return;
+    p.q = '';
+    o.mode = o.mode === 'quick' ? 'list' : 'quick';
+  }
+  function tab() {
+    P[act].q = '';
+    if (P[1 - act].mode === 'quick') P[1 - act].mode = 'list';
+    act = 1 - act;
+  }
+  function back() { if (P[1 - act].mode === 'quick') P[1 - act].mode = 'list'; }
+  function search(p, ch) {
+    const q = (p.q + ch).toLowerCase();
+    const i = items(p.dir).findIndex(it => it.name.toLowerCase().startsWith(q));
+    if (i >= 0) { p.q = q; p.cur = i; }
+  }
+  function home(p) { p.dir = tree; p.cur = 0; p.top = 0; p.q = ''; }
+  function exAction(name) {
+    const p = P[act];
+    focus = 'ex';
+    if (name === 'quick') toggleQuick();
+    else if (name === 'tab') tab();
+    else if (name === 'back') back();
+    else if (name === 'up') goUp(p);
+    else if (name === 'home') home(p);
+    else if (name === 'enter') enter(p);
+  }
+
+  // environment actions
+  const NOT_HERE = { right: 'Рядом', below: 'Снизу', open: 'Открыть', tabs: 'Вкладки', split: 'Разделить' };
+  function go(dir) {
+    if (maxed) { msg = 'Тайл развёрнут — Shift+F вернёт раскладку'; return; }
+    if (!opened) { msg = 'Тайл один — переходить некуда'; return; }
+    focus = dir > 0 ? 'view' : 'ex';
+  }
+  function setShare(px) {
+    const avail = rowNode().clientWidth - BAR;
+    const exMin = tileMin('ex').w, vMin = tileMin(kind(opened)).w;
+    let w = Math.round(px);
+    if (w < exMin) { w = exMin; msg = 'Минимум тайла «Проводник»: ' + exMin + ' px'; }
+    if (avail - w < vMin) { w = avail - vMin; msg = 'Минимум тайла «' + OPEN_TITLE[kind(opened)] + '»: ' + vMin + ' px'; }
+    share = w / avail;
+  }
+  function envAction(name, tile) {
+    const t = tile || focus;
+    if (name === 'go') go(focus === 'ex' ? 1 : -1);
+    else if (NOT_HERE[name]) msg = '«' + NOT_HERE[name] + '» в этом прототипе не сделано';
+    else if (name === 'resize') {
+      if (!opened || maxed) msg = 'Менять размер не у чего: на экране один тайл';
+      else { resizing = !resizing; msg = resizing ? 'Размер: стрелки влево и вправо двигают границу, Enter или Esc — готово' : ''; }
+    } else if (name === 'max') { focus = t; maxed = maxed === t ? null : t; resizing = false; }
+    else if (name === 'close') {
+      if (t === 'view' && opened) { opened = null; focus = 'ex'; if (maxed === 'view') maxed = null; resizing = false; }
+      else msg = 'Проводник в этом прототипе не закрывается';
+    }
+  }
+
+  // rendering
+  function head(title, tile) {
+    return '<div class="i-head"><span class="bx raised1" data-ea="close" data-t="' + tile + '">X</span><span class="ttl">' + esc(title) + '</span><span class="grow"></span>' +
+      '<span class="bx raised1 sv" data-ea="split"></span><span class="bx raised1 sh" data-ea="split"></span>' +
+      '<span class="bx raised1' + (maxed === tile ? ' pressed' : '') + '" data-ea="max" data-t="' + tile + '">M</span></div>';
+  }
+  function row(p, idx, it, i) {
+    const k = kind(it);
+    const sz = it.up ? 'UP--DIR' : it.dir ? (it.app ? 'APP-DIR' : 'SUB-DIR') : short(it.size);
+    return '<div class="xr' + (it.dir ? ' d' : '') + (i === p.cur ? ' cur' : '') + '" data-p="' + idx + '" data-i="' + i + '">' +
+      '<span class="nm"><span class="g c-' + k + '">' + CODE[k] + '</span>' + esc(it.dir && !it.up ? it.name + '/' : it.name) + '</span>' +
+      '<span class="sz' + (it.dir ? ' k' : '') + '">' + sz + '</span><span class="dt">' + esc(it.date || '') + '</span></div>';
+  }
+  function listPanel(p, idx) {
+    const list = items(p.dir);
+    const it = list[p.cur];
+    const info = it.up ? '.. · ' + LABEL.up : esc(it.name) + ' · ' + (it.dir ? count(it) + ' объектов' : spaced(it.size) + ' байт');
+    return '<div class="xpanel' + (idx === act ? ' act' : '') + '" data-panel="' + idx + '">' +
+      '<div class="i-wellrow sunken"><div class="i-well xcol">' +
+        '<div class="xpath">' + esc(path(p.dir)) + '</div>' +
+        '<div class="xh"><span>Имя</span><span>Размер</span><span>Изменён</span></div>' +
+        '<div class="xbody" data-p="' + idx + '">' + list.map((it2, i) => row(p, idx, it2, i)).join('') + '</div>' +
+      '</div>' +
+      '<div class="sb"><span class="a up raised1"></span><span class="tr"><span class="th raised1"></span></span><span class="a dn raised1"></span></div></div>' +
+      '<div class="stat">' + (p.q ? '<span class="sunken1 q">Поиск: ' + esc(p.q) + '_</span>' : '') +
+        '<span class="sunken1 grow">' + info + '</span><span class="sunken1">' + esc(it.date || '') + '</span></div>' +
+    '</div>';
+  }
+  function quickPanel(p, idx) {
+    const it = cur(P[1 - idx]);
+    return '<div class="xpanel" data-panel="' + idx + '">' +
+      '<div class="i-wellrow sunken"><div class="xcol">' +
+        '<div class="xpath">Просмотр: ' + esc(it.up ? '..' : it.name) + '</div>' +
+        '<div class="i-wellrow" style="display: flex;">' + viewerBody(it) + '</div>' +
+      '</div></div>' +
+      '<div class="stat"><span class="sunken1 grow">Следует за курсором соседней панели · F3 или Esc — список</span></div>' +
+    '</div>';
+  }
+  const MC_KEYS = [['Enter', 'Открыть', 'enter'], ['F3', 'Просмотр', 'quick'], ['Tab', 'Панель', 'tab'], ['Esc', 'Список', 'back'], ['Ctrl+PgUp', 'Вверх', 'up'], ['Буквы', 'Поиск', '']];
+  function explorerTile(style) {
+    const p = P[act];
+    const quickOn = P[1 - act].mode === 'quick';
+    return '<div class="i-tile raised' + (focus === 'ex' ? ' focus' : '') + '" data-tile="ex" style="' + style + '">' +
+      head('Проводник: ' + path(p.dir), 'ex') +
+      '<div class="i-panel">' +
+        '<div class="i-tools">' +
+          '<span class="ib raised" data-xa="up"><span class="g c-up">Up</span></span>' +
+          '<span class="ib raised" data-xa="home"><span class="g c-nv">Hm</span></span>' +
+          '<span class="field sunken" style="flex: 1;">' + esc(path(p.dir)) + '</span>' +
+          '<span class="btn raised' + (quickOn ? ' on' : '') + '" data-xa="quick">Просмотр</span>' +
+        '</div>' +
+        '<div class="xpanels">' + P.map((q, idx) => q.mode === 'list' ? listPanel(q, idx) : quickPanel(q, idx)).join('') + '</div>' +
+        '<div class="mckeys">' + MC_KEYS.map(k => '<span class="raised1" data-xa="' + k[2] + '"><b>' + k[0] + '</b>' + k[1] + '</span>').join('') + '</div>' +
+      '</div>' +
+      '<div class="i-tabs"><span class="tab on"><span>Проводник</span></span></div></div>';
+  }
+  function viewTile() {
+    const k = kind(opened);
+    return '<div class="i-tile raised' + (focus === 'view' ? ' focus' : '') + '" data-tile="view">' +
+      head(OPEN_TITLE[k] + ': ' + opened.name, 'view') +
+      '<div class="i-panel"><div class="i-wellrow sunken">' + viewerBody(opened) + '</div></div>' +
+      '<div class="i-tabs"><span class="tab on"><span>' + OPEN_TITLE[k] + '</span></span></div></div>';
+  }
+  function viewerBody(it) {
+    const k = kind(it);
+    if (k === 'fd' || k === 'up') {
+      const d = it.up ? it.target : it;
+      return '<div class="i-well md"><h1>' + esc(d.name || '/') + '</h1><table>' +
+        '<tr><th>Путь</th><td>' + esc(path(d)) + '</td></tr><tr><th>Тип</th><td>папка</td></tr>' +
+        '<tr><th>Объектов</th><td>' + count(d) + '</td></tr><tr><th>Размер</th><td>' + spaced(total(d)) + ' байт</td></tr>' +
+        '<tr><th>Изменена</th><td>' + esc(d.date) + '</td></tr></table></div>';
+    }
+    if (k === 'ap') {
+      return '<div class="i-well navy"><div class="game"><span class="vga32" style="color: var(--peach);">' + esc(it.name.toUpperCase()) + '</span>' +
+        '<span class="vga16" style="color: var(--ct);">PRESS START</span></div></div>';
+    }
+    if (k === 'sn') {
+      const q = it.parent.kids.filter(x => !x.dir && kind(x) === 'sn').sort(byName);
+      const n = q.indexOf(it) + 1;
+      return '<div class="i-well navy" style="display: flex; flex-direction: column;">' +
+        '<div style="display: flex; align-items: center; gap: 12px; padding: 8px 10px;"><span class="vga32" style="color: var(--green);">00:00</span>' +
+        '<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><span class="rv16">' + esc(it.name) + '</span>' +
+        '<span style="color: var(--cs);">' + esc(it.name.split('.').pop().toUpperCase()) + ' · ' + n + ' из ' + q.length + '</span></span></div>' +
+        '<div style="display: flex; gap: 4px; padding: 0 10px 8px;">' +
+          '<span class="big raised"><span class="gg c-nv">Pv</span><span class="ll">Назад</span></span>' +
+          '<span class="big raised"><span class="gg c-pl">Pl</span><span class="ll">Играть</span></span>' +
+          '<span class="big raised"><span class="gg c-ps">Ps</span><span class="ll">Пауза</span></span>' +
+          '<span class="big raised"><span class="gg c-sp">Sp</span><span class="ll">Стоп</span></span>' +
+          '<span class="big raised"><span class="gg c-nv">Nx</span><span class="ll">Дальше</span></span></div>' +
+        '<div class="queue" style="border-top: 1px solid var(--crust);">' + q.map((x, i) =>
+          '<div class="xr' + (x === it ? ' cur' : '') + '"><span style="color: ' + (x === it ? 'var(--green)' : 'var(--cov)') + ';">' + (x === it ? '&gt;' : i + 1) + '</span>' +
+          '<span>' + esc(x.name) + '</span><span style="text-align: right;">--:--</span></div>').join('') + '</div></div>';
+    }
+    if (k === 'vi') {
+      return '<div class="i-well navy"><div class="vframe">кадр видео · ' + esc(it.name) + '</div>' +
+        '<div style="position: absolute; left: 10px; right: 10px; bottom: 8px;"><div class="ruler"><span class="mark" style="left: 0;"></span></div></div></div>';
+    }
+    if (k === 'im') return '<div class="i-well navy"><div class="pic">' + esc(it.name) + ' · ' + short(it.size) + '</div></div>';
+    if (k === 'tx' && it.name.endsWith('.md')) {
+      return '<div class="i-well md"><h1>' + esc(it.name.replace(/\.md$/, '')) + '</h1>' +
+        '<p>plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug.</p>' +
+        '<ul><li>plug plug plug</li><li>plug plug</li></ul></div>';
+    }
+    if (k === 'tx') return '<div class="i-well navy"><div class="txt">plug plug plug plug\nplug plug plug\n\nplug.</div></div>';
+    return '<div class="i-well md"><h1>' + esc(it.name) + '</h1><p>Для этого типа файла просмотрщика нет.</p></div>';
+  }
+  const ENV_KEYS = [['Shift+стрелки', 'Перейти', 'go'], ['Shift+H', 'Рядом', 'right'], ['Shift+V', 'Снизу', 'below'], ['Shift+Enter', 'Открыть', 'open'],
+    ['Shift+W', 'Вкладки', 'tabs'], ['Shift+R', 'Размер', 'resize'], ['Shift+F', 'Весь экран', 'max'], ['Shift+Q', 'Закрыть', 'close']];
+
+  const root = document.getElementById('xp');
+  root.innerHTML = '<div class="i-screen"><div class="i-row" id="xp-row"></div><div class="envmsg sunken1" id="xp-msg"></div><div class="keys" id="xp-env"></div></div>';
+  const rowNode = () => document.getElementById('xp-row');
+  let tooSmall = false;
+
+  function renderSmall() {
+    const w = window.innerWidth, h = window.innerHeight;
+    root.innerHTML = '<div class="small"><div class="i-tile raised focus">' +
+      '<div class="i-head"><span class="ttl">Окно слишком маленькое</span><span class="grow"></span></div>' +
+      '<div class="i-panel"><div class="i-wellrow sunken"><div class="i-well md"><table>' +
+      '<tr><th>Нужно не меньше</th><td>' + WINDOW_MIN.w + '×' + WINDOW_MIN.h + '</td></tr>' +
+      '<tr><th>Сейчас</th><td id="xp-now">' + w + '×' + h + '</td></tr></table>' +
+      '<p style="margin-top: 8px;">Растяните окно браузера или уменьшите масштаб страницы.</p></div></div></div></div></div>';
+  }
+  function render() {
+    const small = window.innerWidth < WINDOW_MIN.w || window.innerHeight < WINDOW_MIN.h;
+    if (small) { tooSmall = true; renderSmall(); return; }
+    if (tooSmall) {
+      tooSmall = false;
+      root.innerHTML = '<div class="i-screen"><div class="i-row" id="xp-row"></div><div class="envmsg sunken1" id="xp-msg"></div><div class="keys" id="xp-env"></div></div>';
+    }
+    const rowNow = document.getElementById('xp-row');
+    const envNow = document.getElementById('xp-env');
+    const avail = rowNow.clientWidth - BAR;
+    let html;
+    if (maxed === 'view' && opened) html = viewTile();
+    else if (maxed === 'ex' || !opened) html = explorerTile('');
+    else {
+      const exW = Math.round(share * avail);
+      html = explorerTile('flex: 0 0 ' + exW + 'px;') + '<div class="split' + (resizing ? ' on' : '') + '" data-split="1"></div>' + viewTile();
+    }
+    rowNow.innerHTML = html;
+    envNow.innerHTML = ENV_KEYS.map(k => '<span class="raised1' + ((k[2] === 'resize' && resizing) || (k[2] === 'max' && maxed) ? ' on' : '') + '" data-ea="' + k[2] + '"><b>' + k[0] + '</b>' + k[1] + '</span>').join('');
+    document.getElementById('xp-msg').textContent = msg;
+    rowNow.querySelectorAll('.xbody').forEach(el => {
+      const p = P[+el.dataset.p];
+      const n = items(p.dir).length;
+      const vis = Math.max(1, Math.floor(el.clientHeight / ROW));
+      p.vis = vis;
+      if (p.cur < p.top) p.top = p.cur;
+      if (p.cur >= p.top + vis) p.top = p.cur - vis + 1;
+      p.top = clamp(p.top, 0, Math.max(0, n - vis));
+      el.scrollTop = p.top * ROW;
+      const th = el.closest('.i-wellrow').querySelector('.th');
+      th.style.top = (n ? (p.top / n) * 100 : 0) + '%';
+      th.style.height = Math.min(100, (vis / Math.max(n, 1)) * 100) + '%';
+    });
+  }
+
+  // keyboard
+  window.addEventListener('keydown', function (e) {
+    if (tooSmall) return;
+    const p = P[act];
+    const k = e.key;
+    let handled = true;
+    msg = '';
+    if (resizing) {
+      if (k === 'ArrowLeft' || k === 'ArrowRight') { setShare(share * (rowNode().clientWidth - BAR) + (k === 'ArrowRight' ? FRAME : -FRAME)); if (!msg) msg = 'Размер: стрелки влево и вправо двигают границу, Enter или Esc — готово'; }
+      else if (k === 'Enter' || k === 'Escape') resizing = false;
+      else handled = false;
+    }
+    else if (e.shiftKey && !e.ctrlKey && (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown')) go(k === 'ArrowRight' || k === 'ArrowDown' ? 1 : -1);
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'KeyH') envAction('right');
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'KeyV') envAction('below');
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'Enter') envAction('open');
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'KeyW') envAction('tabs');
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'KeyR') envAction('resize');
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'KeyF') envAction('max');
+    else if (e.shiftKey && !e.ctrlKey && e.code === 'KeyQ') envAction('close');
+    else if (focus !== 'ex') handled = false;
+    else if (k === 'Tab') tab();
+    else if (k === 'F3') toggleQuick();
+    else if (k === 'Escape') { if (p.q) p.q = ''; else back(); }
+    else if (e.shiftKey || e.altKey || e.metaKey) handled = false;
+    else if (k === 'PageUp' && e.ctrlKey) goUp(p);
+    else if (e.ctrlKey) handled = false;
+    else if (k === 'ArrowUp') move(p, -1);
+    else if (k === 'ArrowDown') move(p, 1);
+    else if (k === 'PageUp') move(p, -(p.vis - 1));
+    else if (k === 'PageDown') move(p, p.vis - 1);
+    else if (k === 'Home') { p.q = ''; p.cur = 0; }
+    else if (k === 'End') { p.q = ''; p.cur = items(p.dir).length - 1; }
+    else if (k === 'Enter') enter(p);
+    else if (k === 'Backspace' && p.q) p.q = p.q.slice(0, -1);
+    else if (k.length === 1 && k !== ' ') search(p, k);
+    else handled = false;
+    if (handled) { e.preventDefault(); render(); }
+  }, true);
+
+  // mouse
+  root.addEventListener('click', function (e) {
+    if (tooSmall) return;
+    msg = '';
+    const ea = e.target.closest('[data-ea]');
+    const xa = e.target.closest('[data-xa]');
+    const r = e.target.closest('.xr[data-i]');
+    const pn = e.target.closest('[data-panel]');
+    const t = e.target.closest('[data-tile]');
+    if (ea) envAction(ea.dataset.ea, ea.dataset.t);
+    else if (xa) { if (xa.dataset.xa) exAction(xa.dataset.xa); else focus = 'ex'; }
+    else if (r) { focus = 'ex'; if (act !== +r.dataset.p) tab(); P[act].cur = +r.dataset.i; P[act].q = ''; }
+    else if (pn && P[+pn.dataset.panel].mode === 'list') { focus = 'ex'; if (act !== +pn.dataset.panel) tab(); }
+    else if (t) focus = t.dataset.tile;
+    else return;
+    render();
+  });
+  root.addEventListener('dblclick', function (e) {
+    const r = e.target.closest('.xr[data-i]');
+    if (!r || tooSmall) return;
+    focus = 'ex';
+    if (act !== +r.dataset.p) tab();
+    P[act].cur = +r.dataset.i;
+    enter(P[act]);
+    render();
+  });
+  root.addEventListener('wheel', function (e) {
+    const b = e.target.closest('.xbody');
+    if (!b || tooSmall) return;
+    e.preventDefault();
+    focus = 'ex';
+    if (act !== +b.dataset.p) tab();
+    move(P[act], e.deltaY > 0 ? 3 : -3);
+    render();
+  }, { passive: false });
+  let drag = false;
+  root.addEventListener('mousedown', function (e) {
+    if (e.target.closest('[data-split]')) { drag = true; e.preventDefault(); }
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    msg = '';
+    const box = document.getElementById('xp-row').getBoundingClientRect();
+    setShare(e.clientX - box.left - BAR / 2);
+    render();
+  });
+  window.addEventListener('mouseup', function () { drag = false; });
+  window.addEventListener('resize', render);
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>milk-fumo — стартовый экран и тайлы</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #282E20; color: #D8DED3; line-height: 1.5; padding: 24px 32px; }
+body > h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+body > h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+.subtitle { color: #758666; margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<style>
+@font-face { font-family: "rv"; src: url("fonts/rvfont5x7.otf"); }
+@font-face { font-family: "WTB"; src: url("fonts/WineTahomaBit.ttf"); }
+@font-face { font-family: "PxVGA"; src: url("fonts/PxPlus_IBM_VGA_9x16.ttf"); }
+.i {
+  --win: #4C5844; --inset: #3E4637; --btn: #4E5744; --sel: #958831;
+  --hi: #7E8776; --lo: #32392C; --dark: #282E20;
+  --text: #D8DED3; --bright: #F1F2F0; --dim: #758666;
+  --cb: #1e1e2e; --crust: #11111b; --ct: #cdd6f4; --cs: #a6adc8; --csurf: #585b70; --cov: #6c7086;
+  --green: #a6e3a1; --teal: #94e2d5; --peach: #fab387; --blue: #89b4fa; --mauve: #cba6f7;
+  --yellow: #f9e2af; --red: #f38ba8; --lav: #b4befe;
+  --dither: conic-gradient(var(--lo) 25%, var(--win) 0 50%, var(--lo) 0 75%, var(--win) 0) 0 0 / 2px 2px;
+  --dither-in: conic-gradient(var(--lo) 25%, var(--inset) 0 50%, var(--lo) 0 75%, var(--inset) 0) 0 0 / 2px 2px;
+  font-family: "rv", monospace; font-size: 8px; line-height: 12px; color: var(--text);
+  -webkit-font-smoothing: none; text-rendering: optimizeSpeed;
+}
+.i * { box-sizing: border-box; }
+.i-screen { background: var(--dark); padding: 4px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.i-row { display: flex; gap: 4px; min-height: 0; flex: 1; }
+.raised { border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sunken { border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.raised1 { border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sunken1 { border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+
+/* tile */
+.i-tile { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--win); padding: 2px; }
+.i-tile.focus { box-shadow: 0 0 0 2px var(--sel); }
+.i-head { display: flex; align-items: center; gap: 2px; height: 14px; flex: none; background: var(--dither); margin-bottom: 2px; }
+.i-head .bx { width: 12px; height: 12px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--win); color: var(--bright); }
+.i-head .bx.sv { background: linear-gradient(var(--bright), var(--bright)) center / 1px 6px no-repeat, var(--win); }
+.i-head .bx.sh { background: linear-gradient(var(--bright), var(--bright)) center / 6px 1px no-repeat, var(--win); }
+.i-head .ttl { background: var(--win); color: var(--bright); padding: 0 6px; height: 14px; line-height: 14px; white-space: nowrap; }
+.i-head .grow { flex: 1; }
+.i-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid var(--lo); box-shadow: inset 1px 1px 0 var(--hi), 1px 1px 0 var(--hi); }
+.i-tools { display: flex; align-items: center; gap: 4px; flex: none; flex-wrap: wrap; }
+.i-wellrow { flex: 1; min-height: 0; display: flex; }
+.i-well { flex: 1; min-width: 0; min-height: 0; background: var(--inset); overflow: hidden; position: relative; }
+.i-well.navy { background: var(--cb); color: var(--ct); }
+
+/* controls */
+.btn { display: inline-flex; align-items: center; height: 14px; padding: 0 6px; background: var(--btn); color: var(--text); white-space: nowrap; }
+.btn.on { border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--inset); color: var(--bright); }
+.ib { width: 18px; height: 16px; display: inline-flex; align-items: center; justify-content: center; background: var(--btn); }
+.field { display: inline-flex; align-items: center; height: 14px; padding: 0 4px; background: var(--inset); color: var(--bright); white-space: nowrap; overflow: hidden; }
+.chk { display: inline-flex; align-items: center; gap: 4px; }
+.chk i { width: 10px; height: 10px; display: inline-block; background: var(--inset); position: relative; }
+.chk i.on::after { content: ""; position: absolute; left: 1px; top: 1px; width: 4px; height: 4px; background: var(--sel); }
+.lbl { color: var(--text); }
+.sep { width: 2px; height: 14px; border-left: 1px solid var(--lo); border-right: 1px solid var(--hi); }
+
+/* two-letter glyphs */
+.g { display: inline-block; width: 18px; flex: none; }
+.c-fd { color: var(--sel); } .c-sn { color: var(--teal); } .c-im { color: var(--green); } .c-tx { color: var(--ct); }
+.c-vi { color: var(--mauve); } .c-ap { color: var(--peach); } .c-fi { color: var(--cs); } .c-up { color: var(--cov); }
+.c-pl { color: var(--green); } .c-ps { color: var(--yellow); } .c-sp { color: var(--red); } .c-nv { color: var(--blue); } .c-mt { color: var(--mauve); }
+.big { width: 40px; height: 40px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--btn); flex: none; }
+.big .gg { font-size: 16px; line-height: 16px; }
+.big .ll { font-size: 8px; line-height: 8px; color: var(--text); }
+.big.off .gg, .big.off .ll { opacity: .45; }
+.big.on { border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--inset); }
+
+/* tabs */
+.i-tabs { display: flex; height: 14px; flex: none; margin-top: 2px; padding-left: 6px; }
+.tab { transform: skewX(22deg); height: 14px; line-height: 14px; padding: 0 9px; margin-right: 4px; background: var(--win); border-right: 1px solid var(--lo); box-shadow: 2px 0 0 var(--hi); color: var(--text); }
+.tab > span { display: inline-block; transform: skewX(-22deg); }
+.tab.on { background: var(--sel); color: var(--dark); border-right-color: var(--sel); box-shadow: none; }
+
+/* scrollbar */
+.sb { width: 14px; flex: none; display: flex; flex-direction: column; background: var(--dither-in); }
+.sb .a { height: 14px; background: var(--btn); position: relative; flex: none; }
+.sb .a::after { content: ""; position: absolute; left: 3px; border: 4px solid transparent; }
+.sb .a.up::after { top: 1px; border-bottom-color: var(--bright); border-top-width: 0; }
+.sb .a.dn::after { top: 4px; border-top-color: var(--bright); border-bottom-width: 0; }
+.sb .tr { flex: 1; position: relative; }
+.sb .th { position: absolute; left: 0; right: 0; background: var(--btn); }
+
+/* thumbwheel and ruler (SGI) */
+.wheel { display: inline-flex; align-items: center; gap: 4px; }
+.wheel .w { width: 60px; height: 14px; position: relative; background:
+  linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,.55)),
+  repeating-linear-gradient(90deg, var(--hi) 0 1px, var(--btn) 1px 4px, var(--lo) 4px 5px); }
+.wheel.v .w { width: 14px; height: 60px; background:
+  linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,.55)),
+  repeating-linear-gradient(180deg, var(--hi) 0 1px, var(--btn) 1px 4px, var(--lo) 4px 5px); }
+.ruler { height: 8px; background:
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 30px) 0 0 / 100% 8px no-repeat,
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 6px) 0 4px / 100% 4px no-repeat; position: relative; }
+.ruler .mark { position: absolute; top: -2px; width: 2px; height: 12px; background: var(--sel); }
+.slider { height: 10px; position: relative; background: var(--inset); }
+.slider .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--sel); opacity: .55; }
+.slider .knob { position: absolute; top: -4px; width: 10px; height: 14px; background: var(--btn); }
+
+/* status / key bar */
+.keys { display: flex; gap: 2px; height: 16px; flex: none; }
+.keys span { flex: 1; display: flex; align-items: center; gap: 6px; padding: 0 6px; background: var(--win); white-space: nowrap; overflow: hidden; color: var(--text); }
+.keys b { font-weight: normal; color: var(--sel); }
+.stat { display: flex; gap: 2px; flex: none; }
+.stat span { height: 14px; line-height: 12px; padding: 0 6px; white-space: nowrap; overflow: hidden; }
+.stat .grow { flex: 1; }
+
+/* lists */
+.lst { width: 100%; border-collapse: collapse; }
+.lst th { text-align: left; font-weight: normal; color: var(--bright); background: var(--win); padding: 0 4px; height: 13px; border-bottom: 1px solid var(--lo); border-right: 1px solid var(--lo); }
+.lst td { padding: 0 4px; height: 12px; white-space: nowrap; }
+.lst td.r { text-align: right; }
+.lst tr.sel td { background: var(--sel); color: var(--dark); }
+.lst tr.sel td .g { color: var(--dark); }
+.lst .dim { color: var(--dim); }
+.navy .lst th { background: var(--csurf); color: var(--ct); border-color: var(--crust); }
+.navy .lst tr.cur td { background: #313244; color: var(--ct); }
+
+/* Markdown */
+.md { padding: 8px 10px; font-family: "WTB", Tahoma, sans-serif; font-size: 11px; line-height: 15px; color: var(--text); }
+.i .md h1 { font-family: "rv", monospace; font-size: 16px; line-height: 16px; font-weight: normal; color: var(--bright); margin: 0 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--lo); box-shadow: 0 1px 0 var(--hi); }
+.i .md h2 { font-family: "rv", monospace; font-size: 8px; line-height: 8px; font-weight: normal; color: var(--bright); margin: 12px 0 6px; display: flex; align-items: center; gap: 6px; }
+.i .md h2::after { content: ""; flex: 1; height: 6px; background: var(--dither-in); background-image: conic-gradient(var(--lo) 25%, transparent 0 50%, var(--lo) 0 75%, transparent 0); background-size: 2px 2px; }
+.i .md p { margin: 0 0 7px; }
+.i .md strong { color: var(--bright); font-weight: normal; }
+.i .md a { color: var(--bright); text-decoration: none; border-bottom: 1px dotted var(--sel); }
+.i .md ul { list-style: none; margin: 0 0 7px; padding: 0; }
+.i .md ul li { position: relative; padding-left: 12px; margin: 0 0 2px; }
+.i .md ul li::before { content: ""; position: absolute; left: 2px; top: 6px; width: 4px; height: 4px; background: var(--sel); }
+.i .md kbd { font-family: "rv", monospace; font-size: 8px; line-height: 8px; color: var(--bright); background: var(--btn); padding: 1px 3px; border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); box-shadow: 0 1px 0 var(--dark); white-space: nowrap; display: inline-block; }
+.i .md kbd.sv, .i .md kbd.sh { width: 12px; height: 10px; padding: 0; vertical-align: middle; }
+.i .md kbd.sv { background: linear-gradient(var(--bright), var(--bright)) center / 1px 6px no-repeat, var(--btn); }
+.i .md kbd.sh { background: linear-gradient(var(--bright), var(--bright)) center / 6px 1px no-repeat, var(--btn); }
+.i .md code { font-family: "rv", monospace; font-size: 8px; color: var(--ct); background: var(--cb); padding: 1px 3px; }
+.i .md pre { margin: 0 0 8px; padding: 4px 6px; background: var(--cb); color: var(--ct); font-family: "PxVGA", monospace; font-size: 16px; line-height: 16px; white-space: pre; overflow: hidden; }
+.i .md pre .k { color: var(--mauve); } .i .md pre .s { color: var(--green); } .i .md pre .n { color: var(--peach); } .i .md pre .c { color: var(--cov); }
+.i .md blockquote { margin: 0 0 8px; padding: 2px 0 2px 8px; border-left: 2px solid var(--sel); color: var(--text); }
+.i .md hr { border: 0; border-top: 1px solid var(--lo); border-bottom: 1px solid var(--hi); margin: 8px 0; }
+.i .md table { border-collapse: collapse; width: 100%; margin: 4px 0 8px; }
+.i .md th { font-family: "rv", monospace; font-size: 8px; font-weight: normal; text-align: left; color: var(--bright); background: var(--win); padding: 2px 6px; border-bottom: 1px solid var(--lo); }
+.i .md td { padding: 3px 6px; border-bottom: 1px solid var(--lo); vertical-align: top; }
+.i .md td.ok { font-family: "rv", monospace; font-size: 8px; color: var(--sel); width: 10px; padding-right: 0; }
+.i .md tr.next td { color: var(--bright); }
+.i .md .del { color: var(--dim); }
+
+/* viewports */
+.frame169 { position: absolute; left: 22px; right: 22px; top: 8px; bottom: 22px; background: var(--crust); display: flex; align-items: center; justify-content: center; }
+.game { position: absolute; inset: 18px 30px 8px; background: var(--crust); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.vga32 { font-family: "PxVGA", monospace; font-size: 32px; line-height: 32px; }
+.vga16 { font-family: "PxVGA", monospace; font-size: 16px; line-height: 16px; }
+.rv16 { font-family: "rv", monospace; font-size: 16px; line-height: 16px; }
+.cap { color: var(--dim); }
+
+.i-notes { font-size: 14px; line-height: 1.5; }
+.i-notes li { margin-bottom: 4px; }
+.i-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.i-grid h3 { margin: 0 0 6px; }
+</style>
+
+<h2>Стартовый экран — v5: IRIX и Markdown</h2>
+<p class="subtitle">Шрифт интерфейса — rv_font 5×7 из pdklib, масштаб 1, как на ваших скриншотах. Оба тайла — записки в Markdown.</p>
+
+<div class="i">
+  <div class="i-screen" style="height: 560px;">
+    <div class="i-row">
+      <!-- Главная -->
+      <div class="i-tile raised">
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Главная: plug.md</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-wellrow sunken">
+          <div class="i-well md">
+            <h1>plug</h1>
+            <p>plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug plug.</p>
+            <h2>plug</h2>
+            <ul>
+              <li>plug plug <strong>plug</strong> plug plug</li>
+              <li>plug <a>plug plug</a> plug</li>
+              <li>plug <code>plug.md</code> plug plug</li>
+            </ul>
+            <blockquote>plug plug plug plug plug plug plug plug plug plug plug — plug</blockquote>
+            <pre><span class="k">fn</span> plug(<span class="n">42</span>) {
+  <span class="k">return</span> <span class="s">"plug"</span>; <span class="c">// plug</span>
+}</pre>
+            <hr>
+            <p>Портфолио лежит в проводнике. Откройте его — и любой файл в нём откроется в соседнем тайле. <span class="del">(на удаление)</span></p>
+          </div>
+        </div>
+        <div class="i-tabs"><span class="tab on"><span>Главная</span></span></div>
+      </div>
+      <!-- Обучение -->
+      <div class="i-tile raised focus">
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Обучение: help.md</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-wellrow sunken">
+          <div class="i-well md">
+            <h1>Как здесь всё устроено</h1>
+            <p>Экран целиком делится на прямоугольные области — <strong>тайлы</strong>. Тайлы никогда не перекрывают друг друга: новый тайл забирает часть места у соседа, а закрытый отдаёт своё место обратно. В каждом тайле что-то одно: проводник с файлами, плеер, картинка, текст или игра. Несколько тайлов можно сложить в один — тогда внизу у него появятся вкладки, как у папок в картотеке.</p>
+            <h2>Мышь и клавиатура</h2>
+            <p>Всё, что здесь можно сделать, делается и мышью, и клавиатурой. Пользуйтесь одним способом или смешивайте их — как удобно.</p>
+            <table>
+              <tr><th></th><th>Что сделать</th><th>Мышью</th><th>Клавиатурой</th></tr>
+              <tr class="next"><td class="ok">&gt;</td><td>Перейти в другой тайл</td><td>щёлкнуть по нему</td><td><kbd>Shift</kbd> + <kbd>стрелки</kbd></td></tr>
+              <tr><td class="ok"></td><td>Разделить тайл</td><td>кнопки <kbd class="sv"></kbd> <kbd class="sh"></kbd> в заголовке</td><td><kbd>Shift</kbd> + <kbd>H</kbd> рядом, <kbd>Shift</kbd> + <kbd>V</kbd> снизу</td></tr>
+              <tr><td class="ok"></td><td>Открыть проводник</td><td>«Проводник» в пустом тайле</td><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td></tr>
+              <tr><td class="ok"></td><td>Передвинуть тайл</td><td>тащить заголовок к краю другого</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>стрелки</kbd></td></tr>
+              <tr><td class="ok"></td><td>Сложить во вкладки</td><td>бросить заголовок на вкладки</td><td><kbd>Shift</kbd> + <kbd>W</kbd></td></tr>
+              <tr><td class="ok"></td><td>Изменить размер</td><td>тащить границу</td><td><kbd>Shift</kbd> + <kbd>R</kbd>, стрелки</td></tr>
+              <tr><td class="ok"></td><td>Весь экран и обратно</td><td><kbd>M</kbd> в заголовке</td><td><kbd>Shift</kbd> + <kbd>F</kbd></td></tr>
+              <tr><td class="ok"></td><td>Закрыть тайл</td><td><kbd>X</kbd> в заголовке</td><td><kbd>Shift</kbd> + <kbd>Q</kbd></td></tr>
+            </table>
+          </div>
+          <div class="sb"><span class="a up raised1"></span><span class="tr"><span class="th raised1" style="top: 0; height: 70%;"></span></span><span class="a dn raised1"></span></div>
+        </div>
+        <div class="i-tabs"><span class="tab on"><span>Обучение</span></span></div>
+      </div>
+    </div>
+    <div class="keys">
+      <span class="raised1"><b>Shift+H</b>Рядом</span><span class="raised1"><b>Shift+V</b>Снизу</span><span class="raised1"><b>Shift+Enter</b>Открыть</span><span class="raised1"><b>Shift+W</b>Вкладки</span><span class="raised1"><b>Shift+R</b>Размер</span><span class="raised1"><b>Shift+F</b>Весь экран</span><span class="raised1"><b>Shift+Q</b>Закрыть</span>
+    </div>
+  </div>
+</div>
+
+<h2>Референсы тайлов</h2>
+<p class="subtitle">Проводник, аудиоплеер, видеоплеер, приложение. Записка в Markdown — оба тайла выше.</p>
+
+<div class="i-grid">
+  <!-- Проводник -->
+  <div>
+    <h3>Проводник</h3>
+    <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
+      <div class="i-tile raised focus">
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Проводник: /music/ambient/</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-panel">
+          <div class="i-tools">
+            <span class="ib raised"><span class="g c-up">Up</span></span><span class="ib raised"><span class="g c-nv">Hm</span></span>
+            <span class="field sunken" style="flex: 1;">/music/ambient/</span>
+            <span class="chk"><i class="sunken1 on"></i><span class="lbl">Подробно</span></span>
+          </div>
+          <div class="i-wellrow sunken">
+            <div class="i-well">
+              <table class="lst">
+                <tr><th style="width: 60%;">Имя</th><th>Размер</th><th>Изменён</th></tr>
+                <tr><td><span class="g c-up">Up</span>..</td><td class="r dim">ВВЕРХ</td><td></td></tr>
+                <tr><td><span class="g c-fd">Fd</span>field_recordings/</td><td class="r dim">ПАПКА</td><td class="dim">2026-08-02</td></tr>
+                <tr class="sel"><td><span class="g c-sn">Sn</span>track_01.mp3</td><td class="r">4.2M</td><td>2026-09-14</td></tr>
+                <tr><td><span class="g c-sn">Sn</span>track_02.mp3</td><td class="r">6.8M</td><td class="dim">2026-09-14</td></tr>
+                <tr><td><span class="g c-sn">Sn</span>track_03.ogg</td><td class="r">5.1M</td><td class="dim">2026-09-20</td></tr>
+                <tr><td><span class="g c-im">Im</span>cover.webp</td><td class="r">1.1M</td><td class="dim">2026-09-14</td></tr>
+                <tr><td><span class="g c-vi">Vi</span>teaser.webm</td><td class="r">12.4M</td><td class="dim">2026-10-01</td></tr>
+                <tr><td><span class="g c-tx">Tx</span>liner_notes.md</td><td class="r">3K</td><td class="dim">2026-10-03</td></tr>
+                <tr><td><span class="g c-ap">Ap</span>visualizer/</td><td class="r dim">ПРИЛ.</td><td class="dim">2026-10-12</td></tr>
+                <tr><td><span class="g c-fi">Fi</span>credits.pdf</td><td class="r">240K</td><td class="dim">2026-10-12</td></tr>
+              </table>
+            </div>
+            <div class="sb"><span class="a up raised1"></span><span class="tr"><span class="th raised1" style="top: 0; height: 80%;"></span></span><span class="a dn raised1"></span></div>
+          </div>
+          <div class="stat"><span class="sunken1 grow">track_01.mp3 · MP3 · 4 212 480 байт</span><span class="sunken1">2026-09-14 21:03</span><span class="sunken1">10 объектов</span></div>
+        </div>
+        <div class="i-tabs"><span class="tab on"><span>Проводник: ambient</span></span><span class="tab"><span>Проводник: games</span></span></div>
+      </div>
+    </div></div></div>
+  </div>
+
+  <!-- Аудиоплеер -->
+  <div>
+    <h3>Аудиоплеер</h3>
+    <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
+      <div class="i-tile raised">
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Плеер: track_01.mp3</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-panel">
+          <div class="i-wellrow sunken" style="flex: none; height: 56px;">
+            <div class="i-well navy" style="display: flex; align-items: center; gap: 14px; padding: 0 10px;">
+              <span class="vga32" style="color: var(--green);">01:42</span>
+              <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+                <span class="rv16" style="color: var(--ct);">track_01.mp3</span>
+                <span style="color: var(--cs);">MP3 · 03:58 · /music/ambient/ · 1 из 3</span>
+              </span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 3px; flex: none; padding: 0 2px;">
+            <div class="slider sunken1"><span class="fill" style="width: 43%;"></span><span class="knob raised1" style="left: calc(43% - 5px);"></span></div>
+            <div class="ruler"></div>
+            <div style="display: flex; justify-content: space-between;" class="cap"><span>00:00</span><span>Позиция</span><span>03:58</span></div>
+          </div>
+          <div class="i-tools" style="gap: 4px;">
+            <span class="big raised"><span class="gg c-nv">Pv</span><span class="ll">Назад</span></span>
+            <span class="big raised on"><span class="gg c-pl">Pl</span><span class="ll">Играть</span></span>
+            <span class="big raised"><span class="gg c-ps">Ps</span><span class="ll">Пауза</span></span>
+            <span class="big raised"><span class="gg c-sp">Sp</span><span class="ll">Стоп</span></span>
+            <span class="big raised"><span class="gg c-nv">Nx</span><span class="ll">Дальше</span></span>
+            <span class="sep" style="height: 40px;"></span>
+            <span class="big raised"><span class="gg c-mt">Mt</span><span class="ll">Звук</span></span>
+            <span class="wheel"><span class="w sunken1"></span><span class="lbl">Громк. 82%</span></span>
+          </div>
+          <div class="i-wellrow sunken">
+            <div class="i-well navy">
+              <table class="lst">
+                <tr><th style="width: 18px;">#</th><th>Подборка: /music/ambient/</th><th style="width: 50px;">Длит.</th></tr>
+                <tr class="cur"><td style="color: var(--green);">&gt;</td><td>track_01.mp3</td><td class="r">03:58</td></tr>
+                <tr><td style="color: var(--cov);">2</td><td>track_02.mp3</td><td class="r">05:12</td></tr>
+                <tr><td style="color: var(--cov);">3</td><td>track_03.ogg</td><td class="r">04:45</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="i-tabs"><span class="tab on"><span>Плеер</span></span></div>
+      </div>
+    </div></div></div>
+  </div>
+
+  <!-- Видеоплеер -->
+  <div>
+    <h3>Видеоплеер</h3>
+    <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
+      <div class="i-tile raised">
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Видео: teaser.webm</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-panel">
+          <div class="i-tools">
+            <span class="ib raised"><span class="g c-pl">Pl</span></span><span class="ib raised"><span class="g c-ps">Ps</span></span><span class="ib raised"><span class="g c-sp">Sp</span></span>
+            <span class="sep"></span>
+            <span class="btn raised on">Fit</span><span class="btn raised">1x</span><span class="btn raised">2x</span>
+            <span class="sep"></span>
+            <span class="chk"><i class="sunken1"></i><span class="lbl">Повтор</span></span>
+          </div>
+          <div class="i-wellrow sunken">
+            <div class="i-well navy">
+              <div style="position: absolute; left: 4px; top: 8px; bottom: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+                <span class="wheel v"><span class="w sunken1"></span></span>
+              </div>
+              <div class="frame169"><span style="color: var(--cov);">кадр видео 16:9</span></div>
+              <div style="position: absolute; left: 22px; right: 22px; bottom: 4px;"><div class="ruler"><span class="mark" style="left: 22%;"></span></div></div>
+            </div>
+          </div>
+          <div class="cap" style="flex: none;">Громкость — колёсико слева, позиция — шкала снизу · teaser.webm · 1920×1080 · 00:42 / 03:10</div>
+        </div>
+        <div class="i-tabs"><span class="tab on"><span>Видео</span></span><span class="tab"><span>Плеер</span></span></div>
+      </div>
+    </div></div></div>
+  </div>
+
+  <!-- Приложение -->
+  <div>
+    <h3>Приложение</h3>
+    <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
+      <div class="i-tile raised focus">
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Приложение: games/plug-run/</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-panel">
+          <div class="i-tools">
+            <span class="btn raised on">Fit</span><span class="btn raised">Integer</span><span class="btn raised">1x</span><span class="btn raised">2x</span><span class="btn raised">3x</span>
+            <span class="sep"></span>
+            <span class="ib raised"><span class="g c-sp">Rs</span></span><span class="lbl">Перезапуск</span>
+          </div>
+          <div class="i-wellrow sunken">
+            <div class="i-well navy">
+              <div style="padding: 3px 6px; color: var(--ct);">Запущено. Клавиатура у приложения — щелчок по другому тайлу вернёт её окружению.</div>
+              <div class="game">
+                <span class="vga32" style="color: var(--peach);">PLUG RUN</span>
+                <span class="vga16" style="color: var(--ct);">PRESS START</span>
+              </div>
+            </div>
+          </div>
+          <div class="stat"><span class="sunken1 grow">index.html · 320×180 · ×2</span><span class="sunken1" style="color: var(--sel);">Клавиатура: приложение</span></div>
+        </div>
+        <div class="i-tabs"><span class="tab on"><span>Приложение</span></span></div>
+      </div>
+    </div></div></div>
+  </div>
+</div>
+
+<h3>Что здесь моё, а не ваше</h3>
+<ul class="i-notes">
+  <li><b>Шрифт интерфейса</b> — rv_font 5×7 из pdklib с кириллицей; я собрал его в OTF из таблиц <code>rv_font_data.hpp</code> и <code>rv_font_cyrillic.hpp</code>. Масштаб 1, как на скриншотах; на сайте понадобится выбор масштаба, как <i>View &gt; UI Scale</i> в редакторе.</li>
+  <li><b>Markdown:</b> заголовки — rv_font ×2 и ×1 с растровой полосой, как в заголовке тайла; текст — WineTahomaBit; код — PxPlus VGA на синем фоне; клавиши — объёмные колпачки.</li>
+  <li><b>Тёмно-синие колодцы</b> (Catppuccin Mocha base, как Code и Game в редакторе) — у плееров и приложения; проводник и записки — оливковые, как Files и Inspector.</li>
+  <li><b>Двухбуквенные коды:</b> из редактора — Fd, Sn, Im, Tx, Fi, Hm, Pl, Ps, Sp и их цвета; новые, мои — Vi (видео), Ap (приложение), Up, Pv, Nx, Mt, Rs.</li>
+  <li><b>Колёсико громкости и шкала позиции</b> — из тайла Scene (Rot X / Dolly / Rot Y). <b>Строка о выбранном файле</b> под списком — из Midnight Commander.</li>
+  <li><b>Как вернуть клавиатуру из приложения</b> — пока щелчком по другому тайлу; клавиатурный способ не решён.</li>
+</ul>
+
+</body>
+</html>
