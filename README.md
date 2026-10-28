@@ -1,232 +1,233 @@
 # MILK-FUMO
 
-**Сайт-портфолио в виде тайловой среды рабочего стола.** Весь сайт — это окно браузера, поделённое на тайлы, как в i3. В тайлах открываются проводник по портфолио, записки, плееры и веб-приложения. Содержимое лежит в S3, бэкенда нет или он минимальный.
+**A portfolio site shaped as a tiling desktop environment.** The whole site is the browser window divided into tiles, as in i3. The tiles hold an explorer over the portfolio, notes, players and web apps. The content lives in S3; there is no backend, or a minimal one.
 
-Статус: **описание проекта, UX и UI.** Кода сайта пока нет. В [`docs/prototypes/`](docs/prototypes/) лежат кликабельные прототипы, по которым принимались решения.
+Status: **project description, UX and UI.** There is no site code yet. [`docs/prototypes/`](docs/prototypes/) holds the clickable prototypes the decisions were made on.
 
-![Стартовый экран](docs/screenshots/start-screen.png)
+![Start screen](docs/screenshots/start-screen.png)
 
-## Зачем
+## Purpose
 
-За первую минуту посетитель должен:
+Within the first minute a visitor should:
 
-1. прочитать, чей это сайт;
-2. прочитать, что это тайловая среда рабочего стола, и научиться ею пользоваться;
-3. увидеть портфолио и открыть из него любой файл.
+1. read whose site this is;
+2. read that it is a tiling desktop environment, and learn to use it;
+3. see the portfolio and open any file from it.
 
-**Главный принцип — свобода.** Оригинальным i3 можно управлять только клавиатурой. Здесь всё делается и только клавиатурой, и только мышью, и вперемешку — как удобно посетителю. У каждого действия есть оба способа.
+**The core principle is freedom.** The original i3 is driven by the keyboard only. Here everything can be done with the keyboard only, with the mouse only, or with both mixed — whatever suits the visitor. Every action has both ways.
 
-**Только просмотр.** Посетитель открывает файлы, играет, слушает, перематывает и меняет свою раскладку, но ничего не записывает в опубликованное хранилище. Загрузка новых работ — отдельная процедура публикации. Запрет записи обеспечивается доступом к хранилищу, а не отсутствием кнопок.
+**View only.** A visitor opens files, plays, listens, seeks and rearranges their layout, but writes nothing to the published storage. Publishing new work is a separate procedure. Write protection comes from storage access rights, not from missing buttons.
 
-## Из чего собирается
+## What it is built from
 
-| Источник | Что берём |
+| Source | What we take |
 |---|---|
-| [bird-fumo](https://github.com/vydramain/bird-fumo) | просмотрщики и запуск: проводник по S3, изображения, аудио, видео, веб-приложения |
-| [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | внешний вид и поведение рабочего пространства: тайлы, рамки, вкладки, минимальные размеры. Дизайн-система — каталог виджетов редактора ([`editor/src/catalog/`](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog)) |
-| [vgui2-deck](https://github.com/vydramain/vgui2-deck) | палитра и шрифты |
-| SGI IRIX | вдохновение для UI: объёмные рамки, латунь, плотные служебные шрифты |
-| Midnight Commander, Volkov Commander | UX проводника: две панели, курсор, F-клавиши |
+| [bird-fumo](https://github.com/vydramain/bird-fumo) | viewers and launching: S3 explorer, images, audio, video, web apps |
+| [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | look and behavior of the workspace: tiles, frames, tabs, minimum sizes. The design system is the editor's widget catalog ([`editor/src/catalog/`](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog)) |
+| [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette and fonts |
+| SGI IRIX | UI inspiration: raised frames, brass, dense utility type |
+| Midnight Commander, Volkov Commander | explorer UX: two panels, cursor, F-keys |
 
-### Что есть в bird-fumo
+### What bird-fumo has
 
-| Возможность | Что реализовано | Для сайта |
+| Capability | What is implemented | For the site |
 |---|---|---|
-| Проводник | Корни хранилища, папки, файлы, путь, переход назад, открытие двойным щелчком | Переделать в проводник в духе MC |
-| Связь с S3 | Список объектов, метаданные, подписанные URL для чтения | Оставить только чтение |
-| Просмотр изображений | PNG, JPEG, WebP; предыдущее/следующее, название и позиция в подборке | Оставить |
-| Аудиоплеер | MP3; воспроизведение, пауза, остановка, перемотка, громкость, без звука | Оставить |
-| Видеоплеер | MP4 и WebM через тот же медиаплеер | Оставить |
-| Подборки | При открытии медиа проводник собирает подходящие файлы из папки | Оставить |
-| Просмотр текста и HTML | TXT и HTML во вложенном iframe | Заменить записками в Markdown |
-| Запуск веб-приложений | Папка с `index.html` — приложение; запускается в iframe, ресурсы из S3 | Оставить |
-| Обмен с приложениями | `APP_READY`, `OPEN_FILE`, заголовок, ошибки через `postMessage` | Взять за основу |
-| Изменение хранилища | Создание папок, загрузка, переименование, удаление | Убрать |
-| Рабочий стол | Плавающие окна, перекрытие, панель задач | Заменить тайлами |
+| Explorer | Storage roots, folders, files, path, going back, open on double click | Rework into an MC-style explorer |
+| S3 access | Object listing, metadata, signed read URLs | Keep reading only |
+| Image viewer | PNG, JPEG, WebP; previous/next, name and position in the set | Keep |
+| Audio player | MP3; play, pause, stop, seek, volume, mute | Keep |
+| Video player | MP4 and WebM through the same media player | Keep |
+| Sets | Opening media collects matching files from the folder | Keep |
+| Text and HTML viewer | TXT and HTML in a nested iframe | Replace with Markdown notes |
+| Web app launch | A folder with `index.html` is an app; it runs in an iframe, resources come from S3 | Keep |
+| App messaging | `APP_READY`, `OPEN_FILE`, title, errors over `postMessage` | Use as the base |
+| Storage changes | Create folders, upload, rename, delete | Remove |
+| Desktop | Floating windows, overlap, taskbar | Replace with tiles |
 
-**OGG, WAV, FLAC, Markdown и PDF в реестр обработчиков bird-fumo не входят**, их поддержку нужно добавить.
+**OGG, WAV, FLAC, Markdown and PDF are not in bird-fumo's handler registry**; their support has to be added.
 
 ## UX
 
-### Стартовый экран
+### Start screen
 
-Два тайла-записки в Markdown, поделённые **1:1**. Кнопок нет: стартовый экран сам и есть обучение.
+Two Markdown note tiles split **1:1**. No buttons: the start screen itself is the tutorial.
 
-| Слева: «Главная» | Справа: «Обучение» — **в фокусе** |
+| Left: "Home" | Right: "Tutorial" — **focused** |
 |---|---|
-| Кто я и что здесь (пока текст-заглушка `plug`). Под ним строка «Портфолио лежит в проводнике. Откройте его — и любой файл в нём откроется в соседнем тайле.» (на удаление) | «Как здесь всё устроено»: что такое тайлы, затем таблица действий «что сделать — мышью — клавиатурой» |
+| Who I am and what is here (placeholder text `plug` for now). Below it the line "The portfolio is in the explorer. Open it, and any file in it opens in the neighboring tile." (to be removed) | "How it works": what tiles are, then the table of actions "to do — mouse — keyboard" |
 
-Текст обучения пишется так, чтобы знакомый с i3 сказал «О! Это же как i3!», а видящий тайлы впервые понял, как ими пользоваться. Слова «i3» и «Desktop Environment» объяснением не считаются.
+The tutorial is written so that someone who knows i3 says "Oh! This is like i3!", and someone who sees tiles for the first time understands how to use them. The words "i3" and "desktop environment" do not count as an explanation.
 
-### Тайлы
+### Tiles
 
-- Экран целиком делится на прямоугольные тайлы. **Тайлы никогда не перекрываются.**
-- **Новый тайл делит место с соседом 1:1.** Закрытый тайл отдаёт своё место обратно.
-- Раскладка — дерево разделений, в листьях которого вкладки. Несколько тайлов можно сложить в один — тогда внизу появляются вкладки, как у папок в картотеке.
-- Тайл можно развернуть на весь экран и вернуть раскладку обратно.
-- Перенос мышью — как в редакторе: заголовок к краю другого тайла создаёт соседа, в центр или на полосу вкладок — объединяет во вкладки. Будущее место подсвечивается, Escape отменяет перенос.
+- The whole screen is divided into rectangular tiles. **Tiles never overlap.**
+- **A new tile shares the space with its neighbor 1:1.** A closed tile gives its space back.
+- The layout is a tree of splits whose leaves hold tabs. Several tiles can be stacked into one — then tabs appear at its bottom, like the tabs on folders in a card file.
+- A tile can be maximized to the whole screen and the layout restored.
+- Mouse moves work as in the editor: a title bar dropped at the edge of another tile creates a neighbor, dropped in the center or on the tab strip stacks into tabs. The future place is highlighted; Escape cancels the move.
 
-### Управление
+### Controls
 
-Клавиша-модификатор — **Shift**: на проверке в браузере Shift сработал во всех комбинациях, с Alt часть комбинаций забрали системные сочетания клавиш, Super не сработал. `Ctrl+Q` закрывает Firefox, `Ctrl+Shift+Q` — Chrome, поэтому закрытие тайла — `Shift+Q`. Клавиши определяются по физическому положению (`KeyboardEvent.code`), поэтому работают в любой раскладке, включая русскую.
+The modifier key is **Shift**: in a browser test Shift worked in every combination, with Alt some combinations were taken by system shortcuts, Super did not work. `Ctrl+Q` quits Firefox and `Ctrl+Shift+Q` quits Chrome, so closing a tile is `Shift+Q`. Keys are matched by physical position (`KeyboardEvent.code`), so they work in any keyboard layout.
 
-| Что сделать | Мышью | Клавиатурой |
+| To do | Mouse | Keyboard |
 |---|---|---|
-| Перейти в другой тайл | щёлкнуть по нему | `Shift` + стрелки |
-| Разделить тайл | кнопки `│` `─` в заголовке | `Shift+H` рядом, `Shift+V` снизу |
-| Открыть проводник | «Проводник» в пустом тайле | `Shift+Enter` |
-| Передвинуть тайл | тащить заголовок к краю другого | `Ctrl+Shift` + стрелки |
-| Сложить во вкладки | бросить заголовок на вкладки | `Shift+W` |
-| Изменить размер | тащить границу | `Shift+R`, затем стрелки; `Enter` или `Esc` — готово |
-| Весь экран и обратно | `M` в заголовке | `Shift+F` |
-| Закрыть тайл | `X` в заголовке | `Shift+Q` |
+| Go to another tile | click it | `Shift` + arrows |
+| Split a tile | the `│` `─` buttons in the title bar | `Shift+H` beside, `Shift+V` below |
+| Open the explorer | "Explorer" in an empty tile | `Shift+Enter` |
+| Move a tile | drag its title bar to the edge of another | `Ctrl+Shift` + arrows |
+| Stack into tabs | drop its title bar onto the tabs | `Shift+W` |
+| Resize | drag the border | `Shift+R`, then arrows; `Enter` or `Esc` — done |
+| Fullscreen and back | `M` in the title bar | `Shift+F` |
+| Close a tile | `X` in the title bar | `Shift+Q` |
 
-**Нижняя панель окружения видна всегда.** В ней подсказки ко всем действиям, первая — «`Shift`+стрелки Перейти». Каждая ячейка нажимается мышью и выполняет своё действие. Над панелью — строка сообщений: например, почему граница дальше не двигается.
+**The environment bar at the bottom is always visible.** It holds hints for every action, the first one being "`Shift`+arrows Focus". Every cell can be clicked and performs its action. Above the bar is a message line: for example, why a border will not move further.
 
-Панель появилась после того, как на прототипе не удалось вернуть фокус в проводник с клавиатуры: подсказки о переходе между тайлами на экране не было.
+The bar was added after focus could not be returned to the explorer from the keyboard in a prototype: there was no hint on screen for moving between tiles.
 
-### Проводник
+### Explorer
 
-UI — как у тайлов редактора, **UX — как у раннего Midnight Commander.**
+The UI is that of the editor's tiles, **the UX is that of the early Midnight Commander.**
 
-![Проводник](docs/screenshots/explorer.png)
+![Explorer](docs/screenshots/explorer.png)
 
-- **Две панели внутри одного тайла.** `Tab` переключает активную панель. У активной панели латунная строка пути.
-- Курсор — полоса на всю строку. `↑` `↓`, `PgUp` `PgDn`, `Home` `End`; колесо мыши двигает курсор на 3 строки, щелчок ставит его на строку.
-- `Enter` или двойной щелчок: папка — войти, `..` — на уровень вверх, файл — открыть в соседнем тайле. `Ctrl+PgUp` — на уровень вверх.
-- `F3` — быстрый просмотр: вторая панель показывает выбранный файл; `Esc` возвращает список.
-- Буквы — быстрый поиск по началу имени, `Backspace` стирает букву.
-- Колонки «Имя», «Размер», «Изменён»; у папок вместо размера `SUB-DIR`, у `..` — `UP--DIR`. Под списком — строка о выбранном файле.
-- Внизу тайла — своя панель клавиш MC (`Enter`, `F3`, `Tab`, `Esc`, `Ctrl+PgUp`, буквы). **Она есть только в проводнике**; каждая её кнопка нажимается мышью.
+- **Two panels inside one tile.** `Tab` switches the active panel. The active panel has a brass path bar.
+- The cursor is a full-width bar. `↑` `↓`, `PgUp` `PgDn`, `Home` `End`; the mouse wheel moves the cursor by 3 rows, a click puts it on a row.
+- `Enter` or double click: a folder — enter it, `..` — one level up, a file — open it in the neighboring tile. `Ctrl+PgUp` — one level up.
+- `F3` — quick view: the other panel shows the selected file; `Esc` brings the list back.
+- Letters — quick search by the start of a name, `Backspace` erases a letter.
+- Columns "Name", "Size", "Modified"; folders show `SUB-DIR` instead of a size, `..` shows `UP--DIR`. Under the list is a line about the selected file.
+- At the bottom of the tile is its own MC key bar (`Enter`, `F3`, `Tab`, `Esc`, `Ctrl+PgUp`, letters). **Only the explorer has it**; every key in it can be clicked.
 
-### Типы тайлов
+### Tile types
 
-| Тип | Содержимое | Референс |
+| Type | Content | Reference |
 |---|---|---|
-| Проводник | Опубликованные папки и файлы S3, две панели | [`explorer.html`](docs/prototypes/explorer.html) |
-| Записка | Текст в Markdown | оба тайла стартового экрана |
-| Аудиоплеер | Время, позиция, кнопки, громкость, подборка из папки | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| Видеоплеер | Кадр, Fit / 1x / 2x, повтор; громкость колёсиком слева, позиция шкалой снизу | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| Приложение | Веб-игра или другое веб-приложение в iframe; Fit / Integer / 1x / 2x / 3x, перезапуск | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| Изображения | Выбранное изображение и переключение по подборке | референса нет |
+| Explorer | Published S3 folders and files, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
+| Note | Markdown text | both tiles of the start screen |
+| Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| Video player | Frame, Fit / 1x / 2x, loop; volume as a wheel on the left, position as a scale below | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| App | A web game or another web app in an iframe; Fit / Integer / 1x / 2x / 3x, restart | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| Images | The selected image and switching through the set | no reference |
 
-![Тайлы](docs/screenshots/tiles.png)
+![Tiles](docs/screenshots/tiles.png)
 
-Проводников, записок, плееров и приложений может быть открыто несколько.
+Several explorers, notes, players and apps can be open at once.
 
-### Основной сценарий
+### Main scenario
 
-1. Посетитель читает стартовый экран.
-2. Открывает проводник, заходит в папку с музыкой и открывает трек — рядом появляется плеер, проводник остаётся.
-3. Открывает игру и размещает её как удобно.
-4. Переносит плеер под проводник или складывает их во вкладки.
-5. Разворачивает игру, затем возвращает раскладку.
+1. The visitor reads the start screen.
+2. Opens the explorer, enters the music folder and opens a track — a player appears beside it, the explorer stays.
+3. Opens a game and places it as they like.
+4. Moves the player under the explorer or stacks them into tabs.
+5. Maximizes the game, then restores the layout.
 
-**Перестройка раскладки не перезапускает игру и не обрывает музыку.** Экземпляры приложений и плееров сохраняются при переносе, объединении во вкладки и разворачивании. Это ключевой технический критерий.
+**Rearranging the layout does not restart a game or cut the music.** App and player instances survive moving, stacking into tabs and maximizing. This is the key technical criterion.
 
-### Минимальные размеры
+### Minimum sizes
 
-Правила взяты из 3dmppc-editor ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
+Rules taken from 3dmppc-editor ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`main.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/main.cpp), [`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
 
-- окно — не меньше **1280×720** (умноженных на масштаб UI), иначе вместо среды экран «Окно слишком маленькое» с нужным и текущим размером;
-- минимум содержимого тайла — 20 em (ширина «M») × 4 высоты строки, если у содержимого нет своего;
-- минимум тайла — наибольший минимум его вкладок плюс рамка, плюс полоса вкладок, если вкладок больше одной;
-- минимум разделения — сумма минимумов вдоль оси плюс разделитель, поперёк — наибольший;
-- если окно меньше минимума всей раскладки, рабочее пространство прокручивается, а не сжимает тайлы;
-- границу нельзя сдвинуть за минимум ни мышью, ни `Shift+R`; строка сообщений говорит, чей минимум мешает.
+- the editor shows its "too small" screen when the **display** is smaller than **1280×720** (times the UI scale), and it sets 1280×720 as the minimum **window** size. Neither is the size of the content area; in a browser the viewport is smaller than the window (see open questions);
+- the minimum of a tile's content is 20 em (the width of "M") × 4 row heights, unless the content has its own;
+- the minimum of a tile is the largest minimum of its tabs plus the frame, plus the tab strip when there is more than one tab;
+- the minimum of a split is the sum of the minimums along its axis plus the splitter, and the largest across it;
+- when the window is smaller than the minimum of the whole layout, the workspace scrolls instead of squeezing tiles;
+- a border cannot be moved past a minimum, neither with the mouse nor with `Shift+R`; the message line says whose minimum is in the way.
 
-Метрики при масштабе 1: шрифт 8 px, em 6 px, отступ 4 px, высота строки 16 px, грань рамки 3 px, рамка тайла 14×34 px, разделитель 4 px.
+Metrics at scale 1: font 8 px, em 6 px, padding 4 px, row height 16 px, frame bevel 3 px, tile frame 14×34 px, splitter 4 px.
 
-Минимумы содержимого, которых в редакторе нет (подобраны под прототипы): проводник — 546 px в ширину (две панели, в каждой колонка имени 20 em плюс размер и дата), плеер — 250 px, приложение — 334 px (320×180 плюс рамка).
+Content minimums the editor does not have (chosen for the prototypes): explorer — 546 px wide (two panels, each with a 20 em name column plus size and date), player — 250 px, app — 334 px (320×180 plus the frame).
 
 ## UI
 
-Вид — IRIX через 3dmppc-editor:
+The look is IRIX through 3dmppc-editor:
 
-- прямоугольники без скруглений, приподнятая рамка тайла и утопленная область содержимого;
-- **латунная рамка у тайла в фокусе**;
-- заголовок тайла с растровым узором: `X` слева, `│` `─` `M` справа;
-- вкладки — скошенные папочные закладки **внизу тайла**, активная — латунная;
-- проводник и записки — на оливковом, плееры, приложения и код — в тёмно-синих колодцах (Catppuccin Mocha, как Code и Game в редакторе);
-- значки файлов — двухбуквенные коды вместо иконок.
+- rectangles without rounding, a raised tile frame and a sunken content area;
+- **a brass frame around the focused tile**;
+- a dithered tile title bar: `X` on the left, `│` `─` `M` on the right;
+- tabs are slanted folder tabs **at the bottom of the tile**, the active one is brass;
+- the explorer and notes sit on olive, players, apps and code in navy wells (Catppuccin Mocha, like Code and Game in the editor);
+- file icons are two-letter codes instead of pictures.
 
-### Палитра
+### Palette
 
-Основная — из [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp):
+The main palette comes from [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp):
 
-| Назначение | Цвет |
+| Role | Color |
 |---|---|
-| Основная поверхность | `#4C5844` |
-| Утопленные области и поля | `#3E4637` |
-| Кнопки | `#4E5744` |
-| Выделение и фокус — латунь | `#958831` |
-| Светлая грань рамки | `#7E8776` |
-| Тёмная грань рамки | `#32392C` |
-| Самая тёмная поверхность | `#282E20` |
-| Основной текст | `#D8DED3` |
-| Яркий текст | `#F1F2F0` |
-| Неактивный текст | `#758666` |
+| Main surface | `#4C5844` |
+| Sunken areas and fields | `#3E4637` |
+| Buttons | `#4E5744` |
+| Selection and focus — brass | `#958831` |
+| Light frame bevel | `#7E8776` |
+| Dark frame bevel | `#32392C` |
+| Darkest surface | `#282E20` |
+| Main text | `#D8DED3` |
+| Bright text | `#F1F2F0` |
+| Inactive text | `#758666` |
 
-Колодцы — Catppuccin Mocha: фон `#1e1e2e`, самый тёмный `#11111b`, текст `#cdd6f4`, приглушённый `#a6adc8`, `#585b70`, `#6c7086`; акценты: зелёный `#a6e3a1`, бирюзовый `#94e2d5`, персиковый `#fab387`, синий `#89b4fa`, сиреневый `#cba6f7`, жёлтый `#f9e2af`, красный `#f38ba8`.
+Wells use Catppuccin Mocha: background `#1e1e2e`, darkest `#11111b`, text `#cdd6f4`, muted `#a6adc8`, `#585b70`, `#6c7086`; accents: green `#a6e3a1`, teal `#94e2d5`, peach `#fab387`, blue `#89b4fa`, mauve `#cba6f7`, yellow `#f9e2af`, red `#f38ba8`.
 
-### Значки
+### Icons
 
-Из редактора ([`rv_editor_glyphs.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_glyphs.hpp), цвета — [`rv_editor_pane_files.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/panes/rv_editor_pane_files.cpp)):
+From the editor ([`rv_editor_glyphs.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_glyphs.hpp), colors in [`rv_editor_pane_files.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/panes/rv_editor_pane_files.cpp)):
 
-| Код | Что | Цвет |
+| Code | Meaning | Color |
 |---|---|---|
-| `Fd` | папка | латунь |
-| `Sn` | звук | бирюзовый |
-| `Im` | изображение | зелёный |
-| `Tx` | текст | текст |
-| `Fi` | прочий файл | приглушённый |
-| `Hm` `Pl` `Ps` `Sp` `Rs` | домой, играть, пауза, стоп, перезапуск | — |
+| `Fd` | folder | brass |
+| `Sn` | sound | teal |
+| `Im` | image | green |
+| `Tx` | text | text |
+| `Fi` | other file | muted |
+| `Hm` `Pl` `Ps` `Sp` `Rs` | home, play, pause, stop, restart | — |
 
-Новые, для сайта: `Vi` — видео (сиреневый), `Ap` — приложение (персиковый), `Up` — вверх, `Pv` `Nx` — назад и дальше, `Mt` — звук.
+New ones for the site: `Vi` — video (mauve), `Ap` — app (peach), `Up` — up, `Pv` `Nx` — previous and next, `Mt` — mute.
 
-### Шрифты
+### Fonts
 
-| Шрифт | Где |
+| Font | Where |
 |---|---|
-| `rv_font` 5×7 из pdklib, с кириллицей | интерфейс: заголовки, вкладки, клавиши, списки; заголовки Markdown |
-| WineTahomaBit | основной текст Markdown |
-| PxPlus IBM VGA 9x16 | код |
+| `rv_font` 5×7 from pdklib | interface: title bars, tabs, keys, lists; Markdown headings |
+| WineTahomaBit | Markdown body text |
+| PxPlus IBM VGA 9x16 | code |
 
-Пиксельные шрифты — только в родном размере или целом кратном. Происхождение и лицензии — в [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md). `rv_font` собирается в OTF скриптом [`tools/build_rvfont.py`](tools/build_rvfont.py).
+Pixel fonts are used only at their native size or a whole multiple of it. Origins and licenses are in [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md). `rv_font` is built into an OTF by [`tools/build_rvfont.py`](tools/build_rvfont.py).
 
-### Markdown в записках
+### Markdown in notes
 
-Заголовок первого уровня — `rv_font` 16 px с желобком снизу, второго — `rv_font` 8 px с растровой линейкой. Текст — WineTahomaBit, код — PxPlus на тёмно-синем, клавиши — объёмные колпачки.
+A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is WineTahomaBit, code is PxPlus on navy, keys are raised keycaps.
 
-## Прототипы
+## Prototypes
 
-| Файл | Что показывает |
+| File | What it shows |
 |---|---|
-| [`docs/prototypes/start-screen.html`](docs/prototypes/start-screen.html) | стартовый экран и референсы проводника, аудиоплеера, видеоплеера и приложения (статичные) |
-| [`docs/prototypes/explorer.html`](docs/prototypes/explorer.html) | проводник: работают клавиши MC, переход между тайлами, нижняя панель, изменение размера, разворачивание, закрытие и минимальные размеры |
+| [`docs/prototypes/start-screen.html`](docs/prototypes/start-screen.html) | the start screen and references for the explorer, audio player, video player and app (static) |
+| [`docs/prototypes/explorer.html`](docs/prototypes/explorer.html) | the explorer: MC keys, moving between tiles, the environment bar, resizing, maximizing, closing and minimum sizes work |
 
-Открываются прямо из файла в браузере (проверено в Chromium), окно — не меньше 1280×720.
+They open straight from the file in a browser (checked in Chromium), with a window of at least 1280×720.
 
-**Где прототипы расходятся с этим описанием:**
+**Where the prototypes differ from this description:**
 
-- в `explorer.html` новый тайл открывается в пропорции 2:1, а не 1:1;
-- `Shift+H`, `Shift+V`, `Shift+Enter` и `Shift+W` в `explorer.html` только пишут «не сделано»;
-- в `start-screen.html` в нижней панели нет ячейки «`Shift`+стрелки Перейти», а проводник среди референсов ещё однопанельный — актуальный проводник в `explorer.html`;
-- **в Firefox `Tab` и `F3` в `explorer.html` не перехватываются** — браузер выполняет своё действие. Причина не найдена. Известно только, что прототип перехватывает их, лишь когда в фокусе тайл проводника.
+- in `explorer.html` a new tile opens at 2:1, not 1:1;
+- in `explorer.html` the "too small" screen compares the **viewport** with 1280×720, while the editor compares the display;
+- `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
+- in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
+- **in Firefox, `Tab` and `F3` in `explorer.html` are not intercepted** — the browser performs its own action. The cause is not found. All that is known is that the prototype intercepts them only while the explorer tile has focus.
 
-## Открытые вопросы
+## Open questions
 
-- **Без бэкенда.** Как проводник получает список файлов без сервера: публичное чтение бакета и статический манифест, который собирается при публикации, — или минимальный шлюз, как в bird-fumo.
-- **Клавиатура и приложения.** Приложение в iframe забирает клавиши себе. Сейчас вернуть их окружению можно только щелчком по другому тайлу; клавиатурного способа нет.
-- **Маленькие экраны.** По правилу редактора всё меньше 1280×720 видит только экран «Окно слишком маленькое». Это телефоны, а также ноутбуки 1366×768: панели Firefox занимают около 86 px, и по высоте остаётся меньше 720 px.
-- **Масштаб UI.** В редакторе он настраивается, в прототипах только 1x.
-- **Куда открывается файл.** Сейчас — в соседний тайл, а если его нет, создаётся новый. Нужно ли открывать каждый файл в новом тайле.
-- **Изображения.** Референса тайла просмотра изображений нет.
-- **Раскладка между визитами.** Запоминать ли раскладку посетителя.
-- **Форматы.** OGG, WAV, FLAC, Markdown и PDF нужно добавить к обработчикам bird-fumo.
+- **No backend.** How the explorer gets the file list without a server: public bucket reads and a static manifest built at publish time — or a minimal gateway, as in bird-fumo.
+- **Keyboard and apps.** An app in an iframe takes the keys for itself. For now they can be returned to the environment only by clicking another tile; there is no keyboard way.
+- **Minimum size.** The editor's 1280×720 is the display and the window, not the content area. The browser viewport on the same display is smaller: by the browser's tabs and toolbar, the window title bar and the OS panels. The minimum viewport the site is designed for has to be decided.
+- **UI scale.** The editor lets you set it, the prototypes have only 1x.
+- **Where a file opens.** Now — in the neighboring tile, and if there is none, a new tile is created. Should every file open in a new tile instead.
+- **Images.** There is no reference for the image viewer tile.
+- **Layout between visits.** Whether to remember the visitor's layout.
+- **Formats.** OGG, WAV, FLAC, Markdown and PDF have to be added to bird-fumo's handlers.
 
-## Источники
+## Sources
 
-- bird-fumo: [реестр обработчиков](https://github.com/vydramain/bird-fumo/blob/master/front/lib/fp4/handler.ts), [запуск и открытие файлов](https://github.com/vydramain/bird-fumo/blob/master/front/Shell.tsx), [AppHost](https://github.com/vydramain/bird-fumo/blob/master/front/core/AppHost.tsx), [операции S3](https://github.com/vydramain/bird-fumo/blob/master/back/src/fs.ts).
-- 3dmppc-editor: [тема](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp), [применение темы](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme_imgui.cpp), [шрифты](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/font/rv_editor_font.cpp), [модель тайлов](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.hpp), [рабочее пространство](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [перенос и зоны размещения](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace_drag.cpp), [каталог виджетов](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog).
-- vgui2-deck: [шрифты и лицензии](https://github.com/vydramain/vgui2-deck/tree/main/fonts).
+- bird-fumo: [handler registry](https://github.com/vydramain/bird-fumo/blob/master/front/lib/fp4/handler.ts), [launching and opening files](https://github.com/vydramain/bird-fumo/blob/master/front/Shell.tsx), [AppHost](https://github.com/vydramain/bird-fumo/blob/master/front/core/AppHost.tsx), [S3 operations](https://github.com/vydramain/bird-fumo/blob/master/back/src/fs.ts).
+- 3dmppc-editor: [theme](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp), [theme application](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme_imgui.cpp), [fonts](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/font/rv_editor_font.cpp), [tile model](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.hpp), [workspace](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [moves and drop zones](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace_drag.cpp), [widget catalog](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog).
+- vgui2-deck: [fonts and licenses](https://github.com/vydramain/vgui2-deck/tree/main/fonts).

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>milk-fumo — проводник v8</title>
+<title>milk-fumo — explorer</title>
 <style>
 @font-face { font-family: "rv"; src: url("fonts/rvfont5x7.otf"); }
 @font-face { font-family: "WTB"; src: url("fonts/WineTahomaBit.ttf"); }
@@ -173,8 +173,8 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
 
   const EXT = { mp3: 'sn', ogg: 'sn', wav: 'sn', flac: 'sn', png: 'im', jpg: 'im', jpeg: 'im', webp: 'im', mp4: 'vi', webm: 'vi', md: 'tx', txt: 'tx' };
   const CODE = { up: 'Up', fd: 'Fd', ap: 'Ap', sn: 'Sn', im: 'Im', vi: 'Vi', tx: 'Tx', fi: 'Fi' };
-  const LABEL = { up: 'на уровень выше' };
-  const OPEN_TITLE = { fd: 'Папка', up: 'Папка', ap: 'Приложение', sn: 'Плеер', im: 'Изображение', vi: 'Видео', tx: 'Записка', fi: 'Файл' };
+  const LABEL = { up: 'up one level' };
+  const OPEN_TITLE = { fd: 'Folder', up: 'Folder', ap: 'App', sn: 'Player', im: 'Image', vi: 'Video', tx: 'Note', fi: 'File' };
 
   function kind(it) {
     if (it.up) return 'up';
@@ -255,31 +255,31 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
   }
 
   // environment actions
-  const NOT_HERE = { right: 'Рядом', below: 'Снизу', open: 'Открыть', tabs: 'Вкладки', split: 'Разделить' };
+  const NOT_HERE = { right: 'Beside', below: 'Below', open: 'Open', tabs: 'Tabs', split: 'Split' };
   function go(dir) {
-    if (maxed) { msg = 'Тайл развёрнут — Shift+F вернёт раскладку'; return; }
-    if (!opened) { msg = 'Тайл один — переходить некуда'; return; }
+    if (maxed) { msg = 'The tile is maximized — Shift+F restores the layout'; return; }
+    if (!opened) { msg = 'Only one tile — nowhere to go'; return; }
     focus = dir > 0 ? 'view' : 'ex';
   }
   function setShare(px) {
     const avail = rowNode().clientWidth - BAR;
     const exMin = tileMin('ex').w, vMin = tileMin(kind(opened)).w;
     let w = Math.round(px);
-    if (w < exMin) { w = exMin; msg = 'Минимум тайла «Проводник»: ' + exMin + ' px'; }
-    if (avail - w < vMin) { w = avail - vMin; msg = 'Минимум тайла «' + OPEN_TITLE[kind(opened)] + '»: ' + vMin + ' px'; }
+    if (w < exMin) { w = exMin; msg = 'Minimum width of "Explorer": ' + exMin + ' px'; }
+    if (avail - w < vMin) { w = avail - vMin; msg = 'Minimum width of "' + OPEN_TITLE[kind(opened)] + '": ' + vMin + ' px'; }
     share = w / avail;
   }
   function envAction(name, tile) {
     const t = tile || focus;
     if (name === 'go') go(focus === 'ex' ? 1 : -1);
-    else if (NOT_HERE[name]) msg = '«' + NOT_HERE[name] + '» в этом прототипе не сделано';
+    else if (NOT_HERE[name]) msg = '"' + NOT_HERE[name] + '" is not done in this prototype';
     else if (name === 'resize') {
-      if (!opened || maxed) msg = 'Менять размер не у чего: на экране один тайл';
-      else { resizing = !resizing; msg = resizing ? 'Размер: стрелки влево и вправо двигают границу, Enter или Esc — готово' : ''; }
+      if (!opened || maxed) msg = 'Nothing to resize: there is one tile on screen';
+      else { resizing = !resizing; msg = resizing ? 'Resize: the left and right arrows move the border, Enter or Esc — done' : ''; }
     } else if (name === 'max') { focus = t; maxed = maxed === t ? null : t; resizing = false; }
     else if (name === 'close') {
       if (t === 'view' && opened) { opened = null; focus = 'ex'; if (maxed === 'view') maxed = null; resizing = false; }
-      else msg = 'Проводник в этом прототипе не закрывается';
+      else msg = 'The explorer cannot be closed in this prototype';
     }
   }
 
@@ -299,15 +299,15 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
   function listPanel(p, idx) {
     const list = items(p.dir);
     const it = list[p.cur];
-    const info = it.up ? '.. · ' + LABEL.up : esc(it.name) + ' · ' + (it.dir ? count(it) + ' объектов' : spaced(it.size) + ' байт');
+    const info = it.up ? '.. · ' + LABEL.up : esc(it.name) + ' · ' + (it.dir ? count(it) + ' items' : spaced(it.size) + ' bytes');
     return '<div class="xpanel' + (idx === act ? ' act' : '') + '" data-panel="' + idx + '">' +
       '<div class="i-wellrow sunken"><div class="i-well xcol">' +
         '<div class="xpath">' + esc(path(p.dir)) + '</div>' +
-        '<div class="xh"><span>Имя</span><span>Размер</span><span>Изменён</span></div>' +
+        '<div class="xh"><span>Name</span><span>Size</span><span>Modified</span></div>' +
         '<div class="xbody" data-p="' + idx + '">' + list.map((it2, i) => row(p, idx, it2, i)).join('') + '</div>' +
       '</div>' +
       '<div class="sb"><span class="a up raised1"></span><span class="tr"><span class="th raised1"></span></span><span class="a dn raised1"></span></div></div>' +
-      '<div class="stat">' + (p.q ? '<span class="sunken1 q">Поиск: ' + esc(p.q) + '_</span>' : '') +
+      '<div class="stat">' + (p.q ? '<span class="sunken1 q">Search: ' + esc(p.q) + '_</span>' : '') +
         '<span class="sunken1 grow">' + info + '</span><span class="sunken1">' + esc(it.date || '') + '</span></div>' +
     '</div>';
   }
@@ -315,29 +315,29 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
     const it = cur(P[1 - idx]);
     return '<div class="xpanel" data-panel="' + idx + '">' +
       '<div class="i-wellrow sunken"><div class="xcol">' +
-        '<div class="xpath">Просмотр: ' + esc(it.up ? '..' : it.name) + '</div>' +
+        '<div class="xpath">View: ' + esc(it.up ? '..' : it.name) + '</div>' +
         '<div class="i-wellrow" style="display: flex;">' + viewerBody(it) + '</div>' +
       '</div></div>' +
-      '<div class="stat"><span class="sunken1 grow">Следует за курсором соседней панели · F3 или Esc — список</span></div>' +
+      '<div class="stat"><span class="sunken1 grow">Follows the cursor of the other panel · F3 or Esc — list</span></div>' +
     '</div>';
   }
-  const MC_KEYS = [['Enter', 'Открыть', 'enter'], ['F3', 'Просмотр', 'quick'], ['Tab', 'Панель', 'tab'], ['Esc', 'Список', 'back'], ['Ctrl+PgUp', 'Вверх', 'up'], ['Буквы', 'Поиск', '']];
+  const MC_KEYS = [['Enter', 'Open', 'enter'], ['F3', 'View', 'quick'], ['Tab', 'Panel', 'tab'], ['Esc', 'List', 'back'], ['Ctrl+PgUp', 'Up', 'up'], ['Letters', 'Search', '']];
   function explorerTile(style) {
     const p = P[act];
     const quickOn = P[1 - act].mode === 'quick';
     return '<div class="i-tile raised' + (focus === 'ex' ? ' focus' : '') + '" data-tile="ex" style="' + style + '">' +
-      head('Проводник: ' + path(p.dir), 'ex') +
+      head('Explorer: ' + path(p.dir), 'ex') +
       '<div class="i-panel">' +
         '<div class="i-tools">' +
           '<span class="ib raised" data-xa="up"><span class="g c-up">Up</span></span>' +
           '<span class="ib raised" data-xa="home"><span class="g c-nv">Hm</span></span>' +
           '<span class="field sunken" style="flex: 1;">' + esc(path(p.dir)) + '</span>' +
-          '<span class="btn raised' + (quickOn ? ' on' : '') + '" data-xa="quick">Просмотр</span>' +
+          '<span class="btn raised' + (quickOn ? ' on' : '') + '" data-xa="quick">View</span>' +
         '</div>' +
         '<div class="xpanels">' + P.map((q, idx) => q.mode === 'list' ? listPanel(q, idx) : quickPanel(q, idx)).join('') + '</div>' +
         '<div class="mckeys">' + MC_KEYS.map(k => '<span class="raised1" data-xa="' + k[2] + '"><b>' + k[0] + '</b>' + k[1] + '</span>').join('') + '</div>' +
       '</div>' +
-      '<div class="i-tabs"><span class="tab on"><span>Проводник</span></span></div></div>';
+      '<div class="i-tabs"><span class="tab on"><span>Explorer</span></span></div></div>';
   }
   function viewTile() {
     const k = kind(opened);
@@ -351,9 +351,9 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
     if (k === 'fd' || k === 'up') {
       const d = it.up ? it.target : it;
       return '<div class="i-well md"><h1>' + esc(d.name || '/') + '</h1><table>' +
-        '<tr><th>Путь</th><td>' + esc(path(d)) + '</td></tr><tr><th>Тип</th><td>папка</td></tr>' +
-        '<tr><th>Объектов</th><td>' + count(d) + '</td></tr><tr><th>Размер</th><td>' + spaced(total(d)) + ' байт</td></tr>' +
-        '<tr><th>Изменена</th><td>' + esc(d.date) + '</td></tr></table></div>';
+        '<tr><th>Path</th><td>' + esc(path(d)) + '</td></tr><tr><th>Type</th><td>folder</td></tr>' +
+        '<tr><th>Items</th><td>' + count(d) + '</td></tr><tr><th>Size</th><td>' + spaced(total(d)) + ' bytes</td></tr>' +
+        '<tr><th>Modified</th><td>' + esc(d.date) + '</td></tr></table></div>';
     }
     if (k === 'ap') {
       return '<div class="i-well navy"><div class="game"><span class="vga32" style="color: var(--peach);">' + esc(it.name.toUpperCase()) + '</span>' +
@@ -365,19 +365,19 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
       return '<div class="i-well navy" style="display: flex; flex-direction: column;">' +
         '<div style="display: flex; align-items: center; gap: 12px; padding: 8px 10px;"><span class="vga32" style="color: var(--green);">00:00</span>' +
         '<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><span class="rv16">' + esc(it.name) + '</span>' +
-        '<span style="color: var(--cs);">' + esc(it.name.split('.').pop().toUpperCase()) + ' · ' + n + ' из ' + q.length + '</span></span></div>' +
+        '<span style="color: var(--cs);">' + esc(it.name.split('.').pop().toUpperCase()) + ' · ' + n + ' of ' + q.length + '</span></span></div>' +
         '<div style="display: flex; gap: 4px; padding: 0 10px 8px;">' +
-          '<span class="big raised"><span class="gg c-nv">Pv</span><span class="ll">Назад</span></span>' +
-          '<span class="big raised"><span class="gg c-pl">Pl</span><span class="ll">Играть</span></span>' +
-          '<span class="big raised"><span class="gg c-ps">Ps</span><span class="ll">Пауза</span></span>' +
-          '<span class="big raised"><span class="gg c-sp">Sp</span><span class="ll">Стоп</span></span>' +
-          '<span class="big raised"><span class="gg c-nv">Nx</span><span class="ll">Дальше</span></span></div>' +
+          '<span class="big raised"><span class="gg c-nv">Pv</span><span class="ll">Prev</span></span>' +
+          '<span class="big raised"><span class="gg c-pl">Pl</span><span class="ll">Play</span></span>' +
+          '<span class="big raised"><span class="gg c-ps">Ps</span><span class="ll">Pause</span></span>' +
+          '<span class="big raised"><span class="gg c-sp">Sp</span><span class="ll">Stop</span></span>' +
+          '<span class="big raised"><span class="gg c-nv">Nx</span><span class="ll">Next</span></span></div>' +
         '<div class="queue" style="border-top: 1px solid var(--crust);">' + q.map((x, i) =>
           '<div class="xr' + (x === it ? ' cur' : '') + '"><span style="color: ' + (x === it ? 'var(--green)' : 'var(--cov)') + ';">' + (x === it ? '&gt;' : i + 1) + '</span>' +
           '<span>' + esc(x.name) + '</span><span style="text-align: right;">--:--</span></div>').join('') + '</div></div>';
     }
     if (k === 'vi') {
-      return '<div class="i-well navy"><div class="vframe">кадр видео · ' + esc(it.name) + '</div>' +
+      return '<div class="i-well navy"><div class="vframe">video frame · ' + esc(it.name) + '</div>' +
         '<div style="position: absolute; left: 10px; right: 10px; bottom: 8px;"><div class="ruler"><span class="mark" style="left: 0;"></span></div></div></div>';
     }
     if (k === 'im') return '<div class="i-well navy"><div class="pic">' + esc(it.name) + ' · ' + short(it.size) + '</div></div>';
@@ -387,10 +387,10 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
         '<ul><li>plug plug plug</li><li>plug plug</li></ul></div>';
     }
     if (k === 'tx') return '<div class="i-well navy"><div class="txt">plug plug plug plug\nplug plug plug\n\nplug.</div></div>';
-    return '<div class="i-well md"><h1>' + esc(it.name) + '</h1><p>Для этого типа файла просмотрщика нет.</p></div>';
+    return '<div class="i-well md"><h1>' + esc(it.name) + '</h1><p>There is no viewer for this file type.</p></div>';
   }
-  const ENV_KEYS = [['Shift+стрелки', 'Перейти', 'go'], ['Shift+H', 'Рядом', 'right'], ['Shift+V', 'Снизу', 'below'], ['Shift+Enter', 'Открыть', 'open'],
-    ['Shift+W', 'Вкладки', 'tabs'], ['Shift+R', 'Размер', 'resize'], ['Shift+F', 'Весь экран', 'max'], ['Shift+Q', 'Закрыть', 'close']];
+  const ENV_KEYS = [['Shift+arrows', 'Focus', 'go'], ['Shift+H', 'Beside', 'right'], ['Shift+V', 'Below', 'below'], ['Shift+Enter', 'Open', 'open'],
+    ['Shift+W', 'Tabs', 'tabs'], ['Shift+R', 'Resize', 'resize'], ['Shift+F', 'Fullscreen', 'max'], ['Shift+Q', 'Close', 'close']];
 
   const root = document.getElementById('xp');
   root.innerHTML = '<div class="i-screen"><div class="i-row" id="xp-row"></div><div class="envmsg sunken1" id="xp-msg"></div><div class="keys" id="xp-env"></div></div>';
@@ -400,11 +400,11 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
   function renderSmall() {
     const w = window.innerWidth, h = window.innerHeight;
     root.innerHTML = '<div class="small"><div class="i-tile raised focus">' +
-      '<div class="i-head"><span class="ttl">Окно слишком маленькое</span><span class="grow"></span></div>' +
+      '<div class="i-head"><span class="ttl">Window too small</span><span class="grow"></span></div>' +
       '<div class="i-panel"><div class="i-wellrow sunken"><div class="i-well md"><table>' +
-      '<tr><th>Нужно не меньше</th><td>' + WINDOW_MIN.w + '×' + WINDOW_MIN.h + '</td></tr>' +
-      '<tr><th>Сейчас</th><td id="xp-now">' + w + '×' + h + '</td></tr></table>' +
-      '<p style="margin-top: 8px;">Растяните окно браузера или уменьшите масштаб страницы.</p></div></div></div></div></div>';
+      '<tr><th>Needs at least</th><td>' + WINDOW_MIN.w + '×' + WINDOW_MIN.h + '</td></tr>' +
+      '<tr><th>Now</th><td id="xp-now">' + w + '×' + h + '</td></tr></table>' +
+      '<p style="margin-top: 8px;">Make the browser window larger or zoom the page out.</p></div></div></div></div></div>';
   }
   function render() {
     const small = window.innerWidth < WINDOW_MIN.w || window.innerHeight < WINDOW_MIN.h;
@@ -449,7 +449,7 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
     let handled = true;
     msg = '';
     if (resizing) {
-      if (k === 'ArrowLeft' || k === 'ArrowRight') { setShare(share * (rowNode().clientWidth - BAR) + (k === 'ArrowRight' ? FRAME : -FRAME)); if (!msg) msg = 'Размер: стрелки влево и вправо двигают границу, Enter или Esc — готово'; }
+      if (k === 'ArrowLeft' || k === 'ArrowRight') { setShare(share * (rowNode().clientWidth - BAR) + (k === 'ArrowRight' ? FRAME : -FRAME)); if (!msg) msg = 'Resize: the left and right arrows move the border, Enter or Esc — done'; }
       else if (k === 'Enter' || k === 'Escape') resizing = false;
       else handled = false;
     }

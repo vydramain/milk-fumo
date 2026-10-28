@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>milk-fumo — стартовый экран и тайлы</title>
+<title>milk-fumo — start screen and tiles</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, sans-serif; background: #282E20; color: #D8DED3; line-height: 1.5; padding: 24px 32px; }
@@ -165,15 +165,15 @@ body > h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
 .i-grid h3 { margin: 0 0 6px; }
 </style>
 
-<h2>Стартовый экран — v5: IRIX и Markdown</h2>
-<p class="subtitle">Шрифт интерфейса — rv_font 5×7 из pdklib, масштаб 1, как на ваших скриншотах. Оба тайла — записки в Markdown.</p>
+<h2>Start screen — v5: IRIX and Markdown</h2>
+<p class="subtitle">Interface font — rv_font 5×7 from pdklib at scale 1, as in the editor screenshots. Both tiles are Markdown notes.</p>
 
 <div class="i">
   <div class="i-screen" style="height: 560px;">
     <div class="i-row">
-      <!-- Главная -->
+      <!-- Home -->
       <div class="i-tile raised">
-        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Главная: plug.md</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Home: plug.md</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
         <div class="i-wellrow sunken">
           <div class="i-well md">
             <h1>plug</h1>
@@ -189,119 +189,119 @@ body > h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
   <span class="k">return</span> <span class="s">"plug"</span>; <span class="c">// plug</span>
 }</pre>
             <hr>
-            <p>Портфолио лежит в проводнике. Откройте его — и любой файл в нём откроется в соседнем тайле. <span class="del">(на удаление)</span></p>
+            <p>The portfolio is in the explorer. Open it, and any file in it opens in the neighboring tile. <span class="del">(to be removed)</span></p>
           </div>
         </div>
-        <div class="i-tabs"><span class="tab on"><span>Главная</span></span></div>
+        <div class="i-tabs"><span class="tab on"><span>Home</span></span></div>
       </div>
-      <!-- Обучение -->
+      <!-- Tutorial -->
       <div class="i-tile raised focus">
-        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Обучение: help.md</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Tutorial: help.md</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
         <div class="i-wellrow sunken">
           <div class="i-well md">
-            <h1>Как здесь всё устроено</h1>
-            <p>Экран целиком делится на прямоугольные области — <strong>тайлы</strong>. Тайлы никогда не перекрывают друг друга: новый тайл забирает часть места у соседа, а закрытый отдаёт своё место обратно. В каждом тайле что-то одно: проводник с файлами, плеер, картинка, текст или игра. Несколько тайлов можно сложить в один — тогда внизу у него появятся вкладки, как у папок в картотеке.</p>
-            <h2>Мышь и клавиатура</h2>
-            <p>Всё, что здесь можно сделать, делается и мышью, и клавиатурой. Пользуйтесь одним способом или смешивайте их — как удобно.</p>
+            <h1>How it works</h1>
+            <p>The whole screen is divided into rectangular areas — <strong>tiles</strong>. Tiles never overlap: a new tile takes part of its neighbor's space, and a closed tile gives its space back. Each tile holds one thing: the file explorer, a player, a picture, a text or a game. Several tiles can be stacked into one — then tabs appear at its bottom, like the tabs on folders in a card file.</p>
+            <h2>Mouse and keyboard</h2>
+            <p>Everything here can be done with the mouse and with the keyboard. Use either one, or mix them — whatever suits you.</p>
             <table>
-              <tr><th></th><th>Что сделать</th><th>Мышью</th><th>Клавиатурой</th></tr>
-              <tr class="next"><td class="ok">&gt;</td><td>Перейти в другой тайл</td><td>щёлкнуть по нему</td><td><kbd>Shift</kbd> + <kbd>стрелки</kbd></td></tr>
-              <tr><td class="ok"></td><td>Разделить тайл</td><td>кнопки <kbd class="sv"></kbd> <kbd class="sh"></kbd> в заголовке</td><td><kbd>Shift</kbd> + <kbd>H</kbd> рядом, <kbd>Shift</kbd> + <kbd>V</kbd> снизу</td></tr>
-              <tr><td class="ok"></td><td>Открыть проводник</td><td>«Проводник» в пустом тайле</td><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td></tr>
-              <tr><td class="ok"></td><td>Передвинуть тайл</td><td>тащить заголовок к краю другого</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>стрелки</kbd></td></tr>
-              <tr><td class="ok"></td><td>Сложить во вкладки</td><td>бросить заголовок на вкладки</td><td><kbd>Shift</kbd> + <kbd>W</kbd></td></tr>
-              <tr><td class="ok"></td><td>Изменить размер</td><td>тащить границу</td><td><kbd>Shift</kbd> + <kbd>R</kbd>, стрелки</td></tr>
-              <tr><td class="ok"></td><td>Весь экран и обратно</td><td><kbd>M</kbd> в заголовке</td><td><kbd>Shift</kbd> + <kbd>F</kbd></td></tr>
-              <tr><td class="ok"></td><td>Закрыть тайл</td><td><kbd>X</kbd> в заголовке</td><td><kbd>Shift</kbd> + <kbd>Q</kbd></td></tr>
+              <tr><th></th><th>To do</th><th>Mouse</th><th>Keyboard</th></tr>
+              <tr class="next"><td class="ok">&gt;</td><td>Go to another tile</td><td>click it</td><td><kbd>Shift</kbd> + <kbd>arrows</kbd></td></tr>
+              <tr><td class="ok"></td><td>Split a tile</td><td>the <kbd class="sv"></kbd> <kbd class="sh"></kbd> buttons in the title bar</td><td><kbd>Shift</kbd> + <kbd>H</kbd> beside, <kbd>Shift</kbd> + <kbd>V</kbd> below</td></tr>
+              <tr><td class="ok"></td><td>Open the explorer</td><td>"Explorer" in an empty tile</td><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td></tr>
+              <tr><td class="ok"></td><td>Move a tile</td><td>drag its title bar to the edge of another</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>arrows</kbd></td></tr>
+              <tr><td class="ok"></td><td>Stack into tabs</td><td>drop its title bar onto the tabs</td><td><kbd>Shift</kbd> + <kbd>W</kbd></td></tr>
+              <tr><td class="ok"></td><td>Resize</td><td>drag the border</td><td><kbd>Shift</kbd> + <kbd>R</kbd>, arrows</td></tr>
+              <tr><td class="ok"></td><td>Fullscreen and back</td><td><kbd>M</kbd> in the title bar</td><td><kbd>Shift</kbd> + <kbd>F</kbd></td></tr>
+              <tr><td class="ok"></td><td>Close a tile</td><td><kbd>X</kbd> in the title bar</td><td><kbd>Shift</kbd> + <kbd>Q</kbd></td></tr>
             </table>
           </div>
           <div class="sb"><span class="a up raised1"></span><span class="tr"><span class="th raised1" style="top: 0; height: 70%;"></span></span><span class="a dn raised1"></span></div>
         </div>
-        <div class="i-tabs"><span class="tab on"><span>Обучение</span></span></div>
+        <div class="i-tabs"><span class="tab on"><span>Tutorial</span></span></div>
       </div>
     </div>
     <div class="keys">
-      <span class="raised1"><b>Shift+H</b>Рядом</span><span class="raised1"><b>Shift+V</b>Снизу</span><span class="raised1"><b>Shift+Enter</b>Открыть</span><span class="raised1"><b>Shift+W</b>Вкладки</span><span class="raised1"><b>Shift+R</b>Размер</span><span class="raised1"><b>Shift+F</b>Весь экран</span><span class="raised1"><b>Shift+Q</b>Закрыть</span>
+      <span class="raised1"><b>Shift+H</b>Beside</span><span class="raised1"><b>Shift+V</b>Below</span><span class="raised1"><b>Shift+Enter</b>Open</span><span class="raised1"><b>Shift+W</b>Tabs</span><span class="raised1"><b>Shift+R</b>Resize</span><span class="raised1"><b>Shift+F</b>Fullscreen</span><span class="raised1"><b>Shift+Q</b>Close</span>
     </div>
   </div>
 </div>
 
-<h2>Референсы тайлов</h2>
-<p class="subtitle">Проводник, аудиоплеер, видеоплеер, приложение. Записка в Markdown — оба тайла выше.</p>
+<h2>Tile references</h2>
+<p class="subtitle">Explorer, audio player, video player, app. Markdown note — both tiles above.</p>
 
 <div class="i-grid">
-  <!-- Проводник -->
+  <!-- Explorer -->
   <div>
-    <h3>Проводник</h3>
+    <h3>Explorer</h3>
     <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
       <div class="i-tile raised focus">
-        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Проводник: /music/ambient/</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Explorer: /music/ambient/</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
         <div class="i-panel">
           <div class="i-tools">
             <span class="ib raised"><span class="g c-up">Up</span></span><span class="ib raised"><span class="g c-nv">Hm</span></span>
             <span class="field sunken" style="flex: 1;">/music/ambient/</span>
-            <span class="chk"><i class="sunken1 on"></i><span class="lbl">Подробно</span></span>
+            <span class="chk"><i class="sunken1 on"></i><span class="lbl">Details</span></span>
           </div>
           <div class="i-wellrow sunken">
             <div class="i-well">
               <table class="lst">
-                <tr><th style="width: 60%;">Имя</th><th>Размер</th><th>Изменён</th></tr>
-                <tr><td><span class="g c-up">Up</span>..</td><td class="r dim">ВВЕРХ</td><td></td></tr>
-                <tr><td><span class="g c-fd">Fd</span>field_recordings/</td><td class="r dim">ПАПКА</td><td class="dim">2026-08-02</td></tr>
+                <tr><th style="width: 60%;">Name</th><th>Size</th><th>Modified</th></tr>
+                <tr><td><span class="g c-up">Up</span>..</td><td class="r dim">UP</td><td></td></tr>
+                <tr><td><span class="g c-fd">Fd</span>field_recordings/</td><td class="r dim">FOLDER</td><td class="dim">2026-08-02</td></tr>
                 <tr class="sel"><td><span class="g c-sn">Sn</span>track_01.mp3</td><td class="r">4.2M</td><td>2026-09-14</td></tr>
                 <tr><td><span class="g c-sn">Sn</span>track_02.mp3</td><td class="r">6.8M</td><td class="dim">2026-09-14</td></tr>
                 <tr><td><span class="g c-sn">Sn</span>track_03.ogg</td><td class="r">5.1M</td><td class="dim">2026-09-20</td></tr>
                 <tr><td><span class="g c-im">Im</span>cover.webp</td><td class="r">1.1M</td><td class="dim">2026-09-14</td></tr>
                 <tr><td><span class="g c-vi">Vi</span>teaser.webm</td><td class="r">12.4M</td><td class="dim">2026-10-01</td></tr>
                 <tr><td><span class="g c-tx">Tx</span>liner_notes.md</td><td class="r">3K</td><td class="dim">2026-10-03</td></tr>
-                <tr><td><span class="g c-ap">Ap</span>visualizer/</td><td class="r dim">ПРИЛ.</td><td class="dim">2026-10-12</td></tr>
+                <tr><td><span class="g c-ap">Ap</span>visualizer/</td><td class="r dim">APP</td><td class="dim">2026-10-12</td></tr>
                 <tr><td><span class="g c-fi">Fi</span>credits.pdf</td><td class="r">240K</td><td class="dim">2026-10-12</td></tr>
               </table>
             </div>
             <div class="sb"><span class="a up raised1"></span><span class="tr"><span class="th raised1" style="top: 0; height: 80%;"></span></span><span class="a dn raised1"></span></div>
           </div>
-          <div class="stat"><span class="sunken1 grow">track_01.mp3 · MP3 · 4 212 480 байт</span><span class="sunken1">2026-09-14 21:03</span><span class="sunken1">10 объектов</span></div>
+          <div class="stat"><span class="sunken1 grow">track_01.mp3 · MP3 · 4 212 480 bytes</span><span class="sunken1">2026-09-14 21:03</span><span class="sunken1">10 items</span></div>
         </div>
-        <div class="i-tabs"><span class="tab on"><span>Проводник: ambient</span></span><span class="tab"><span>Проводник: games</span></span></div>
+        <div class="i-tabs"><span class="tab on"><span>Explorer: ambient</span></span><span class="tab"><span>Explorer: games</span></span></div>
       </div>
     </div></div></div>
   </div>
 
-  <!-- Аудиоплеер -->
+  <!-- Audio player -->
   <div>
-    <h3>Аудиоплеер</h3>
+    <h3>Audio player</h3>
     <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
       <div class="i-tile raised">
-        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Плеер: track_01.mp3</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Player: track_01.mp3</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
         <div class="i-panel">
           <div class="i-wellrow sunken" style="flex: none; height: 56px;">
             <div class="i-well navy" style="display: flex; align-items: center; gap: 14px; padding: 0 10px;">
               <span class="vga32" style="color: var(--green);">01:42</span>
               <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
                 <span class="rv16" style="color: var(--ct);">track_01.mp3</span>
-                <span style="color: var(--cs);">MP3 · 03:58 · /music/ambient/ · 1 из 3</span>
+                <span style="color: var(--cs);">MP3 · 03:58 · /music/ambient/ · 1 of 3</span>
               </span>
             </div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 3px; flex: none; padding: 0 2px;">
             <div class="slider sunken1"><span class="fill" style="width: 43%;"></span><span class="knob raised1" style="left: calc(43% - 5px);"></span></div>
             <div class="ruler"></div>
-            <div style="display: flex; justify-content: space-between;" class="cap"><span>00:00</span><span>Позиция</span><span>03:58</span></div>
+            <div style="display: flex; justify-content: space-between;" class="cap"><span>00:00</span><span>Position</span><span>03:58</span></div>
           </div>
           <div class="i-tools" style="gap: 4px;">
-            <span class="big raised"><span class="gg c-nv">Pv</span><span class="ll">Назад</span></span>
-            <span class="big raised on"><span class="gg c-pl">Pl</span><span class="ll">Играть</span></span>
-            <span class="big raised"><span class="gg c-ps">Ps</span><span class="ll">Пауза</span></span>
-            <span class="big raised"><span class="gg c-sp">Sp</span><span class="ll">Стоп</span></span>
-            <span class="big raised"><span class="gg c-nv">Nx</span><span class="ll">Дальше</span></span>
+            <span class="big raised"><span class="gg c-nv">Pv</span><span class="ll">Prev</span></span>
+            <span class="big raised on"><span class="gg c-pl">Pl</span><span class="ll">Play</span></span>
+            <span class="big raised"><span class="gg c-ps">Ps</span><span class="ll">Pause</span></span>
+            <span class="big raised"><span class="gg c-sp">Sp</span><span class="ll">Stop</span></span>
+            <span class="big raised"><span class="gg c-nv">Nx</span><span class="ll">Next</span></span>
             <span class="sep" style="height: 40px;"></span>
-            <span class="big raised"><span class="gg c-mt">Mt</span><span class="ll">Звук</span></span>
-            <span class="wheel"><span class="w sunken1"></span><span class="lbl">Громк. 82%</span></span>
+            <span class="big raised"><span class="gg c-mt">Mt</span><span class="ll">Mute</span></span>
+            <span class="wheel"><span class="w sunken1"></span><span class="lbl">Vol. 82%</span></span>
           </div>
           <div class="i-wellrow sunken">
             <div class="i-well navy">
               <table class="lst">
-                <tr><th style="width: 18px;">#</th><th>Подборка: /music/ambient/</th><th style="width: 50px;">Длит.</th></tr>
+                <tr><th style="width: 18px;">#</th><th>Playlist: /music/ambient/</th><th style="width: 50px;">Len.</th></tr>
                 <tr class="cur"><td style="color: var(--green);">&gt;</td><td>track_01.mp3</td><td class="r">03:58</td></tr>
                 <tr><td style="color: var(--cov);">2</td><td>track_02.mp3</td><td class="r">05:12</td></tr>
                 <tr><td style="color: var(--cov);">3</td><td>track_03.ogg</td><td class="r">04:45</td></tr>
@@ -309,78 +309,78 @@ body > h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
             </div>
           </div>
         </div>
-        <div class="i-tabs"><span class="tab on"><span>Плеер</span></span></div>
+        <div class="i-tabs"><span class="tab on"><span>Player</span></span></div>
       </div>
     </div></div></div>
   </div>
 
-  <!-- Видеоплеер -->
+  <!-- Video player -->
   <div>
-    <h3>Видеоплеер</h3>
+    <h3>Video player</h3>
     <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
       <div class="i-tile raised">
-        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Видео: teaser.webm</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Video: teaser.webm</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
         <div class="i-panel">
           <div class="i-tools">
             <span class="ib raised"><span class="g c-pl">Pl</span></span><span class="ib raised"><span class="g c-ps">Ps</span></span><span class="ib raised"><span class="g c-sp">Sp</span></span>
             <span class="sep"></span>
             <span class="btn raised on">Fit</span><span class="btn raised">1x</span><span class="btn raised">2x</span>
             <span class="sep"></span>
-            <span class="chk"><i class="sunken1"></i><span class="lbl">Повтор</span></span>
+            <span class="chk"><i class="sunken1"></i><span class="lbl">Loop</span></span>
           </div>
           <div class="i-wellrow sunken">
             <div class="i-well navy">
               <div style="position: absolute; left: 4px; top: 8px; bottom: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
                 <span class="wheel v"><span class="w sunken1"></span></span>
               </div>
-              <div class="frame169"><span style="color: var(--cov);">кадр видео 16:9</span></div>
+              <div class="frame169"><span style="color: var(--cov);">video frame 16:9</span></div>
               <div style="position: absolute; left: 22px; right: 22px; bottom: 4px;"><div class="ruler"><span class="mark" style="left: 22%;"></span></div></div>
             </div>
           </div>
-          <div class="cap" style="flex: none;">Громкость — колёсико слева, позиция — шкала снизу · teaser.webm · 1920×1080 · 00:42 / 03:10</div>
+          <div class="cap" style="flex: none;">Volume — wheel on the left, position — scale below · teaser.webm · 1920×1080 · 00:42 / 03:10</div>
         </div>
-        <div class="i-tabs"><span class="tab on"><span>Видео</span></span><span class="tab"><span>Плеер</span></span></div>
+        <div class="i-tabs"><span class="tab on"><span>Video</span></span><span class="tab"><span>Player</span></span></div>
       </div>
     </div></div></div>
   </div>
 
-  <!-- Приложение -->
+  <!-- App -->
   <div>
-    <h3>Приложение</h3>
+    <h3>App</h3>
     <div class="i"><div class="i-screen" style="height: 380px;"><div class="i-row">
       <div class="i-tile raised focus">
-        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">Приложение: games/plug-run/</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
+        <div class="i-head"><span class="bx raised1">X</span><span class="ttl">App: games/plug-run/</span><span class="grow"></span><span class="bx raised1 sv"></span><span class="bx raised1 sh"></span><span class="bx raised1">M</span></div>
         <div class="i-panel">
           <div class="i-tools">
             <span class="btn raised on">Fit</span><span class="btn raised">Integer</span><span class="btn raised">1x</span><span class="btn raised">2x</span><span class="btn raised">3x</span>
             <span class="sep"></span>
-            <span class="ib raised"><span class="g c-sp">Rs</span></span><span class="lbl">Перезапуск</span>
+            <span class="ib raised"><span class="g c-sp">Rs</span></span><span class="lbl">Restart</span>
           </div>
           <div class="i-wellrow sunken">
             <div class="i-well navy">
-              <div style="padding: 3px 6px; color: var(--ct);">Запущено. Клавиатура у приложения — щелчок по другому тайлу вернёт её окружению.</div>
+              <div style="padding: 3px 6px; color: var(--ct);">Running. Keys go to the app — click another tile to take them back.</div>
               <div class="game">
                 <span class="vga32" style="color: var(--peach);">PLUG RUN</span>
                 <span class="vga16" style="color: var(--ct);">PRESS START</span>
               </div>
             </div>
           </div>
-          <div class="stat"><span class="sunken1 grow">index.html · 320×180 · ×2</span><span class="sunken1" style="color: var(--sel);">Клавиатура: приложение</span></div>
+          <div class="stat"><span class="sunken1 grow">index.html · 320×180 · ×2</span><span class="sunken1" style="color: var(--sel);">Keyboard: app</span></div>
         </div>
-        <div class="i-tabs"><span class="tab on"><span>Приложение</span></span></div>
+        <div class="i-tabs"><span class="tab on"><span>App</span></span></div>
       </div>
     </div></div></div>
   </div>
 </div>
 
-<h3>Что здесь моё, а не ваше</h3>
+<h3>Choices made in this mockup</h3>
 <ul class="i-notes">
-  <li><b>Шрифт интерфейса</b> — rv_font 5×7 из pdklib с кириллицей; я собрал его в OTF из таблиц <code>rv_font_data.hpp</code> и <code>rv_font_cyrillic.hpp</code>. Масштаб 1, как на скриншотах; на сайте понадобится выбор масштаба, как <i>View &gt; UI Scale</i> в редакторе.</li>
-  <li><b>Markdown:</b> заголовки — rv_font ×2 и ×1 с растровой полосой, как в заголовке тайла; текст — WineTahomaBit; код — PxPlus VGA на синем фоне; клавиши — объёмные колпачки.</li>
-  <li><b>Тёмно-синие колодцы</b> (Catppuccin Mocha base, как Code и Game в редакторе) — у плееров и приложения; проводник и записки — оливковые, как Files и Inspector.</li>
-  <li><b>Двухбуквенные коды:</b> из редактора — Fd, Sn, Im, Tx, Fi, Hm, Pl, Ps, Sp и их цвета; новые, мои — Vi (видео), Ap (приложение), Up, Pv, Nx, Mt, Rs.</li>
-  <li><b>Колёсико громкости и шкала позиции</b> — из тайла Scene (Rot X / Dolly / Rot Y). <b>Строка о выбранном файле</b> под списком — из Midnight Commander.</li>
-  <li><b>Как вернуть клавиатуру из приложения</b> — пока щелчком по другому тайлу; клавиатурный способ не решён.</li>
+  <li><b>Interface font</b> — rv_font 5×7 from pdklib, built into an OTF from the <code>rv_font_data.hpp</code> and <code>rv_font_cyrillic.hpp</code> tables. Scale 1, as in the screenshots; the site will need a scale setting, like <i>View &gt; UI Scale</i> in the editor.</li>
+  <li><b>Markdown:</b> headings — rv_font ×2 and ×1 with a dithered rule, as in the tile title bar; body — WineTahomaBit; code — PxPlus VGA on navy; keys — raised keycaps.</li>
+  <li><b>Navy wells</b> (Catppuccin Mocha base, like Code and Game in the editor) — for the players and the app; the explorer and the notes are olive, like Files and Inspector.</li>
+  <li><b>Two-letter codes:</b> from the editor — Fd, Sn, Im, Tx, Fi, Hm, Pl, Ps, Sp, Rs and their colors; new ones — Vi (video), Ap (app), Up, Pv, Nx, Mt.</li>
+  <li><b>Volume wheel and position scale</b> — from the Scene tile (Rot X / Dolly / Rot Y). <b>The selected-file line</b> under the list — from Midnight Commander.</li>
+  <li><b>Getting the keyboard back from an app</b> — for now by clicking another tile; a keyboard way is not decided.</li>
 </ul>
 
 </body>
