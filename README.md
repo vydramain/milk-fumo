@@ -126,13 +126,17 @@ Several explorers, notes, players and apps can be open at once.
 
 ### Minimum sizes
 
-Rules taken from 3dmppc-editor ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`main.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/main.cpp), [`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
+- The layout is designed for a **960×540 viewport**. A viewport smaller than that, or than the minimum of the current layout, scrolls instead of squeezing the tiles.
+- A **screen** smaller than **960×540** (`screen.width × screen.height`) gets a "too small" screen with the required and the current size instead of the environment.
+- A **mobile device** gets the same kind of screen with only the text "Sorry, we don't support mobile devices yet." A device counts as mobile when its primary input is touch: `(hover: none) and (pointer: coarse)`.
 
-- the editor shows its "too small" screen when the **display** is smaller than **1280×720** (times the UI scale), and it sets 1280×720 as the minimum **window** size. Neither is the size of the content area; in a browser the viewport is smaller than the window (see open questions);
+3dmppc-editor itself needs a 1280×720 display and sets 1280×720 as its minimum window size ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`main.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/main.cpp)). A browser viewport is smaller than its window, so the site sets its own minimums.
+
+Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
+
 - the minimum of a tile's content is 20 em (the width of "M") × 4 row heights, unless the content has its own;
 - the minimum of a tile is the largest minimum of its tabs plus the frame, plus the tab strip when there is more than one tab;
 - the minimum of a split is the sum of the minimums along its axis plus the splitter, and the largest across it;
-- when the window is smaller than the minimum of the whole layout, the workspace scrolls instead of squeezing tiles;
 - a border cannot be moved past a minimum, neither with the mouse nor with `Shift+R`; the message line says whose minimum is in the way.
 
 Metrics at scale 1: font 8 px, em 6 px, padding 4 px, row height 16 px, frame bevel 3 px, tile frame 14×34 px, splitter 4 px.
@@ -205,12 +209,11 @@ A first-level heading is `rv_font` at 16 px with a groove under it, a second-lev
 | [`docs/prototypes/start-screen.html`](docs/prototypes/start-screen.html) | the start screen and references for the explorer, audio player, video player and app (static) |
 | [`docs/prototypes/explorer.html`](docs/prototypes/explorer.html) | the explorer: MC keys, moving between tiles, the environment bar, resizing, maximizing, closing and minimum sizes work |
 
-They open straight from the file in a browser (checked in Chromium), with a window of at least 1280×720.
+They open straight from the file in a browser (checked in Chromium). `explorer.html` follows the minimum size rules above: it needs a screen of at least 960×540 and shows the mobile screen on touch-first devices.
 
 **Where the prototypes differ from this description:**
 
 - in `explorer.html` a new tile opens at 2:1, not 1:1;
-- in `explorer.html` the "too small" screen compares the **viewport** with 1280×720, while the editor compares the display;
 - `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
 - in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
 - **in Firefox, `Tab` and `F3` in `explorer.html` are not intercepted** — the browser performs its own action. The cause is not found. All that is known is that the prototype intercepts them only while the explorer tile has focus.
@@ -219,7 +222,6 @@ They open straight from the file in a browser (checked in Chromium), with a wind
 
 - **No backend.** How the explorer gets the file list without a server: public bucket reads and a static manifest built at publish time — or a minimal gateway, as in bird-fumo.
 - **Keyboard and apps.** An app in an iframe takes the keys for itself. For now they can be returned to the environment only by clicking another tile; there is no keyboard way.
-- **Minimum size.** The editor's 1280×720 is the display and the window, not the content area. The browser viewport on the same display is smaller: by the browser's tabs and toolbar, the window title bar and the OS panels. The minimum viewport the site is designed for has to be decided.
 - **UI scale.** The editor lets you set it, the prototypes have only 1x.
 - **Where a file opens.** Now — in the neighboring tile, and if there is none, a new tile is created. Should every file open in a new tile instead.
 - **Images.** There is no reference for the image viewer tile.

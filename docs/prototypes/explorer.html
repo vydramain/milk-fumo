@@ -8,7 +8,7 @@
 @font-face { font-family: "rv"; src: url("fonts/rvfont5x7.otf"); }
 @font-face { font-family: "WTB"; src: url("fonts/WineTahomaBit.ttf"); }
 @font-face { font-family: "PxVGA"; src: url("fonts/PxPlus_IBM_VGA_9x16.ttf"); }
-html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
+html, body { margin: 0; height: 100%; background: #282E20; overflow: auto; }
 .i {
   --win: #4C5844; --inset: #3E4637; --btn: #4E5744; --sel: #958831;
   --hi: #7E8776; --lo: #32392C; --dark: #282E20;
@@ -139,7 +139,11 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
   const FONT = 8 * S, EM = 6 * S, PAD = 4 * S, FRAME = FONT + 2 * PAD, BEVEL = 2 * S + S, ROW = 12;
   const CHROME = { w: 2 * (BEVEL + PAD), h: 2 * (BEVEL + PAD) + FRAME + PAD };
   const BAR = PAD;
-  const WINDOW_MIN = { w: 1280 * S, h: 720 * S };
+  // The site's minimums: the layout is designed for a 960x540 viewport and a smaller one scrolls;
+  // a smaller screen gets the "too small" screen, a touch-first device gets the mobile one.
+  const VIEWPORT_MIN = { w: 960 * S, h: 540 * S };
+  const SCREEN_MIN = { w: 960 * S, h: 540 * S };
+  const isMobile = () => matchMedia('(hover: none) and (pointer: coarse)').matches;
   // Pane minimums: the generic one (20 em x 4 frames), and the panes that register their own.
   const PANE_MIN = {
     generic: { w: 20 * EM, h: 4 * FRAME },
@@ -393,25 +397,28 @@ html, body { margin: 0; height: 100%; background: #282E20; overflow: hidden; }
     ['Shift+W', 'Tabs', 'tabs'], ['Shift+R', 'Resize', 'resize'], ['Shift+F', 'Fullscreen', 'max'], ['Shift+Q', 'Close', 'close']];
 
   const root = document.getElementById('xp');
-  root.innerHTML = '<div class="i-screen"><div class="i-row" id="xp-row"></div><div class="envmsg sunken1" id="xp-msg"></div><div class="keys" id="xp-env"></div></div>';
+  const SCREEN_HTML = '<div class="i-screen" style="min-width: ' + VIEWPORT_MIN.w + 'px; min-height: ' + VIEWPORT_MIN.h + 'px;">' +
+    '<div class="i-row" id="xp-row"></div><div class="envmsg sunken1" id="xp-msg"></div><div class="keys" id="xp-env"></div></div>';
+  root.innerHTML = SCREEN_HTML;
   const rowNode = () => document.getElementById('xp-row');
-  let tooSmall = false;
+  let tooSmall = false; // the "too small" or the mobile screen is shown instead of the environment
 
-  function renderSmall() {
-    const w = window.innerWidth, h = window.innerHeight;
+  function renderSmall(mobile) {
+    const body = mobile ? '<p>Sorry, we don\'t support mobile devices yet.</p>' :
+      '<table><tr><th>Needs at least</th><td>' + SCREEN_MIN.w + '×' + SCREEN_MIN.h + '</td></tr>' +
+      '<tr><th>This screen</th><td id="xp-now">' + screen.width + '×' + screen.height + '</td></tr></table>' +
+      '<p style="margin-top: 8px;">Open the site on a larger screen.</p>';
     root.innerHTML = '<div class="small"><div class="i-tile raised focus">' +
-      '<div class="i-head"><span class="ttl">Window too small</span><span class="grow"></span></div>' +
-      '<div class="i-panel"><div class="i-wellrow sunken"><div class="i-well md"><table>' +
-      '<tr><th>Needs at least</th><td>' + WINDOW_MIN.w + '×' + WINDOW_MIN.h + '</td></tr>' +
-      '<tr><th>Now</th><td id="xp-now">' + w + '×' + h + '</td></tr></table>' +
-      '<p style="margin-top: 8px;">Make the browser window larger or zoom the page out.</p></div></div></div></div></div>';
+      '<div class="i-head">' + (mobile ? '' : '<span class="ttl">Screen too small</span>') + '<span class="grow"></span></div>' +
+      '<div class="i-panel"><div class="i-wellrow sunken"><div class="i-well md">' + body + '</div></div></div></div></div>';
   }
   function render() {
-    const small = window.innerWidth < WINDOW_MIN.w || window.innerHeight < WINDOW_MIN.h;
-    if (small) { tooSmall = true; renderSmall(); return; }
+    const mobile = isMobile();
+    const small = screen.width < SCREEN_MIN.w || screen.height < SCREEN_MIN.h;
+    if (mobile || small) { tooSmall = true; renderSmall(mobile); return; }
     if (tooSmall) {
       tooSmall = false;
-      root.innerHTML = '<div class="i-screen"><div class="i-row" id="xp-row"></div><div class="envmsg sunken1" id="xp-msg"></div><div class="keys" id="xp-env"></div></div>';
+      root.innerHTML = SCREEN_HTML;
     }
     const rowNow = document.getElementById('xp-row');
     const envNow = document.getElementById('xp-env');
