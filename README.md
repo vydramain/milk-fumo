@@ -168,6 +168,25 @@ Several pmc tiles, notes, players and apps can be open at once.
 
 3dmppc-editor itself needs a 1280×720 display and sets 1280×720 as its minimum window size ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`main.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/main.cpp)). A browser viewport is smaller than its window, so the site sets its own minimums.
 
+Measured on 2026-10-28 in maximized windows of Chromium 156 and Firefox 158 under the xfwm4 window manager on virtual screens, with clean profiles and no OS panel. Viewport sizes:
+
+| Screen | Chromium | Firefox |
+|---|---|---|
+| 1280×720 | 1280×609 | 1280×611 |
+| 1366×768 | 1366×657 | 1366×663 |
+| 1920×1080 | 1920×973 | 1920×971 |
+| 1920×1080 at 125% (1536×864 in CSS) | 1536×762 | 1536×763 |
+
+The width stays the full screen width; the height loses 101–111 px: 20–24 px is the window title, the rest is tabs and the address bar (87 px in Chromium).
+
+An OS panel takes more. The Windows 11 taskbar is 48 px at 100% ([Tom's Hardware](https://www.tomshardware.com/uk/how-to/change-taskbar-icon-size-windows-11)); for Windows 10, sources give about 40–42 px ([windowsnews.ai](https://windowsnews.ai/article/windows-11-taskbar-size-setting-compact-or-larger-without-registry-hacks.431307) and [wintips](https://www.wintips.org/?p=49356)), which differ. Chrome on Windows was not measured, and macOS was not checked. Estimated, not measured: on a 1280×720 screen under Windows 11 the viewport is about 1280×560–590.
+
+A 1920×1080 laptop at 150% is 1280×720 in CSS pixels (calculated), so a 1280×720 screen is not only an old monitor.
+
+Sizes considered: a 1280×720 viewport (it is the editor's window size, and a viewport is smaller than its window) and a 1280×560 viewport (from the Windows 11 estimate). The owner chose 960×540.
+
+Mobile: a separate mobile mode, one tile with tabs at the bottom taken from a generated draft (Stitch), was considered. The owner chose only the "not supported" text. Tablets such as the iPad get that text too, since their primary input is touch; a laptop with a touch screen gets the environment, since its primary input is not touch.
+
 Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
 
 - the minimum of a tile's content is 20 em (the width of "M") × 4 row heights, unless the content has its own;
@@ -177,7 +196,7 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 
 Metrics at scale 1: font 8 px, em 6 px, padding 4 px, row height 16 px, frame bevel 3 px, tile frame 14×34 px, splitter 4 px.
 
-Content minimums the editor does not have (chosen for the prototypes): pmc — 546 px wide (two panels, each with a 20 em name column plus size and date), player — 250 px, app — 334 px (320×180 plus the frame).
+Tile minimums for the prototypes, including the frame (chosen for them, not set by the editor; calculated from the constants in [`explorer.html`](docs/prototypes/explorer.html)): pmc — 546×156 (two panels, each with a 20 em name column plus size and date), player — 250×98 (five buttons), app — 334×214 (320×180 plus the frame), any other tile — 134×98 (20 em × 4 rows plus the frame). The prototype's pmc list rows are 12 px (explorer.html:139 `ROW = 12`), unlike the 16 px row height in the metrics above.
 
 ## UI
 
