@@ -39,23 +39,25 @@ Within the first minute a visitor should:
 | Video player | MP4 and WebM through the same media player | Keep |
 | Sets | Opening media collects matching files from the folder | Keep |
 | Text and HTML viewer | TXT and HTML in a nested iframe | Replace with Markdown notes |
-| Web app launch | A folder with `index.html` is an app; it runs in an iframe, resources come from S3 | Keep |
+| Web app launch | A folder with `index.html` is an app; it runs in an iframe, resources come from S3 | Keep, with the `.exe` name rule added: an app is a folder whose name ends in `.exe` and that contains `index.html` |
 | App messaging | `APP_READY`, `OPEN_FILE`, title, errors over `postMessage` | Use as the base |
 | Storage changes | Create folders, upload, rename, delete | Remove |
 | Desktop | Floating windows, overlap, taskbar | Replace with tiles |
 
-**OGG, WAV, FLAC, Markdown and PDF are not in bird-fumo's handler registry**; their support has to be added.
+**OGG, WAV, FLAC and Markdown are not in bird-fumo's handler registry**; their support has to be added.
 
 ## How the site works
 
 - This repository is the owner's personal page. It is to be deployed on the owner's server with docker-compose; the server runs other services too.
 - The content is one directory on the server, the root of the site's content. The owner uploads files to it over SFTP; nothing has to run after an upload.
+- The paths of the Home and Tutorial notes, and the content root the site starts from, are set in variables.
 - nginx serves the site files and the content directory. The browser gets a folder listing from nginx as JSON (the autoindex module, JSON format: name, type, size, modification time). Files are plain HTTP GET requests.
 - Visitors only read, over HTTP. Only the owner writes, over SFTP; write protection is server file permissions.
+- Nothing is remembered between visits; the site leaves nothing with the visitor.
 - The UI is downloaded once per visit and runs entirely in the visitor's browser. The page is HTML with a canvas, and the code is plain JavaScript modules, with no npm and no build step: the files in the repository are what the server serves.
 - The site draws the whole interface itself, in one `<canvas>`, with the browser's Canvas 2D API and no libraries.
 - Notes are drawn in the canvas too, so a visitor cannot select or copy their text.
-- The exception is games and web apps: they run in an iframe placed over the canvas, in the rectangle of their tile.
+- The exception is games and web apps: they run in an iframe placed over the canvas, in the rectangle of their tile. They are loaded from the same address as the site, which lets the environment catch `Shift+Q` even inside a game; all other keys go to the game, and a click on another tile gives the keys back to the environment.
 - The interface is pixel-perfect.
 - The UI is drawn in immediate mode, as ImGui (an immediate-mode GUI library) draws the editor: each frame is rebuilt from the state, with no tree of widget objects. A widget knows its rectangle while it is drawn and checks clicks on it itself.
 - Drawing happens only on an event, not 60 times a second, so an idle page does not load the processor.
@@ -69,11 +71,11 @@ Within the first minute a visitor should:
 
 ### Start screen
 
-Two Markdown note tiles split **1:1**. No buttons: the start screen itself is the tutorial.
+Two Markdown note tiles split **1:1**. Both notes are Markdown files in the content directory. No buttons: the start screen itself is the tutorial.
 
 | Left: "Home" | Right: "Tutorial" — **focused** |
 |---|---|
-| Who I am and what is here (placeholder text `plug` for now). Below it the line "The portfolio is in pmc. Open it, and any file in it opens in the neighboring tile." (to be removed) | "How it works": what tiles are, then the table of actions "to do — mouse — keyboard" |
+| Who I am and what is here (placeholder text `plug` for now). Below it the line "The portfolio is in pmc. Open it, and any file in it opens in a new tile on the right." (to be removed) | "How it works": what tiles are, then the table of actions "to do — mouse — keyboard" |
 
 The tutorial is written so that someone who knows i3 says "Oh! This is like i3!", and someone who sees tiles for the first time understands how to use them. The words "i3" and "desktop environment" do not count as an explanation.
 
@@ -98,7 +100,7 @@ The modifier key is **Shift**: in a browser test Shift worked in every combinati
 | Stack into tabs | drop its title bar onto the tabs | `Shift+W` |
 | Resize | drag the border | `Shift+R`, then arrows; `Enter` or `Esc` — done |
 | Fullscreen and back | `M` in the title bar | `Shift+F` |
-| Close a tile | `X` in the title bar | `Shift+Q` |
+| Close a tile | `X` in the title bar | `Shift+Q`, also inside a game or app |
 
 **The environment bar at the bottom is always visible.** It holds hints for every action, the first one being "`Shift`+arrows Focus". Every cell can be clicked and performs its action. Above the bar is a message line: for example, why a border will not move further.
 
@@ -112,7 +114,7 @@ pmc (PSEUDO Midnight Commander) is the file panel: the UI is that of the editor'
 
 - **Two panels inside one tile.** `Tab` switches the active panel. The active panel has a brass path bar.
 - The cursor is a full-width bar. `↑` `↓`, `PgUp` `PgDn`, `Home` `End`; the mouse wheel moves the cursor by 3 rows, a click puts it on a row.
-- `Enter` or double click: a folder — enter it, `..` — one level up, a file — open it in the neighboring tile. `Ctrl+PgUp` — one level up.
+- `Enter` or double click: a folder — enter it in the same panel, `..` — one level up; a file — the tile splits into two equal parts, pmc stays on the left, and the file opens in a new tile on the right, in the tile of its type. `Ctrl+PgUp` — one level up.
 - `F3` — quick view: the other panel shows the selected file; `Esc` brings the list back.
 - Letters — quick search by the start of a name, `Backspace` erases a letter.
 - Columns "Name", "Size", "Modified"; folders show `SUB-DIR` instead of a size, `..` shows `UP--DIR`. Under the list is a line about the selected file.
@@ -126,8 +128,8 @@ pmc (PSEUDO Midnight Commander) is the file panel: the UI is that of the editor'
 | Note | Markdown text | both tiles of the start screen |
 | Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
 | Video player | Frame, Fit / 1x / 2x, loop; volume as a wheel on the left, position as a scale below | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| App | A web game or another web app in an iframe; Fit / Integer / 1x / 2x / 3x, restart | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| Images | The selected image and switching through the set | no reference |
+| App | A folder whose name ends in `.exe` and that contains `index.html`: a web game or another web app in an iframe; Fit / Integer / 1x / 2x / 3x, restart | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| Images | The selected image and switching through the set | [`explorer.html`](docs/prototypes/explorer.html) shows only the image well with the file name and size, without switching |
 
 ![Tiles](docs/screenshots/tiles.png)
 
@@ -225,7 +227,7 @@ PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `t
 
 ### Markdown in notes
 
-A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps.
+A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps. A link in a note opens in a new browser tab.
 
 ### UI scale
 
@@ -251,12 +253,7 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 
 ## Open questions
 
-- **Keyboard and apps.** An app in an iframe takes the keys for itself. For now they can be returned to the environment only by clicking another tile; there is no keyboard way.
 - **Where the switches are.** The UI Scale switch and the switch of text size inside the wells (View > code size in the editor) have no place on the site yet: the site has no menu bar.
-- **Where a file opens.** Now — in the neighboring tile, and if there is none, a new tile is created. Should every file open in a new tile instead.
-- **Images.** There is no reference for the image viewer tile.
-- **Layout between visits.** Whether to remember the visitor's layout.
-- **Formats.** OGG, WAV, FLAC, Markdown and PDF have to be added to bird-fumo's handlers.
 
 ## Sources
 
