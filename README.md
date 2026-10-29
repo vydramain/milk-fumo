@@ -1,6 +1,6 @@
 # MILK-FUMO
 
-**A portfolio site shaped as a tiling desktop environment.** The whole site is the browser window divided into tiles, as in i3. The tiles hold an explorer over the portfolio, notes, players and web apps. The content is a plain directory on the owner's server, served by nginx.
+**A portfolio site shaped as a tiling desktop environment.** The whole site is the browser window divided into tiles, as in i3. The tiles hold pmc over the portfolio, notes, players and web apps. The content is a plain directory on the owner's server, served by nginx.
 
 Status: **project description, UX and UI.** There is no site code yet. [`docs/prototypes/`](docs/prototypes/) holds the clickable prototypes the decisions were made on.
 
@@ -26,13 +26,13 @@ Within the first minute a visitor should:
 | [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | look and behavior of the workspace: tiles, frames, tabs, minimum sizes; fonts. The design system is the editor's widget catalog ([`editor/src/catalog/`](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog)) |
 | [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette; fonts, for the prototypes only |
 | SGI IRIX | UI inspiration: raised frames, brass, dense utility type |
-| Midnight Commander, Volkov Commander | explorer UX: two panels, cursor, F-keys |
+| Midnight Commander, Volkov Commander | pmc UX: two panels, cursor, F-keys |
 
 ### What bird-fumo has
 
 | Capability | What is implemented | For the site |
 |---|---|---|
-| Explorer | Storage roots, folders, files, path, going back, open on double click | Rework into an MC-style explorer |
+| Explorer | Storage roots, folders, files, path, going back, open on double click | Rework into pmc, in the MC style |
 | S3 access | Object listing, metadata, signed read URLs | Folder list as JSON from nginx; files by plain HTTP GET |
 | Image viewer | PNG, JPEG, WebP; previous/next, name and position in the set | Keep |
 | Audio player | MP3; play, pause, stop, seek, volume, mute | Keep |
@@ -73,7 +73,7 @@ Two Markdown note tiles split **1:1**. No buttons: the start screen itself is th
 
 | Left: "Home" | Right: "Tutorial" — **focused** |
 |---|---|
-| Who I am and what is here (placeholder text `plug` for now). Below it the line "The portfolio is in the explorer. Open it, and any file in it opens in the neighboring tile." (to be removed) | "How it works": what tiles are, then the table of actions "to do — mouse — keyboard" |
+| Who I am and what is here (placeholder text `plug` for now). Below it the line "The portfolio is in pmc. Open it, and any file in it opens in the neighboring tile." (to be removed) | "How it works": what tiles are, then the table of actions "to do — mouse — keyboard" |
 
 The tutorial is written so that someone who knows i3 says "Oh! This is like i3!", and someone who sees tiles for the first time understands how to use them. The words "i3" and "desktop environment" do not count as an explanation.
 
@@ -93,7 +93,7 @@ The modifier key is **Shift**: in a browser test Shift worked in every combinati
 |---|---|---|
 | Go to another tile | click it | `Shift` + arrows |
 | Split a tile | the `│` `─` buttons in the title bar | `Shift+H` beside, `Shift+V` below |
-| Open the explorer | "Explorer" in an empty tile | `Shift+Enter` |
+| Open pmc | "pmc" in an empty tile | `Shift+Enter` |
 | Move a tile | drag its title bar to the edge of another | `Ctrl+Shift` + arrows |
 | Stack into tabs | drop its title bar onto the tabs | `Shift+W` |
 | Resize | drag the border | `Shift+R`, then arrows; `Enter` or `Esc` — done |
@@ -104,11 +104,11 @@ The modifier key is **Shift**: in a browser test Shift worked in every combinati
 
 The bar was added after focus could not be returned to the explorer from the keyboard in a prototype: there was no hint on screen for moving between tiles.
 
-### Explorer
+### pmc
 
-The UI is that of the editor's tiles, **the UX is that of the early Midnight Commander.**
+pmc (PSEUDO Midnight Commander) is the file panel: the UI is that of the editor's tiles, **the UX is that of the early Midnight Commander.**
 
-![Explorer](docs/screenshots/explorer.png)
+![pmc](docs/screenshots/explorer.png)
 
 - **Two panels inside one tile.** `Tab` switches the active panel. The active panel has a brass path bar.
 - The cursor is a full-width bar. `↑` `↓`, `PgUp` `PgDn`, `Home` `End`; the mouse wheel moves the cursor by 3 rows, a click puts it on a row.
@@ -116,13 +116,13 @@ The UI is that of the editor's tiles, **the UX is that of the early Midnight Com
 - `F3` — quick view: the other panel shows the selected file; `Esc` brings the list back.
 - Letters — quick search by the start of a name, `Backspace` erases a letter.
 - Columns "Name", "Size", "Modified"; folders show `SUB-DIR` instead of a size, `..` shows `UP--DIR`. Under the list is a line about the selected file.
-- At the bottom of the tile is its own MC key bar (`Enter`, `F3`, `Tab`, `Esc`, `Ctrl+PgUp`, letters). **Only the explorer has it**; every key in it can be clicked.
+- At the bottom of the tile is its own MC key bar (`Enter`, `F3`, `Tab`, `Esc`, `Ctrl+PgUp`, letters). **Only pmc has it**; every key in it can be clicked.
 
 ### Tile types
 
 | Type | Content | Reference |
 |---|---|---|
-| Explorer | Published folders and files from the content directory, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
+| pmc | Published folders and files from the content directory, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
 | Note | Markdown text | both tiles of the start screen |
 | Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
 | Video player | Frame, Fit / 1x / 2x, loop; volume as a wheel on the left, position as a scale below | [`start-screen.html`](docs/prototypes/start-screen.html) |
@@ -131,14 +131,14 @@ The UI is that of the editor's tiles, **the UX is that of the early Midnight Com
 
 ![Tiles](docs/screenshots/tiles.png)
 
-Several explorers, notes, players and apps can be open at once.
+Several pmc tiles, notes, players and apps can be open at once.
 
 ### Main scenario
 
 1. The visitor reads the start screen.
-2. Opens the explorer, enters the music folder and opens a track — a player appears beside it, the explorer stays.
+2. Opens pmc, enters the music folder and opens a track — a player appears beside it, pmc stays.
 3. Opens a game and places it as they like.
-4. Moves the player under the explorer or stacks them into tabs.
+4. Moves the player under pmc or stacks them into tabs.
 5. Maximizes the game, then restores the layout.
 
 **Rearranging the layout does not restart a game or cut the music.** App and player instances survive moving, stacking into tabs and maximizing. This is the key technical criterion.
@@ -160,7 +160,7 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 
 Metrics at scale 1: font 8 px, em 6 px, padding 4 px, row height 16 px, frame bevel 3 px, tile frame 14×34 px, splitter 4 px.
 
-Content minimums the editor does not have (chosen for the prototypes): explorer — 546 px wide (two panels, each with a 20 em name column plus size and date), player — 250 px, app — 334 px (320×180 plus the frame).
+Content minimums the editor does not have (chosen for the prototypes): pmc — 546 px wide (two panels, each with a 20 em name column plus size and date), player — 250 px, app — 334 px (320×180 plus the frame).
 
 ## UI
 
@@ -170,7 +170,7 @@ The look is IRIX through 3dmppc-editor:
 - **a brass frame around the focused tile**;
 - a dithered tile title bar: `X` on the left, `│` `─` `M` on the right;
 - tabs are slanted folder tabs **at the bottom of the tile**, the active one is brass;
-- the explorer and notes sit on olive, players, apps and code in navy wells (Catppuccin Mocha, like Code and Game in the editor);
+- pmc and notes sit on olive, players, apps and code in navy wells (Catppuccin Mocha, like Code and Game in the editor);
 - file icons are two-letter codes instead of pictures.
 
 ### Palette
@@ -213,7 +213,7 @@ New ones for the site: `Vi` — video (mauve), `Ap` — app (peach), `Up` — up
 |---|---|
 | `rv_font` 5×7 from pdklib | interface: title bars, tabs, keys, lists; note headings and body text |
 | PxPlus IBM EGA 8×14 | text inside the Catppuccin wells (players, apps, code), small size, the default |
-| PxPlus IBM VGA 9×16 | the same text at the normal size; at the large size, the same font drawn twice as big |
+| PxPlus IBM VGA 9×16 | text inside the wells at the normal size; at the large size, the same font drawn twice as big |
 
 The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_font` bitmap tables of pdklib (`pdk/lib/include/pdklib/rv_font/`) and the PxPlus IBM EGA and VGA fonts. The size of text inside the wells is switched as View > code size in the editor. The site does not use WineTahomaBit.
 
@@ -246,7 +246,8 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 - `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
 - in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
 - the prototypes take the body text of notes from WineTahomaBit and the code from PxPlus IBM VGA 9×16;
-- the prototypes are plain HTML and CSS pages that the browser lays out and draws, not canvas.
+- the prototypes are plain HTML and CSS pages that the browser lays out and draws, not canvas;
+- the prototypes call pmc "Explorer".
 
 ## Open questions
 
