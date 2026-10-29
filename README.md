@@ -77,6 +77,8 @@ Two Markdown note tiles split **1:1**. Both notes are Markdown files in the cont
 |---|---|
 | Who I am and what is here (placeholder text `plug` for now). Below it the line "The portfolio is in pmc. Open it, and any file in it opens in a new tile on the right." (to be removed) | "How it works": what tiles are, then the table of actions "to do — mouse — keyboard" |
 
+The table of actions marks progress: `✓` next to an action already done, `›` next to the action to try next, whose row is brighter.
+
 The tutorial is written so that someone who knows i3 says "Oh! This is like i3!", and someone who sees tiles for the first time understands how to use them. The words "i3" and "desktop environment" do not count as an explanation.
 
 ### Tiles
@@ -124,12 +126,13 @@ pmc (PSEUDO Midnight Commander) is the file panel: the UI is that of the editor'
 
 ![pmc](docs/screenshots/explorer.png)
 
-- **Two panels inside one tile.** `Tab` switches the active panel. The active panel has a brass path bar.
-- The cursor is a full-width bar. `↑` `↓`, `PgUp` `PgDn`, `Home` `End`; the mouse wheel moves the cursor by 3 rows, a click puts it on a row.
-- `Enter` or double click: a folder — enter it in the same panel, `..` — one level up; a file — the tile splits into two equal parts, pmc stays on the left, and the file opens in a new tile on the right, in the tile of its type. `Ctrl+PgUp` — one level up.
-- `F3` — quick view: the other panel shows the selected file; `Esc` brings the list back.
-- Letters — quick search by the start of a name, `Backspace` erases a letter.
-- Columns "Name", "Size", "Modified"; folders show `SUB-DIR` instead of a size, `..` shows `UP--DIR`. Under the list is a line about the selected file.
+- **Two panels inside one tile.** `Tab` switches the active panel. The path is written into the top frame of each panel, and the active panel's path is brass.
+- The cursor is a full-width bar. `↑` `↓`, `PgUp` `PgDn`, `Home` `End`; the mouse wheel moves the cursor by 3 rows, a click puts it on a row. The cursor of the inactive panel goes dim.
+- `Enter` or double click: a folder — enter it in the same panel, `..` — one level up, and the cursor stands on the folder that was just left, as in MC; a folder whose name ends in `.exe` is an app, and `Enter` launches it instead of entering it; a file — the tile splits into two equal parts, pmc stays on the left and keeps the focus, and the file opens in a new tile on the right, in the tile of its type. `Ctrl+PgUp` — one level up.
+- `F3` — quick view: the other panel shows what the cursor is on: a folder — information about it, a track — the player with its set, an image — the image, a `.md` file — the note, an app — its screen. `F3` again or `Esc` brings the list back. `F3` is used instead of MC's `Ctrl+Q`, because `Ctrl+Q` quits Firefox.
+- Letters — quick search by the start of a name, `Backspace` erases a letter, `Esc` clears the search.
+- Columns "Name", "Size", "Modified", separated by vertical lines; folders are listed first and show `SUB-DIR` instead of a size, `..` shows `UP--DIR`. Under the list is a line about the file under the cursor and a total for the folder.
+- There is no copy, move or delete (MC's `F5`–`F8`): the site is read only.
 - At the bottom of the tile is its own MC key bar (`Enter`, `F3`, `Tab`, `Esc`, `Ctrl+PgUp`, letters). **Only pmc has it**; every key in it can be clicked.
 
 ### Tile types
@@ -301,7 +304,9 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 - in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
 - the prototypes take the body text of notes from WineTahomaBit and the code from PxPlus IBM VGA 9×16;
 - the prototypes are plain HTML and CSS pages that the browser lays out and draws, not canvas;
-- the prototypes call pmc "Explorer".
+- the prototypes call pmc "Explorer";
+- in `explorer.html` pmc cannot be closed (the message line says "The explorer cannot be closed in this prototype"), and while a tile is maximized focus does not move to another tile (the message line says "The tile is maximized — Shift+F restores the layout"). The description does not set either behavior yet;
+- `start-screen.html` marks the next action with `>` and has no `✓` mark yet.
 
 ## Open questions
 
