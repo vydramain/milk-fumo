@@ -233,6 +233,46 @@ A first-level heading is `rv_font` at 16 px with a groove under it, a second-lev
 
 UI Scale is a switch with 1x, 1.5x and 2x, as View > UI Scale in the editor; the default is 1x. A scale at which 960×540 multiplied by it does not fit the screen is unavailable and shows the size it needs. At 1.5x the picture stays sharp, but font pixels take one or two physical pixels each. UI Scale is not implemented yet: the first version has only 1x.
 
+## Architecture
+
+The code structure below is a proposal and is not confirmed yet.
+
+### Modules
+
+- **metrics** — the scale and all sizes, as named constants.
+- **layout** — a tree like `rv_editor_tile` in 3dmppc-editor (the tile model in Sources): a split node (axis, ratio) and a leaf (tabs, active tab), plus a maximized leaf. Operations: insert, remove, move (as a tab, left, right, top, bottom), activate, set_ratio, toggle_maximize. `min_size` and `place` are pure functions with no drawing.
+- **panes** — the registry of tile instances: id → type, source file, key handler, close. An instance lives from opening to closing; the layout tree holds only ids.
+- **workspace** — focus, resize mode, dragging, the message line, and a command table (an enumeration → a handler). Keys, cells of the environment bar and title-bar buttons all lead into this one table.
+- **renderer** — the canvas, drawn in immediate mode; above it a layer of iframes. An iframe is created once and is then only moved or hidden, never moved to another place in the DOM. Audio and video elements are kept outside the DOM.
+- **input** — Shift combinations by `KeyboardEvent.code` go to environment commands, other keys to the focused tile. Mouse: drop zones come from `place()`; dragging a border calls `set_ratio` and stops at the minimum. Inside a game, `Shift+Q` is caught through access to the iframe (same address).
+- **catalog** — reading only: the folder listing (nginx JSON) and the URL of a file. pmc and the viewers know only this module.
+- **tiles** — the tile types: pmc, note, audio, video, app, images; a table "extension → type".
+- **app protocol** — taken from bird-fumo's `postMessage` messages without its privileged messages and token: `APP_READY`, title, error.
+- **texts** — all interface texts in one file.
+- **config** — the variables: the content root and the paths of the two start notes.
+- **`tools/fonts.html`** — the generator of the font tables (already described under [Fonts](#fonts)).
+
+### How the key criterion would be met
+
+The criterion from Main scenario: rearranging does not restart a game or cut the music.
+
+- Moving an `<iframe>` to another place in the DOM reloads it; `<audio>` and `<video>` removed from the document pause.
+- So tiles are only rectangles in the canvas, and rearranging moves rectangles. Audio and video are created by the script outside the page. An iframe is created once and positioned over the rectangle of its tile.
+- `Element.moveBefore()` keeps an element's state when it moves, but not every browser supports it, so the design does not rely on it.
+
+### Rejected options
+
+- **TypeScript with Vite** — many technologies and heavy tools, and a build step; the owner wants light tools and no build.
+- **React** — it re-creates a component when its parent changes, which breaks the key criterion.
+- **S3 storage** — MinIO is archived (February 2026, no images since October 2025); Garage does not give an anonymous folder listing; SeaweedFS is heavy; RustFS is beta and has CVE-2026-73290; anonymous listing in VersityGW was not checked. One nginx container is simpler.
+- **A manifest file of the content instead of the folder listing** — the listing was chosen, because nothing has to run after an upload.
+- **WebGL or WebGPU, PixiJS or Konva, imgui-js** — heavy for a 2D interface; Canvas 2D is enough.
+- **`fillText`** — text smoothing differs between browsers, so the text would not be pixel-perfect.
+- **Python in the project** — not needed; `tools/fonts.html` converts the fonts in the browser.
+- **Apps packed as zip** — a browser cannot run a page from an archive without its own unpacker and a Service Worker.
+- **Running games without access to the site page, or from a subdomain** — the environment could not catch `Shift+Q` inside the game.
+- **PDF** — not needed; the formats are Markdown, images, audio, video and web apps.
+
 ## Prototypes
 
 | File | What it shows |
@@ -254,6 +294,12 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 ## Open questions
 
 - **Where the switches are.** The UI Scale switch and the switch of text size inside the wells (View > code size in the editor) have no place on the site yet: the site has no menu bar.
+- **Code structure.** The modules under Architecture are a proposal, not confirmed.
+- **Bandwidth for the other services.** The server runs other services; limiting the site's traffic with nginx `limit_rate` / `limit_conn` is under consideration, not decided.
+- **Ports.** 80 and 443 are probably free on the server; the owner checks.
+- **Configurable modifier.** Whether the modifier key can be changed, as `$mod` in an i3 config. Shift is the default.
+- **Direct links and search engines.** A link to a specific game or track, and the state in the URL, are not designed. Search engines do not see content that appears only after JavaScript, and the site draws everything in a canvas.
+- **Probes to run.** Whether Chromium and Firefox support `devicePixelContentBoxSize`; whether an iframe shifts off the pixel grid at fractional screen scales; whether an iframe keeps its state when tiles are rearranged.
 
 ## Sources
 
