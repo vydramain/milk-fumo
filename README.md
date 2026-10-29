@@ -1,6 +1,6 @@
 # MILK-FUMO
 
-**A portfolio site shaped as a tiling desktop environment.** The whole site is the browser window divided into tiles, as in i3. The tiles hold an explorer over the portfolio, notes, players and web apps. The content lives in S3; there is no backend, or a minimal one.
+**A portfolio site shaped as a tiling desktop environment.** The whole site is the browser window divided into tiles, as in i3. The tiles hold an explorer over the portfolio, notes, players and web apps. The content is a plain directory on the owner's server, served by nginx.
 
 Status: **project description, UX and UI.** There is no site code yet. [`docs/prototypes/`](docs/prototypes/) holds the clickable prototypes the decisions were made on.
 
@@ -16,13 +16,13 @@ Within the first minute a visitor should:
 
 **The core principle is freedom.** The original i3 is driven by the keyboard only. Here everything can be done with the keyboard only, with the mouse only, or with both mixed — whatever suits the visitor. Every action has both ways.
 
-**View only.** A visitor opens files, plays, listens, seeks and rearranges their layout, but writes nothing to the published storage. Publishing new work is a separate procedure. Write protection comes from storage access rights, not from missing buttons.
+**View only.** A visitor opens files, plays, listens, seeks and rearranges their layout, but writes nothing to the published content. Publishing new work is a separate procedure: the owner uploads files over SFTP. Write protection comes from server file permissions, not from missing buttons.
 
 ## What it is built from
 
 | Source | What we take |
 |---|---|
-| [bird-fumo](https://github.com/vydramain/bird-fumo) | viewers and launching: S3 explorer, images, audio, video, web apps |
+| [bird-fumo](https://github.com/vydramain/bird-fumo) | viewers and launching: explorer, images, audio, video, web apps |
 | [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | look and behavior of the workspace: tiles, frames, tabs, minimum sizes. The design system is the editor's widget catalog ([`editor/src/catalog/`](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog)) |
 | [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette and fonts |
 | SGI IRIX | UI inspiration: raised frames, brass, dense utility type |
@@ -33,7 +33,7 @@ Within the first minute a visitor should:
 | Capability | What is implemented | For the site |
 |---|---|---|
 | Explorer | Storage roots, folders, files, path, going back, open on double click | Rework into an MC-style explorer |
-| S3 access | Object listing, metadata, signed read URLs | Keep reading only |
+| S3 access | Object listing, metadata, signed read URLs | Folder list as JSON from nginx; files by plain HTTP GET |
 | Image viewer | PNG, JPEG, WebP; previous/next, name and position in the set | Keep |
 | Audio player | MP3; play, pause, stop, seek, volume, mute | Keep |
 | Video player | MP4 and WebM through the same media player | Keep |
@@ -45,6 +45,17 @@ Within the first minute a visitor should:
 | Desktop | Floating windows, overlap, taskbar | Replace with tiles |
 
 **OGG, WAV, FLAC, Markdown and PDF are not in bird-fumo's handler registry**; their support has to be added.
+
+## How the site works
+
+- This repository is the owner's personal page. It is to be deployed on the owner's server with docker-compose; the server runs other services too.
+- The content is one directory on the server, the root of the site's content. The owner uploads files to it over SFTP; nothing has to run after an upload.
+- nginx serves the site files and the content directory. The browser gets a folder listing from nginx as JSON (the autoindex module, JSON format: name, type, size, modification time). Files are plain HTTP GET requests.
+- Visitors only read, over HTTP. Only the owner writes, over SFTP; write protection is server file permissions.
+- The UI is downloaded once per visit and runs entirely in the visitor's browser. It is written in HTML, CSS and plain JavaScript modules, with no npm and no build step: the files in the repository are what the server serves.
+- Chromium and Firefox are both fully supported.
+- About 100 visitors at the same time. The limit is the server's outgoing bandwidth for video and music: viewers multiplied by bitrate.
+- Why not object storage: MinIO was archived in February 2026; the other open object-storage servers either do not list a folder without a key or are too heavy for this volume; one nginx container is simpler.
 
 ## UX
 
@@ -103,7 +114,7 @@ The UI is that of the editor's tiles, **the UX is that of the early Midnight Com
 
 | Type | Content | Reference |
 |---|---|---|
-| Explorer | Published S3 folders and files, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
+| Explorer | Published folders and files from the content directory, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
 | Note | Markdown text | both tiles of the start screen |
 | Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
 | Video player | Frame, Fit / 1x / 2x, loop; volume as a wheel on the left, position as a scale below | [`start-screen.html`](docs/prototypes/start-screen.html) |
@@ -215,12 +226,10 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 
 - in `explorer.html` a new tile opens at 2:1, not 1:1;
 - `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
-- in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
-- **in Firefox, `Tab` and `F3` in `explorer.html` are not intercepted** — the browser performs its own action. The cause is not found. All that is known is that the prototype intercepts them only while the explorer tile has focus.
+- in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`.
 
 ## Open questions
 
-- **No backend.** How the explorer gets the file list without a server: public bucket reads and a static manifest built at publish time — or a minimal gateway, as in bird-fumo.
 - **Keyboard and apps.** An app in an iframe takes the keys for itself. For now they can be returned to the environment only by clicking another tile; there is no keyboard way.
 - **UI scale.** The editor lets you set it, the prototypes have only 1x.
 - **Where a file opens.** Now — in the neighboring tile, and if there is none, a new tile is created. Should every file open in a new tile instead.
