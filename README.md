@@ -23,8 +23,8 @@ Within the first minute a visitor should:
 | Source | What we take |
 |---|---|
 | [bird-fumo](https://github.com/vydramain/bird-fumo) | viewers and launching: explorer, images, audio, video, web apps |
-| [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | look and behavior of the workspace: tiles, frames, tabs, minimum sizes. The design system is the editor's widget catalog ([`editor/src/catalog/`](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog)) |
-| [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette and fonts |
+| [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | look and behavior of the workspace: tiles, frames, tabs, minimum sizes; fonts. The design system is the editor's widget catalog ([`editor/src/catalog/`](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog)) |
+| [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette; fonts, for the prototypes only |
 | SGI IRIX | UI inspiration: raised frames, brass, dense utility type |
 | Midnight Commander, Volkov Commander | explorer UX: two panels, cursor, F-keys |
 
@@ -211,15 +211,25 @@ New ones for the site: `Vi` — video (mauve), `Ap` — app (peach), `Up` — up
 
 | Font | Where |
 |---|---|
-| `rv_font` 5×7 from pdklib | interface: title bars, tabs, keys, lists; Markdown headings |
-| WineTahomaBit | Markdown body text |
-| PxPlus IBM VGA 9x16 | code |
+| `rv_font` 5×7 from pdklib | interface: title bars, tabs, keys, lists; note headings and body text |
+| PxPlus IBM EGA 8×14 | text inside the Catppuccin wells (players, apps, code), small size, the default |
+| PxPlus IBM VGA 9×16 | the same text at the normal size; at the large size, the same font drawn twice as big |
 
-Pixel fonts are used only at their native size or a whole multiple of it. Origins and licenses are in [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md). `rv_font` is built into an OTF by [`tools/build_rvfont.py`](tools/build_rvfont.py).
+The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_font` bitmap tables of pdklib (`pdk/lib/include/pdklib/rv_font/`) and the PxPlus IBM EGA and VGA fonts. The size of text inside the wells is switched as View > code size in the editor. The site does not use WineTahomaBit.
+
+The fonts reach the site as one JavaScript file of bitmap tables. The page tool `tools/fonts.html` makes it in a browser from those fonts: the `rv_font` tables in C++ and the PxPlus EGA and VGA TTF files. The file is committed; the site only reads it and does not depend on how the browser draws fonts. [`tools/build_rvfont.py`](tools/build_rvfont.py) builds an OTF for the prototypes only.
+
+Pixel fonts are used only at their native size or a whole multiple of it, except at UI Scale 1.5x, where the picture stays sharp but font pixels take one or two physical pixels each.
+
+PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `third_party/pxplus-ibm-vga/` with ORIGIN.md and the license. The Cyrillic of `rv_font` is redrawn from PxPlus and is also CC BY-SA 4.0 (`pdk/lib/README.md` in 3dmppc-polymer), and so are the tables made from PxPlus. Origins and licenses of the prototype fonts are in [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md).
 
 ### Markdown in notes
 
-A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is WineTahomaBit, code is PxPlus on navy, keys are raised keycaps.
+A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps.
+
+### UI scale
+
+UI Scale is a switch with 1x, 1.5x and 2x, as View > UI Scale in the editor; the default is 1x. A scale at which 960×540 multiplied by it does not fit the screen is unavailable and shows the size it needs. At 1.5x the picture stays sharp, but font pixels take one or two physical pixels each. UI Scale is not implemented yet: the first version has only 1x.
 
 ## Prototypes
 
@@ -235,12 +245,13 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 - in `explorer.html` a new tile opens at 2:1, not 1:1;
 - `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
 - in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
+- the prototypes take the body text of notes from WineTahomaBit and the code from PxPlus IBM VGA 9×16;
 - the prototypes are plain HTML and CSS pages that the browser lays out and draws, not canvas.
 
 ## Open questions
 
 - **Keyboard and apps.** An app in an iframe takes the keys for itself. For now they can be returned to the environment only by clicking another tile; there is no keyboard way.
-- **UI scale.** The editor lets you set it, the prototypes have only 1x.
+- **Where the switches are.** The UI Scale switch and the switch of text size inside the wells (View > code size in the editor) have no place on the site yet: the site has no menu bar.
 - **Where a file opens.** Now — in the neighboring tile, and if there is none, a new tile is created. Should every file open in a new tile instead.
 - **Images.** There is no reference for the image viewer tile.
 - **Layout between visits.** Whether to remember the visitor's layout.
