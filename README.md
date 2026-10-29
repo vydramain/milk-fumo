@@ -52,7 +52,15 @@ Within the first minute a visitor should:
 - The content is one directory on the server, the root of the site's content. The owner uploads files to it over SFTP; nothing has to run after an upload.
 - nginx serves the site files and the content directory. The browser gets a folder listing from nginx as JSON (the autoindex module, JSON format: name, type, size, modification time). Files are plain HTTP GET requests.
 - Visitors only read, over HTTP. Only the owner writes, over SFTP; write protection is server file permissions.
-- The UI is downloaded once per visit and runs entirely in the visitor's browser. It is written in HTML, CSS and plain JavaScript modules, with no npm and no build step: the files in the repository are what the server serves.
+- The UI is downloaded once per visit and runs entirely in the visitor's browser. The page is HTML with a canvas, and the code is plain JavaScript modules, with no npm and no build step: the files in the repository are what the server serves.
+- The site draws the whole interface itself, in one `<canvas>`, with the browser's Canvas 2D API and no libraries.
+- Notes are drawn in the canvas too, so a visitor cannot select or copy their text.
+- The exception is games and web apps: they run in an iframe placed over the canvas, in the rectangle of their tile.
+- The interface is pixel-perfect.
+- The UI is drawn in immediate mode, as ImGui (an immediate-mode GUI library) draws the editor: each frame is rebuilt from the state, with no tree of widget objects. A widget knows its rectangle while it is drawn and checks clicks on it itself.
+- Drawing happens only on an event, not 60 times a second, so an idle page does not load the processor.
+- Audio and video elements are created by the script and are not inserted into the page; video frames are drawn into the canvas.
+- Pixel-perfect is achieved this way: the canvas buffer matches the screen's physical pixels; all coordinates are whole physical pixels; smoothing is turned off; text is drawn from bitmap font tables, not by the browser's text engine.
 - Chromium and Firefox are both fully supported.
 - About 100 visitors at the same time. The limit is the server's outgoing bandwidth for video and music: viewers multiplied by bitrate.
 - Why not object storage: MinIO was archived in February 2026; the other open object-storage servers either do not list a folder without a key or are too heavy for this volume; one nginx container is simpler.
@@ -226,7 +234,8 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 
 - in `explorer.html` a new tile opens at 2:1, not 1:1;
 - `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
-- in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`.
+- in `start-screen.html` the environment bar has no "`Shift`+arrows Focus" cell, and the explorer among the references still has one panel — the current explorer is `explorer.html`;
+- the prototypes are plain HTML and CSS pages that the browser lays out and draws, not canvas.
 
 ## Open questions
 
