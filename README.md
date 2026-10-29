@@ -209,9 +209,11 @@ The look is IRIX through 3dmppc-editor:
 - pmc and notes sit on olive, players, apps and code in navy wells (Catppuccin Mocha, like Code and Game in the editor);
 - file icons are two-letter codes instead of pictures.
 
+Apart from the mobile mode, a generated draft (Stitch) gave two things: the split buttons `│` and `─` in the title bar, and a player queue from the folder, the same as bird-fumo's sets. Dropped from the draft: its own palette (`#101509` and its tokens), the Space Mono and JetBrains Mono fonts, Material icons, telemetry-style decorations (`MEM 64.2%`, `LATENCY`, `ETAG`) and a red close button; the 3dmppc-editor widget catalog and vgui2-deck are used instead.
+
 ### Palette
 
-The main palette comes from [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp):
+The main palette is defined in [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp): the editor's own token table plus the state colors of vgui2-deck:
 
 | Role | Color |
 |---|---|
@@ -261,7 +263,7 @@ PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `t
 
 ### Markdown in notes
 
-A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps. A link in a note opens in a new browser tab.
+A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps. A link in a note opens in a new browser tab. A note also has lists, quotes and horizontal rules. An earlier placeholder of the Home note showed every Markdown element: a list, a link, a quote, code and a horizontal rule.
 
 ### UI scale
 
@@ -325,6 +327,7 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 - the prototypes are plain HTML and CSS pages that the browser lays out and draws, not canvas;
 - the prototypes call pmc "Explorer";
 - in `explorer.html` pmc cannot be closed (the message line says "The explorer cannot be closed in this prototype"), and while a tile is maximized focus does not move to another tile (the message line says "The tile is maximized — Shift+F restores the layout"). The description does not set either behavior yet;
+- `start-screen.html` still says that a file opens in the neighboring tile, not in a new tile on the right;
 - `start-screen.html` marks the next action with `>` and has no `✓` mark yet.
 
 ## Open questions
