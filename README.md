@@ -89,7 +89,19 @@ The tutorial is written so that someone who knows i3 says "Oh! This is like i3!"
 
 ### Controls
 
-The modifier key is **Shift**: in a browser test Shift worked in every combination, with Alt some combinations were taken by system shortcuts, Super did not work. `Ctrl+Q` quits Firefox and `Ctrl+Shift+Q` quits Chrome, so closing a tile is `Shift+Q`. Keys are matched by physical position (`KeyboardEvent.code`), so they work in any keyboard layout.
+The modifier key is **Shift**: in a browser test Shift worked in every combination, with Alt one combination was taken by a system shortcut, Super did not work. `Ctrl+Q` quits Firefox and `Ctrl+Shift+Q` quits Chrome, so closing a tile is `Shift+Q`. Keys are matched by physical position (`KeyboardEvent.code`), so they work in any keyboard layout.
+
+The reasons below are design reasoning; they do not explain the test result above.
+
+- **Why Shift:** neither the system nor the browser takes it, and it does not clash with a visitor's own i3.
+- **Why not Super:** the desktop often takes it before the browser sees it. For an i3 user Super is usually their own modifier: `Super+Enter` opens a terminal in their real i3 and the site sees nothing, so exactly the visitors who should recognize i3 would be lost.
+- **Why not Alt:** it reaches the browser, but the browser owns some of its combinations: `Alt+←` and `Alt+→` go back and forward, `Alt+D` focuses the address bar.
+- **Why not `Ctrl+W`, `Ctrl+T` or `Ctrl+N`:** a page cannot catch them at all.
+- **What Shift costs:**
+  - It types capitals. In a text field `Shift+H` must type "H", so environment commands are off inside fields and a key to leave a field is needed. The site has few fields, so this matters less here.
+  - `Shift`+arrows and `Shift`+click are the usual selection of text or of several files, and the modifier takes them.
+  - The i3 layer `Mod+Shift`, used there to move and close windows, is lost: moving is `Ctrl+Shift`+arrows and closing is `Shift+Q`.
+  - Games often use Shift for running.
 
 | To do | Mouse | Keyboard |
 |---|---|---|
@@ -104,7 +116,7 @@ The modifier key is **Shift**: in a browser test Shift worked in every combinati
 
 **The environment bar at the bottom is always visible.** It holds hints for every action, the first one being "`Shift`+arrows Focus". Every cell can be clicked and performs its action. Above the bar is a message line: for example, why a border will not move further.
 
-The bar was added after focus could not be returned to the explorer from the keyboard in a prototype: there was no hint on screen for moving between tiles.
+The bar was added after focus could not be returned to the explorer from the keyboard in a prototype. A reproduction with real key presses showed that `Shift+←` worked, while `Tab` and `Esc` in the file tile did nothing, as designed. That the missing on-screen hint for moving between tiles caused this is a guess, not a proven cause.
 
 ### pmc
 
