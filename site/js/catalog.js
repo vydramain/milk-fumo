@@ -5,10 +5,10 @@ import { CONTENT_URL } from './config.js';
 
 const SEPARATOR = '/';
 const APP_SUFFIX = '.exe'; // a folder with this suffix is an app, not a folder
-const ENTRY_DIRECTORY = 'directory'; // type nginx gives to a folder entry
+export const ENTRY_DIRECTORY = 'directory'; // type nginx gives to a folder entry
 
 // Kinds of entries shown in the interface.
-const KIND = Object.freeze({
+export const KIND = Object.freeze({
   FOLDER: 'folder', // a plain folder
   APP: 'app', // a folder whose name ends in APP_SUFFIX
   AUDIO: 'audio', // mp3, ogg, wav, flac
