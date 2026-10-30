@@ -7,6 +7,10 @@ import { BEVEL, PAD, ROW_H } from './metrics.js';
 const CHROME_FONT = 'rv';
 // Text is centred vertically in a row.
 const TEXT_Y = Math.floor((ROW_H - FONTS[CHROME_FONT].height) / 2);
+// Title button side: left buttons are laid out from the bar's left edge.
+export const SIDE_LEFT = 'left';
+// Title button side: right buttons keep the x given by the caller.
+export const SIDE_RIGHT = 'right';
 
 // A rect is a caller contract: integer x, y, w, h and a minimum size. A violation throws with the reason.
 function checkRect(rect, name, minW, minH) {
@@ -73,24 +77,49 @@ function cellWidth(label) {
   return measureText(label, CHROME_FONT) + 2 * PAD;
 }
 
-// Title bar at the top of rect: title on the left, buttons at their own x; labels are brass when focused.
+// Resolves the x of every title button. Left buttons follow each other from rect.x + PAD with PAD between them
+// (passing x for them is an error); right buttons keep their x. Returns the buttons and the x where the title starts.
+function placeButtons(rect, buttons) {
+  let cursor = rect.x + PAD;
+  const placed = buttons.map((button) => {
+    const side = button.side ?? SIDE_RIGHT;
+    if (side !== SIDE_LEFT && side !== SIDE_RIGHT) {
+      throw new Error(`chrome: title button "${button.label}" side must be left or right, got ${side}`);
+    }
+    if (side === SIDE_LEFT && button.x !== undefined) {
+      throw new Error(`drawTitleBar: left button "${button.label}" takes its x from the layout, do not pass x`);
+    }
+    const w = cellWidth(button.label);
+    const x = side === SIDE_LEFT ? cursor : button.x;
+    checkSpan(rect, `title button "${button.label}"`, x, w);
+    if (side === SIDE_LEFT) {
+      cursor += w + PAD;
+    }
+    return { label: button.label, x, w };
+  });
+  return { buttons: placed, titleX: cursor };
+}
+
+// Title bar at the top of rect: title after the left buttons, labels are brass when focused.
+// The title box (text plus PAD on both sides) must not overlap any button; checked before drawing.
 export function drawTitleBar(ctx, rect, title, buttons, focused) {
   checkRect(rect, 'title bar', 1, ROW_H);
-  const titleW = measureText(title, CHROME_FONT) + 2 * PAD;
-  checkSpan(rect, `title "${title}"`, rect.x, titleW);
-  for (const button of buttons) {
-    checkSpan(rect, `title button "${button.label}"`, button.x, cellWidth(button.label));
-    if (button.x < rect.x + titleW) {
-      throw new Error(`chrome: title "${title}" ends at x=${rect.x + titleW}, title button "${button.label}" starts at x=${button.x}`);
+  const { buttons: placed, titleX } = placeButtons(rect, buttons);
+  const boxX = titleX - PAD;
+  const boxW = measureText(title, CHROME_FONT) + 2 * PAD;
+  checkSpan(rect, `title "${title}"`, boxX, boxW);
+  for (const button of placed) {
+    if (button.x < boxX + boxW && button.x + button.w > boxX) {
+      throw new Error(`chrome: title "${title}" ends at x=${boxX + boxW}, title button "${button.label}" starts at x=${button.x}`);
     }
   }
   const { x, y, w } = rect;
   const textY = y + TEXT_Y;
   paint(ctx, SURFACE_DARK, x, y, w, ROW_H);
-  drawText(ctx, title, x + PAD, textY, CHROME_FONT, TEXT_BRIGHT);
+  drawText(ctx, title, titleX, textY, CHROME_FONT, TEXT_BRIGHT);
   const labelColor = focused ? BRASS : TEXT;
-  for (const button of buttons) {
-    paint(ctx, BUTTON, button.x, y, cellWidth(button.label), ROW_H);
+  for (const button of placed) {
+    paint(ctx, BUTTON, button.x, y, button.w, ROW_H);
     drawText(ctx, button.label, button.x + PAD, textY, CHROME_FONT, labelColor);
   }
 }
