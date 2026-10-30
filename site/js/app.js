@@ -139,12 +139,11 @@ export function createApp(options) {
       else if (focusedPane(workspace).type === TYPE.PMC) pmcKeyDown(event);
     },
     pointerDown(x, y) { const command = pointCommand(x, y, placedTiles()); if (command !== null) run(command); },
-    // Rejects with the reason on a failed listing or note; the caller shows it.
+    // Shows the failure in the message line and rejects with the reason.
     load() {
-      return Promise.all([listDirectory(ROOT_PATH), requireText(HOME_NOTE), requireText(TUTORIAL_NOTE)]).then(([root]) => {
-        listings.set(ROOT_PATH, root);
-        requestRedraw();
-      });
+      return Promise.all([listDirectory(ROOT_PATH), requireText(HOME_NOTE), requireText(TUTORIAL_NOTE)])
+        .then(([root]) => { listings.set(ROOT_PATH, root); requestRedraw(); })
+        .catch((error) => { showMessage(error.message); throw error; });
     },
   };
 }
