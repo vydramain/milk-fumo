@@ -131,13 +131,13 @@ function drawTile(ctx, state, plan, drawContent) {
   drawRaised(ctx, rect, BEVEL_LIGHT, BEVEL_DARK);
   drawTitleBar(ctx, titleRect, pane.title, titleButtons(inner), focused);
   drawSunken(ctx, sunken);
-  drawContent(ctx, pane, insetRect(sunken, BEVEL), focused);
+  drawContent(ctx, pane, insetRect(sunken, BEVEL), focused, rect);
   if (hasTabs) drawTabs(ctx, tabRect, tabNames, leaf.active);
   if (focused) drawFocusFrame(ctx, rect);
 }
 
 // Draws the whole workspace in screen: environment bar at the bottom, tiles above it.
-// drawContent(ctx, pane, rect, focused) draws the content of one tile inside rect.
+// drawContent(ctx, pane, rect, focused, outer) draws the content of one tile inside rect; outer is the whole tile.
 export function drawWorkspace(ctx, state, screen, drawContent) {
   checkArgs(state, screen, drawContent);
   const bar = bottomRect(screen, state.message);
