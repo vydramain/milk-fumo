@@ -116,6 +116,8 @@ The reasons below are design reasoning; they do not explain the test result abov
 | Fullscreen and back | `M` in the title bar | `Shift+F` |
 | Close a tile | `X` in the title bar | `Shift+Q`, also inside a game or app |
 
+Holding one of the one-shot Shift keys Shift+H, Shift+V, Shift+Enter, Shift+W, Shift+F or Shift+Q does nothing extra; arrows repeat. Shift tile keys are handled before the pmc search; a repeated Shift tile key falls through to pmc search, so holding Shift+H adds a letter to the search, and only when the focused tile is pmc.
+
 **The environment bar at the bottom is always visible.** It holds hints for every action, the first one being "`Shift`+arrows Focus". Every cell can be clicked and performs its action. Above the bar is a message line: for example, why a border will not move further.
 
 The bar was added after focus could not be returned to the explorer from the keyboard in a prototype. A reproduction with real key presses showed that `Shift+←` worked, while `Tab` and `Esc` in the file tile did nothing, as designed. That the missing on-screen hint for moving between tiles caused this is a guess, not a proven cause.
@@ -257,17 +259,24 @@ The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_fo
 
 The fonts reach the site as one JavaScript file of bitmap tables. The page tool `tools/fonts.html` makes it in a browser from those fonts: the `rv_font` tables in C++ and the PxPlus EGA and VGA TTF files. The file is committed; the site only reads it and does not depend on how the browser draws fonts. [`tools/build_rvfont.py`](tools/build_rvfont.py) builds an OTF for the prototypes only.
 
-Pixel fonts are used only at their native size or a whole multiple of it, except at UI Scale 1.5x, where the picture stays sharp but font pixels take one or two physical pixels each.
+Pixel fonts are used only at their native size or a whole multiple of it.
 
-PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `third_party/pxplus-ibm-vga/` with ORIGIN.md and the license. The Cyrillic of `rv_font` is redrawn from PxPlus and is also CC BY-SA 4.0 (`pdk/lib/README.md` in 3dmppc-polymer), and so are the tables made from PxPlus. Origins and licenses of the prototype fonts are in [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md).
+PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `third_party/pxplus-ibm-vga/` with ORIGIN.md and the license. The whole rv_font is under CC BY-SA 4.0: its Cyrillic is redrawn from PxPlus, and the owner's ASCII part is licensed under the same terms (`pdk/lib/README.md` in 3dmppc-polymer). The tables made from PxPlus are CC BY-SA 4.0 too. Origins and licenses of the prototype fonts are in [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md).
 
 ### Markdown in notes
 
 A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps. A link in a note opens in a new browser tab. A note also has lists, quotes and horizontal rules. An earlier placeholder of the Home note showed every Markdown element: a list, a link, a quote, code and a horizontal rule.
 
-### UI scale
+A spoiler is text between two pairs of vertical bars (`||text||`); it stays hidden until clicked. Spoiler text is literal: keys, links and other marks inside it are not parsed. Notes have no tables, bold or italics. Absolute addresses must be http(s) without spaces; relative ones must not start with // and must not contain spaces, a colon, an ampersand or a backslash.
 
-UI Scale is a switch with 1x, 1.5x and 2x, as View > UI Scale in the editor; the default is 1x. A scale at which 960×540 multiplied by it does not fit the screen is unavailable and shows the size it needs. At 1.5x the picture stays sharp, but font pixels take one or two physical pixels each. UI Scale is not implemented yet: the first version has only 1x.
+## Running
+
+Both environments use `compose.yml` and an env file that sets `HOST_PORT` and `CONTENT_DIR`.
+
+- **Dev:** `docker compose --env-file .env.dev up` serves the site at `localhost:8080`, with the fixture `dev/content`.
+- **Prod:** copy `.env.prod.example` to `.env.prod`, set `CONTENT_DIR` (the content directory on the server) and `HOST_PORT`, then run `docker compose --env-file .env.prod up`. The port is published on `127.0.0.1` only; TLS and any public proxy are set up on the host.
+
+The content directory is mounted read-only. The owner edits it over SFTP on the host.
 
 ## Architecture
 
@@ -332,13 +341,16 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 
 ## Open questions
 
-- **Where the switches are.** The UI Scale switch and the switch of text size inside the wells (View > code size in the editor) have no place on the site yet: the site has no menu bar.
+- **Where the switches are.** The switch of text size inside the wells (View > code size in the editor) has no place on the site yet: the site has no menu bar.
 - **Code structure.** The modules under Architecture are a proposal, not confirmed.
 - **Bandwidth for the other services.** The server runs other services; limiting the site's traffic with nginx `limit_rate` / `limit_conn` is under consideration, not decided.
 - **Ports.** 80 and 443 are probably free on the server; the owner checks.
 - **Configurable modifier.** Whether the modifier key can be changed, as `$mod` in an i3 config. Shift is the default.
 - **Direct links and search engines.** A link to a specific game or track, and the state in the URL, are not designed. Search engines do not see content that appears only after JavaScript, and the site draws everything in a canvas.
 - **Probes to run.** Whether Chromium and Firefox support `devicePixelContentBoxSize`; whether an iframe shifts off the pixel grid at fractional screen scales; whether an iframe keeps its state when tiles are rearranged.
+- **Tab strip at the minimum tile (Q1).** The height of the tab strip at the minimum tile size is not settled.
+- **VGA 9×16 ninth column (Q2).** The font generator drops the ninth column of PxPlus IBM VGA 9×16.
+- **Note key style.** Keycaps in notes are raised, as this README says, or sunken, as the current code draws them; not decided.
 
 ## Sources
 
