@@ -62,6 +62,12 @@ function bottomRect(screen, message) {
   return { x: screen.x, y: screen.y + screen.h - h, w: screen.w, h };
 }
 
+// Tile area: the screen minus the environment bar and, when message is not empty, the message row.
+export function tilesRect(screen, message) {
+  const bar = bottomRect(screen, message);
+  return { x: screen.x, y: screen.y, w: screen.w, h: screen.h - bar.h };
+}
+
 // Cells laid out from the left edge; the cells must fit the screen width.
 function envCells(screen) {
   let x = screen.x;
@@ -136,8 +142,7 @@ export function drawWorkspace(ctx, state, screen, drawContent) {
   checkArgs(state, screen, drawContent);
   const bar = bottomRect(screen, state.message);
   const cells = envCells(screen);
-  const tilesRect = { x: screen.x, y: screen.y, w: screen.w, h: screen.h - bar.h };
-  const plans = tilePlans(state, tilesRect);
+  const plans = tilePlans(state, tilesRect(screen, state.message));
   fillScreen(ctx, screen);
   drawEnvBar(ctx, bar, cells, state.message);
   for (const plan of plans) drawTile(ctx, state, plan, drawContent);
