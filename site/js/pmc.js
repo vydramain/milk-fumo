@@ -25,7 +25,7 @@ function makePanel(path, entries) {
 }
 
 // Rows before the entries: the ".." row, absent at the root.
-function upRows(path) {
+export function upRows(path) {
   return path === ROOT_PATH ? 0 : 1;
 }
 

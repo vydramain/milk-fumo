@@ -6,7 +6,7 @@ import { BEVEL, PAD, ROW_H } from './metrics.js';
 // Font key of font.js used for all chrome text.
 const CHROME_FONT = 'rv';
 // Text is centred vertically in a row.
-const TEXT_Y = Math.floor((ROW_H - FONTS[CHROME_FONT].height) / 2);
+export const TEXT_Y = Math.floor((ROW_H - FONTS[CHROME_FONT].height) / 2);
 // Title button side: left buttons are laid out from the bar's left edge.
 export const SIDE_LEFT = 'left';
 // Title button side: right buttons keep the x given by the caller.
