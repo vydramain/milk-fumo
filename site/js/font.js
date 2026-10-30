@@ -33,12 +33,12 @@ function fontOf(name) {
   return FONTS[name];
 }
 
-// Draws one glyph row by row; each lit bit is a 1x1 rectangle at integer coordinates.
-function drawGlyph(ctx, glyph, x, y, height) {
+// Draws one glyph row by row; each lit bit is a scale x scale square at integer coordinates.
+function drawGlyph(ctx, glyph, x, y, height, scale) {
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < GLYPH_COLS; col++) {
       if (glyph[row] & (LEFT_BIT >> col)) {
-        ctx.fillRect(x + col, y + row, 1, 1);
+        ctx.fillRect(x + col * scale, y + row * scale, scale, scale);
       }
     }
   }
@@ -59,22 +59,32 @@ function glyphOf(table, code) {
   return table[SPACE_CODE];
 }
 
-// Width in pixels of a text in the given font; one advance per code point.
-export function measureText(text, font) {
-  return [...text].length * fontOf(font).advance;
+// Scale is an integer multiple of the font's native size (README «Fonts»); anything else is a caller error.
+function checkScale(scale) {
+  if (!Number.isInteger(scale) || scale < 1) {
+    throw new Error(`font: scale must be an integer >= 1, got ${scale}`);
+  }
+}
+
+// Width in pixels of a text in the given font; one advance per code point, times scale.
+export function measureText(text, font, scale = 1) {
+  checkScale(scale);
+  return [...text].length * fontOf(font).advance * scale;
 }
 
 // Draws text with its top-left corner at (x, y); color is a CSS color string.
 // Coordinates must be integers, otherwise canvas smooths the pixels.
-export function drawText(ctx, text, x, y, font, color) {
+// Scale is applied to every pixel; the line height in pixels is height * scale, computed by the caller.
+export function drawText(ctx, text, x, y, font, color, scale = 1) {
   if (!Number.isInteger(x) || !Number.isInteger(y)) {
     throw new Error(`font: drawText needs integer coordinates, got x=${x}, y=${y}`);
   }
+  checkScale(scale);
   const { table, advance, height } = fontOf(font);
   ctx.fillStyle = color;
   let pen = x;
   for (const ch of text) {
-    drawGlyph(ctx, glyphOf(table, ch.codePointAt(0)), pen, y, height);
-    pen += advance;
+    drawGlyph(ctx, glyphOf(table, ch.codePointAt(0)), pen, y, height, scale);
+    pen += advance * scale;
   }
 }
