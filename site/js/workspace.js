@@ -7,7 +7,7 @@ import { single, insertBeside, remove, stack, activate, toggleMaximize } from '.
 const TILE_TYPES = ['pmc', 'note', 'audio', 'video', 'app', 'image'];
 
 // Command names accepted by reduce().
-const COMMANDS = {
+export const COMMANDS = {
   split: 'split',
   close: 'close',
   focus: 'focus',
@@ -16,6 +16,7 @@ const COMMANDS = {
   message: 'message',
   clearMessage: 'clearMessage',
   activate: 'activate',
+  setType: 'setType',
 };
 
 // Ids are ID_PREFIX + counter; the first tile takes 1, so the counter starts at 2.
@@ -126,6 +127,14 @@ function activateTab(state, { index }) {
   return { ...state, tree, focus: leaf.tabs[index] };
 }
 
+// The tile keeps its place and tabs; only its record type changes.
+function setFocusType(state, { type }) {
+  const id = requireFocus(state, COMMANDS.setType);
+  checkType(type, COMMANDS.setType);
+  const panes = new Map(state.panes).set(id, { ...state.panes.get(id), type });
+  return { ...state, panes };
+}
+
 // Command name -> handler(state, command); one table instead of a chain of ifs.
 const HANDLERS = {
   [COMMANDS.split]: splitTile,
@@ -136,6 +145,7 @@ const HANDLERS = {
   [COMMANDS.message]: setMessage,
   [COMMANDS.clearMessage]: clearMessage,
   [COMMANDS.activate]: activateTab,
+  [COMMANDS.setType]: setFocusType,
 };
 
 export function reduce(state, command) {
