@@ -3,8 +3,11 @@
 // Invariant: the focused tile is the active tab of its leaf, so focus is always on a visible tab.
 import { single, insertBeside, remove, stack, activate, toggleMaximize } from './layout.js';
 
+// Type of a tile with no content yet; only such a tile can take a type by setType.
+const EMPTY_TYPE = 'empty';
+
 // Kinds of tile content; every pane records its type.
-const TILE_TYPES = ['pmc', 'note', 'audio', 'video', 'app', 'image'];
+const TILE_TYPES = ['pmc', 'note', 'audio', 'video', 'app', 'image', EMPTY_TYPE];
 
 // Command names accepted by reduce().
 export const COMMANDS = {
@@ -28,9 +31,9 @@ function checkType(type, caller) {
   if (!TILE_TYPES.includes(type)) throw new Error(`${caller}: unknown tile type "${type}"`);
 }
 
-// A new pane is titled by its type until a title command exists.
+// An empty tile has no title; other tiles are titled by their type until a title command exists.
 function newPane(type) {
-  return { type, title: type };
+  return { type, title: type === EMPTY_TYPE ? '' : type };
 }
 
 // Leaf that holds tab id, or null. Mirrors layout.js findLeaf, which is not exported.
@@ -86,10 +89,18 @@ function splitTile(state, { side, type }) {
 function closeTile(state) {
   const id = requireFocus(state, COMMANDS.close);
   const tree = remove(state.tree, id);
+  if (tree === null) return replaceWithEmpty(state);
   const panes = new Map(state.panes);
   panes.delete(id);
   const maximized = state.maximized === id ? null : state.maximized;
   return { ...state, tree, panes, focus: firstVisibleTab(tree), maximized };
+}
+
+// Closing the last tile leaves an empty tile, so the screen always has a tree.
+function replaceWithEmpty(state) {
+  const id = `${ID_PREFIX}${state.nextId}`;
+  const panes = new Map([[id, newPane(EMPTY_TYPE)]]);
+  return { ...state, tree: single(id), panes, focus: id, maximized: null, nextId: state.nextId + 1 };
 }
 
 // A tab hidden in a stack becomes active, so focus stays on a visible tab.
@@ -127,11 +138,13 @@ function activateTab(state, { index }) {
   return { ...state, tree, focus: leaf.tabs[index] };
 }
 
-// The tile keeps its place and tabs; only its record type changes.
+// Only an empty tile can take a type; it keeps its place and tabs.
 function setFocusType(state, { type }) {
   const id = requireFocus(state, COMMANDS.setType);
+  if (state.panes.get(id).type !== EMPTY_TYPE) throw new Error('setType: only an empty tile can open a type');
+  if (type === EMPTY_TYPE) throw new Error(`setType: "${EMPTY_TYPE}" is not a type to open`);
   checkType(type, COMMANDS.setType);
-  const panes = new Map(state.panes).set(id, { ...state.panes.get(id), type });
+  const panes = new Map(state.panes).set(id, newPane(type));
   return { ...state, panes };
 }
 
