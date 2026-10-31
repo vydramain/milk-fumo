@@ -2,7 +2,7 @@
 
 **A portfolio site shaped as a tiling desktop environment.** The whole site is the browser window divided into tiles, as in i3. The tiles hold pmc over the portfolio, notes, players and web apps. The content is a plain directory on the owner's server, served by nginx.
 
-Status: **project description, UX and UI.** There is no site code yet. [`docs/prototypes/`](docs/prototypes/) holds the clickable prototypes the decisions were made on.
+Status: **the site is built** in [`site/`](site/): plain JavaScript modules, one canvas, no build step. [`docs/prototypes/`](docs/prototypes/) holds the clickable prototypes the decisions were made on.
 
 ![Start screen](docs/screenshots/start-screen.png)
 
@@ -250,28 +250,34 @@ New ones for the site: `Vi` — video (mauve), `Ap` — app (peach), `Up` — up
 | Font | Where |
 |---|---|
 | `rv_font` 5×7 from pdklib | interface: title bars, tabs, keys, lists; note headings and body text |
-| PxPlus IBM EGA 8×14 | text inside the Catppuccin wells (players, apps, code), small size, the default |
-| PxPlus IBM VGA 9×16 | text inside the wells at the normal size; at the large size, the same font drawn twice as big |
+| PxPlus IBM VGA 9×16 | text inside the Catppuccin wells (players, apps, code), at its native size; the large size is the same font drawn twice as big (as in the prototypes) |
 
-The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_font` bitmap tables of pdklib (`pdk/lib/include/pdklib/rv_font/`) and the PxPlus IBM EGA and VGA fonts. The size of text inside the wells is switched as View > code size in the editor. The site does not use WineTahomaBit.
+The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_font` bitmap tables of pdklib (`pdk/lib/include/pdklib/rv_font/`) and the PxPlus IBM VGA font. The site has no size switch for the text inside the wells. Note body text is `rv_font`; the site does not use WineTahomaBit, which only the prototypes use.
 
-The fonts reach the site as one JavaScript file of bitmap tables. The page tool `tools/fonts.html` makes it in a browser from those fonts: the `rv_font` tables in C++ and the PxPlus EGA and VGA TTF files. The file is committed; the site only reads it and does not depend on how the browser draws fonts. [`tools/build_rvfont.py`](tools/build_rvfont.py) builds an OTF for the prototypes only.
+The fonts reach the site as one JavaScript file of bitmap tables. The page tool `tools/fonts.html` makes it in a browser from those fonts: the `rv_font` tables in C++ and the PxPlus VGA TTF file. The file is committed; the site only reads it and does not depend on how the browser draws fonts. [`tools/build_rvfont.py`](tools/build_rvfont.py) builds an OTF for the prototypes only.
 
-Pixel fonts are used only at their native size or a whole multiple of it, except at UI Scale 1.5x, where the picture stays sharp but font pixels take one or two physical pixels each.
+Pixel fonts are used only at their native size or a whole multiple of it.
 
 PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `third_party/pxplus-ibm-vga/` with ORIGIN.md and the license. The Cyrillic of `rv_font` is redrawn from PxPlus and is also CC BY-SA 4.0 (`pdk/lib/README.md` in 3dmppc-polymer), and so are the tables made from PxPlus. Origins and licenses of the prototype fonts are in [`docs/prototypes/fonts/`](docs/prototypes/fonts/README.md).
 
 ### Markdown in notes
 
-A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM EGA 8×14 on navy by default, keys are raised keycaps. A link in a note opens in a new browser tab. A note also has lists, quotes and horizontal rules. An earlier placeholder of the Home note showed every Markdown element: a list, a link, a quote, code and a horizontal rule.
+A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM VGA 9×16 on navy, at its native size. Keys are raised keycaps, written `[Shift]`. A link is written `[text](address)` and opens in a new browser tab; an address is kept only if it is safe (http or https, or a relative address without `//`, spaces, colons, ampersands or backslashes). A line `{{actions}}` is the tutorial's table: the app draws it, with a mark for each action done and for the next one to try. A note also has lists, quotes and horizontal rules. An earlier placeholder of the Home note showed every Markdown element: a list, a link, a quote, code and a horizontal rule.
 
-### UI scale
+## Running
 
-UI Scale is a switch with 1x, 1.5x and 2x, as View > UI Scale in the editor; the default is 1x. A scale at which 960×540 multiplied by it does not fit the screen is unavailable and shows the size it needs. At 1.5x the picture stays sharp, but font pixels take one or two physical pixels each. UI Scale is not implemented yet: the first version has only 1x.
+Both environments use [`compose.yml`](compose.yml) and an env file that sets `HOST_PORT` and `CONTENT_DIR`.
+
+- **Dev:** `docker compose --env-file .env.dev up` serves the site at `localhost:8080`, with the fixture [`dev/content`](dev/content).
+- **Prod:** copy [`.env.prod.example`](.env.prod.example) to `.env.prod` and set `CONTENT_DIR` and `HOST_PORT`, then `docker compose --env-file .env.prod up -d`. The port is published on `127.0.0.1` only; TLS and any public proxy are set up on the host.
+
+The content directory is mounted read-only. The owner edits it over SFTP on the host.
+
+Font tables are generated by [`tools/fonts.html`](tools/fonts.html) from the pdklib headers and the PxPlus TTF in the browser: pick the three files and save `site/js/font_data.js`.
 
 ## Architecture
 
-The code structure below is a proposal and is not confirmed yet.
+The code is in [`site/js/`](site/js/), in the modules below. The pure modules are tested by `npm test` (`node --test`, no dependencies).
 
 ### Modules
 
@@ -332,7 +338,7 @@ They open straight from the file in a browser (checked in Chromium). `explorer.h
 
 ## Open questions
 
-- **Where the switches are.** The UI Scale switch and the switch of text size inside the wells (View > code size in the editor) have no place on the site yet: the site has no menu bar.
+- **Where the switches are.** The switch of text size inside the wells (View > code size in the editor) has no place on the site yet: the site has no menu bar.
 - **Code structure.** The modules under Architecture are a proposal, not confirmed.
 - **Bandwidth for the other services.** The server runs other services; limiting the site's traffic with nginx `limit_rate` / `limit_conn` is under consideration, not decided.
 - **Ports.** 80 and 443 are probably free on the server; the owner checks.
