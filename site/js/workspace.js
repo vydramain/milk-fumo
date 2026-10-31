@@ -4,7 +4,7 @@ import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from
 import * as L from './layout.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box, centerText } from './widgets.js';
+import { Hits, box } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
 import { HOME_NOTE, TUTORIAL_NOTE } from './config.js';
 import { setOf, list, kindOf } from './catalog.js';
@@ -19,17 +19,18 @@ const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDow
 const KEYS_MENU = { KeyH: 'split-right', KeyV: 'split-down', Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close' };
 const EMPTY_TILE_MIN = PANE_MIN.generic;
 
+// An empty tile: a button that opens pmc in it, and the keyboard way under the button. Only the button opens pmc.
 class EmptyBody {
-  constructor(ws) { this.ws = ws; this.link = null; }
-  get minimum() { return EMPTY_TILE_MIN; }
+  constructor(ws) { this.ws = ws; this.minimum = EMPTY_TILE_MIN; }
   draw(p, r, hits) {
-    const title = T.emptyOpen;
-    const at = centerText(RV, { x: r.x, y: r.y, w: r.w, h: r.h - 12 }, title, 2);
-    p.text(RV, at.x, at.y, title, C.bright, 2);
-    const w = textWidth(RV, title, 2);
-    hits.add({ x: at.x, y: at.y, w, h: 16 }, { click: () => this.ws.openPmcIn(this.ws.tileOf(this)) });
+    const label = T.emptyOpen;
+    const w = textWidth(RV, label) + 24;
+    const button = { x: r.x + Math.floor((r.w - w) / 2), y: r.y + Math.floor((r.h - 20) / 2) - 6, w, h: 20 };
+    box(p, button, true, C.btn, 2);
+    p.text(RV, button.x + 12, button.y + 6, label, C.bright);
+    hits.add(button, { click: () => this.ws.openPmcIn(this.ws.tileOf(this)) });
     const hint = T.emptyHint;
-    p.text(RV, r.x + Math.floor((r.w - textWidth(RV, hint)) / 2), r.y + r.h - 10, hint, C.dim);
+    p.text(RV, r.x + Math.floor((r.w - textWidth(RV, hint)) / 2), button.y + 26, hint, C.dim);
   }
   key() { return false; }
   dispose() {}

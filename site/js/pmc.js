@@ -363,7 +363,7 @@ export class PmcPane {
       const path = (panel.dir ? panel.dir + '/' : '') + item.name;
       const entries = known(path);
       if (!entries) { list(path).finally(() => this.ws.requestDraw()); return `${item.name}/ · …`; }
-      return `${item.name}/ · ${entries.length} items`;
+      return `${item.name}/ · ${entries.length} ${entries.length === 1 ? 'item' : 'items'}`;
     }
     return `${item.name} · ${formatBytes(item.size)} bytes`;
   }
