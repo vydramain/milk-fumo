@@ -91,18 +91,20 @@ export class AppPane {
   }
 
   // Puts the iframe in the well, centered, and scaled. The wrapper clips it to the well.
+  // The well and the scale are in device pixels; the page's CSS pixels are the device pixels divided by the ratio.
   place(well) {
+    const k = 1 / (window.devicePixelRatio || 1);
     const s = scaleFor(this.scale, well.w, well.h);
     const dx = Math.round((well.w - APP_W * s) / 2), dy = Math.round((well.h - APP_H * s) / 2);
     const st = this.wrap.style;
     st.display = 'block';
-    st.left = `${well.x}px`;
-    st.top = `${well.y}px`;
-    st.width = `${well.w}px`;
-    st.height = `${well.h}px`;
-    this.frame.style.left = `${dx}px`;
-    this.frame.style.top = `${dy}px`;
-    this.frame.style.transform = `scale(${s})`;
+    st.left = `${well.x * k}px`;
+    st.top = `${well.y * k}px`;
+    st.width = `${well.w * k}px`;
+    st.height = `${well.h * k}px`;
+    this.frame.style.left = `${dx * k}px`;
+    this.frame.style.top = `${dy * k}px`;
+    this.frame.style.transform = `scale(${s * k})`;
   }
 
   // Hides the iframe when its tile is not drawn (another tile is maximized, or it is not the front tab).

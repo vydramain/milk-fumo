@@ -77,15 +77,17 @@ export class Paint {
     return cx;
   }
 
-  // A filled polygon, for the slanted tabs. Points are CSS pixels.
-  polygon(points, color) {
-    const d = this.dpr;
-    const g = this.ctx;
-    g.beginPath();
-    points.forEach(([x, y], i) => (i ? g.lineTo(Math.round(x * d), Math.round(y * d)) : g.moveTo(Math.round(x * d), Math.round(y * d))));
-    g.closePath();
-    g.fillStyle = color;
-    g.fill();
+  // A slanted tab, as the prototype's skewed tab: each row is shifted by whole pixels, so its edges are steps,
+  // never anti-aliased. The top row is shifted right by `skew` pixels, the bottom row not at all.
+  // Returns the x of each row's left edge, for the caller's borders.
+  slant(x, y, w, h, skew, color) {
+    const rows = [];
+    for (let r = 0; r < h; r++) {
+      const shift = Math.round(skew * (h - 1 - r) / (h - 1));
+      rows.push(x + shift);
+      this.fill(x + shift, y + r, w, 1, color);
+    }
+    return rows;
   }
 
   // A picture or a video frame, scaled to a rectangle without smoothing.

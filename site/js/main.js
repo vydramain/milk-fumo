@@ -5,7 +5,7 @@ import { Paint } from './paint.js';
 import { RV, textWidth } from './font.js';
 import { C } from './theme.js';
 import { T } from './texts.js';
-import { SCREEN_MIN, TITLE_H } from './metrics.js';
+import { SCREEN_MIN, VIEWPORT_MIN, TITLE_H } from './metrics.js';
 
 const MOBILE = matchMedia('(hover: none) and (pointer: coarse)');
 const canvas = document.getElementById('screen');
@@ -13,31 +13,38 @@ const ctx = canvas.getContext('2d');
 let ws = null;
 let queued = false;
 
+// The layout's unit is the device pixel: the canvas buffer is the window in device pixels, and each unit is one of
+// them. So a font pixel is always one whole device pixel and nothing is smoothed, whatever the screen scale.
 function dpr() { return window.devicePixelRatio || 1; }
 
 function screenTooSmall() {
   return screen.width < SCREEN_MIN.w || screen.height < SCREEN_MIN.h;
 }
 
-// The canvas is the window, or the layout's minimum when the window is smaller: then the page scrolls.
+// The canvas, in device pixels: the window, or the minimum of the viewport (960x540 CSS pixels) or of the layout
+// when the window is smaller. Then the page scrolls.
 function canvasSize() {
+  const d = dpr();
   const min = ws.minimum();
-  return { w: Math.max(innerWidth, min.w), h: Math.max(innerHeight, min.h) };
+  return {
+    w: Math.max(Math.round(innerWidth * d), Math.round(VIEWPORT_MIN.w * d), min.w),
+    h: Math.max(Math.round(innerHeight * d), Math.round(VIEWPORT_MIN.h * d), min.h),
+  };
 }
 
-// Draws a frame. The canvas buffer is the CSS size times the device pixel ratio, so each pixel is one device pixel.
+// Draws a frame. The buffer is in device pixels; the element's CSS size is the buffer divided by the ratio.
 function draw() {
   queued = false;
   const d = dpr();
   const mobile = MOBILE.matches;
   const small = !mobile && screenTooSmall();
-  const size = mobile || small ? { w: innerWidth, h: innerHeight } : canvasSize();
-  canvas.width = Math.round(size.w * d);
-  canvas.height = Math.round(size.h * d);
-  canvas.style.width = size.w + 'px';
-  canvas.style.height = size.h + 'px';
+  const size = mobile || small ? { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) } : canvasSize();
+  canvas.width = size.w;
+  canvas.height = size.h;
+  canvas.style.width = size.w / d + 'px';
+  canvas.style.height = size.h / d + 'px';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const paint = new Paint(ctx, d);
+  const paint = new Paint(ctx, 1);
   if (mobile) drawMessage(paint, size, null, T.mobile);
   else if (small) drawMessage(paint, size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
   else ws.render(paint, size.w, size.h);
@@ -71,9 +78,11 @@ function requestDraw() {
   requestAnimationFrame(draw);
 }
 
+// The pointer in device pixels, the layout's units.
 function pointer(e) {
   const r = canvas.getBoundingClientRect();
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
+  const d = dpr();
+  return { x: (e.clientX - r.left) * d, y: (e.clientY - r.top) * d };
 }
 
 canvas.addEventListener('pointerdown', (e) => {

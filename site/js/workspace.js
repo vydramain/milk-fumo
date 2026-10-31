@@ -4,7 +4,7 @@ import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from
 import * as L from './layout.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box, tabShape, centerText } from './widgets.js';
+import { Hits, box, centerText } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
 import { HOME_NOTE, TUTORIAL_NOTE } from './config.js';
 import { setOf, list, kindOf } from './catalog.js';
@@ -77,8 +77,8 @@ export class Workspace {
 
   // Start: the Home note on the left and the Tutorial on the right, focused, 1:1.
   setup() {
-    const home = makeTile(new NoteBody(this, HOME_NOTE), 'Home: ' + HOME_NOTE, 'Note');
-    const tutorial = makeTile(new NoteBody(this, TUTORIAL_NOTE), 'Tutorial: ' + TUTORIAL_NOTE, 'Note');
+    const home = makeTile(new NoteBody(this, HOME_NOTE), 'Home: ' + HOME_NOTE, 'Home');
+    const tutorial = makeTile(new NoteBody(this, TUTORIAL_NOTE), 'Tutorial: ' + TUTORIAL_NOTE, 'Tutorial');
     this.panes.set(home.id, home);
     this.panes.set(tutorial.id, tutorial);
     this.L = L.newLayout(L.split('h', L.leaf([home.id]), L.leaf([tutorial.id])));
@@ -537,7 +537,6 @@ export class Workspace {
   // A tile is drawn in order: its frame, the click that focuses it, the title bar, the tabs, and its body.
   // A hit added later lies on top, so the focusing click comes before everything inside the tile.
   drawLeaf(p, node, rect) {
-    const stacked = node.tabs.length > 1;
     const id = node.tabs[node.active];
     const tile = this.panes.get(id);
     p.fill(rect.x, rect.y, rect.w, rect.h, C.win);
@@ -547,8 +546,8 @@ export class Workspace {
     const titleR = L.titleRect(rect);
     p.dither(titleR, C.win, C.lo);
     this.titleBar(p, id, titleR);
-    if (stacked) this.tabStrip(p, node, rect);
-    const content = L.contentRect(rect, stacked);
+    this.tabStrip(p, node, rect);
+    const content = L.contentRect(rect);
     this.rects.set(id, content);
     p.clip(content);
     tile.body.draw(p, content, this.hits, id === this.focus);
@@ -591,17 +590,18 @@ export class Workspace {
     else p.text(RV, r.x + 3, r.y + 3, label, pressed ? C.sel : C.bright);
   }
 
+  // The tab strip: a slanted tab per pane; the active one is brass with dark text. Always drawn, as in the prototype.
   tabStrip(p, node, rect) {
     const strip = L.tabsRect(rect);
     let x = strip.x + 6;
     node.tabs.forEach((id, i) => {
       const label = this.tabLabel(id);
       const w = textWidth(RV, label) + 18;
-      const shape = { x, y: strip.y, w, h: strip.h };
       const active = i === node.active;
-      p.polygon(tabShape(shape), active ? C.sel : C.win);
+      const rows = p.slant(x, strip.y, w, strip.h, 6, active ? C.sel : C.win);
+      if (!active) rows.forEach((rx, r) => { p.fill(rx + w - 1, strip.y + r, 1, 1, C.lo); p.fill(rx + w, strip.y + r, 2, 1, C.hi); });
       p.text(RV, x + 9, strip.y + 3, label, active ? C.dark : C.text);
-      this.hits.add({ x, y: strip.y, w, h: strip.h }, { press: (px, py) => {
+      this.hits.add({ x, y: strip.y, w: w + 6, h: strip.h }, { press: (px, py) => {
         this.focusByUser(id);
         return this.tileDrag(id, px, py);
       } });

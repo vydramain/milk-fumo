@@ -4,19 +4,16 @@ import { START_DIR } from './config.js';
 import { PANE_MIN, ROW } from './metrics.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { KIND, kindOf, list, setOf, formatSize, formatBytes } from './catalog.js';
+import { KIND, kindOf, list, known, setOf, formatSize, formatBytes } from './catalog.js';
 import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
 import { T } from './texts.js';
-import { box, scrollbar } from './widgets.js';
+import { box, scrollbar, panelFrame, wellFrame } from './widgets.js';
 import { AppPane } from './app.js';
 
-const SUB = 13;      // the path bar and the header of a panel
-const STAT = 14;     // the status line under a panel
 const COL_SIZE = 56;
 const COL_DATE = 70;
-const SCROLL = 14;
 const DOUBLE_MS = 400;
 const MC_KEYS = [
   { key: 'Enter', label: 'Open', action: 'enter' },
@@ -208,12 +205,15 @@ export class PmcPane {
     return new Message(kind, item);
   }
 
+  // The layout of the prototype's explorer: the .i-panel frame; the toolbar; two panels, each a sunken well with
+  // the path, the header and the rows, a scroll bar, and a status line under it; the key bar.
   draw(p, r, hits, focused) {
-    const bar = { x: r.x, y: r.y, w: r.w, h: 16 };
+    const inner = panelFrame(p, r);
+    const bar = { x: inner.x, y: inner.y, w: inner.w, h: 16 };
     this.toolbar(p, hits, bar);
-    const keys = { x: r.x, y: r.y + r.h - 14, w: r.w, h: 14 };
+    const keys = { x: inner.x, y: inner.y + inner.h - 14, w: inner.w, h: 14 };
     const top = bar.y + bar.h + 4;
-    const area = { x: r.x, y: top, w: r.w, h: keys.y - 4 - top };
+    const area = { x: inner.x, y: top, w: inner.w, h: keys.y - 4 - top };
     const half = Math.floor((area.w - 4) / 2);
     const rects = [
       { x: area.x, y: area.y, w: half, h: area.h },
@@ -227,19 +227,18 @@ export class PmcPane {
     const panel = this.panels[this.act];
     const up = { x: bar.x, y: bar.y, w: 18, h: 16 };
     const home = { x: bar.x + 22, y: bar.y, w: 18, h: 16 };
-    box(p, up, true);
-    p.text(RV, up.x + 4, up.y + 4, 'Up', C.cov);
-    box(p, home, true);
-    p.text(RV, home.x + 4, home.y + 4, 'Hm', C.blue);
+    box(p, up, true, C.btn, 2);
+    p.text(RV, up.x + 3, up.y + 4, 'Up', C.cov);
+    box(p, home, true, C.btn, 2);
+    p.text(RV, home.x + 3, home.y + 4, 'Hm', C.blue);
     hits.add(up, { click: () => this.up(this.act) });
     hits.add(home, { click: () => this.changeDir(this.act, START_DIR) });
     const quick = this.quickOn;
-    const view = { x: bar.x + bar.w - 40, y: bar.y + 1, w: 40, h: 14 };
-    const field = { x: home.x + 22, y: bar.y, w: view.x - home.x - 26, h: 16 };
-    p.fill(field.x, field.y, field.w, field.h, C.inset);
-    p.bevel(field, 1, false);
-    p.text(RV, field.x + 4, field.y + 4, '/' + panel.dir + (panel.dir ? '/' : ''), C.bright);
-    box(p, view, !quick, quick ? C.inset : C.btn);
+    const view = { x: bar.x + bar.w - 36, y: bar.y + 1, w: 36, h: 14 };
+    const field = { x: home.x + 22, y: bar.y + 1, w: view.x - (home.x + 22) - 4, h: 14 };
+    box(p, field, false, C.inset, 2);
+    p.text(RV, field.x + 4, field.y + 3, '/' + panel.dir + (panel.dir ? '/' : ''), C.bright);
+    box(p, view, !quick, quick ? C.inset : C.btn, 2);
     p.text(RV, view.x + 6, view.y + 3, 'View', quick ? C.bright : C.text);
     hits.add(view, { click: () => { this.toggleQuick(); this.ws.requestDraw(); } });
   }
@@ -248,13 +247,17 @@ export class PmcPane {
     const panel = this.panels[idx];
     const active = idx === this.act;
     const quick = this.quickOn && idx === this.quickIdx;
-    const pathBar = { x: r.x, y: r.y, w: r.w, h: SUB };
+    const stat = { x: r.x, y: r.y + r.h - 14, w: r.w, h: 14 };
+    const well = wellFrame(p, { x: r.x, y: r.y, w: r.w, h: r.h - 16 });
+    const sb = { x: well.x + well.w - 14, y: well.y, w: 14, h: well.h };
+    const col = { x: well.x, y: well.y, w: well.w - 14, h: well.h };
+    const pathBar = { x: col.x, y: col.y, w: col.w, h: 13 };
     p.fill(pathBar.x, pathBar.y, pathBar.w, pathBar.h, active ? C.sel : C.win);
+    p.fill(pathBar.x, pathBar.y + 12, pathBar.w, 1, C.lo);
     const label = quick ? 'View: ' + this.cursorName(this.listIdx) : '/' + panel.dir + (panel.dir ? '/' : '');
-    p.text(RV, r.x + Math.floor((r.w - textWidth(RV, label)) / 2), r.y + 3, label, active ? C.dark : C.text);
+    p.text(RV, pathBar.x + Math.floor((pathBar.w - textWidth(RV, label)) / 2), pathBar.y + 3, label, active ? C.dark : C.text);
     hits.add(pathBar, { click: () => this.activate(idx) });
-    const statRect = { x: r.x, y: r.y + r.h - STAT, w: r.w, h: STAT };
-    const body = { x: r.x, y: r.y + SUB, w: r.w, h: r.h - SUB - STAT };
+    const body = { x: col.x, y: col.y + 26, w: col.w, h: col.h - 26 };
     panel.rect = body;
 
     if (quick) {
@@ -262,74 +265,68 @@ export class PmcPane {
       const view = this.quickView();
       if (view) view.draw(p, body, hits, focused);
       else p.text(RV, body.x + 4, body.y + 4, T.noViewer, C.cov);
-      this.statLine(p, statRect, T.quickFooter, '');
+      this.statLine(p, stat, T.quickFooter, '');
       return;
     }
 
     const items = this.items(panel);
     const n = items.length;
-    const listY = body.y + SUB;
-    const list = { x: body.x, y: listY, w: body.w, h: body.h - SUB };
-    panel.vis = Math.max(1, Math.floor(list.h / ROW));
+    const nameW = col.w - COL_SIZE - COL_DATE;
+    panel.vis = Math.max(1, Math.floor(body.h / ROW));
     panel.cursor = Math.min(panel.cursor, Math.max(0, n - 1));
     if (panel.cursor < panel.top) panel.top = panel.cursor;
     if (panel.cursor >= panel.top + panel.vis) panel.top = panel.cursor - panel.vis + 1;
     panel.top = Math.max(0, Math.min(panel.top, n - panel.vis));
 
-    this.header(p, body.x, body.y, body.w);
-    p.fill(list.x, list.y, list.w, list.h, C.inset);
-    const listW = list.w - SCROLL;
-    const nameW = listW - COL_SIZE - COL_DATE;
+    // The header: the three column names, with the lines between them.
+    p.fill(col.x, col.y + 13, col.w, 13, C.win);
+    p.fill(col.x, col.y + 25, col.w, 1, C.lo);
+    p.text(RV, col.x + 4, col.y + 16, 'Name', C.bright);
+    p.text(RV, col.x + nameW + 4, col.y + 16, 'Size', C.bright);
+    p.text(RV, col.x + nameW + COL_SIZE + 4, col.y + 16, 'Modified', C.bright);
+    p.fill(col.x + nameW, col.y + 13, 1, 13, C.lo);
+    p.fill(col.x + nameW + COL_SIZE, col.y + 13, 1, 13, C.lo);
+
+    p.fill(body.x, body.y, body.w, body.h, C.inset);
     // The list's own hit is added before its rows, so a row's click lies on top of it.
-    hits.add(list, {
+    hits.add(body, {
       wheel: (dy) => { this.activate(idx); this.move(idx, dy > 0 ? 3 : -3); },
       click: () => this.activate(idx),
     });
-    p.clip(list);
+    p.clip(body);
     for (let i = panel.top; i < Math.min(n, panel.top + panel.vis); i++) {
-      const row = { x: list.x, y: list.y + (i - panel.top) * ROW, w: listW, h: ROW };
-      this.row(p, hits, idx, items[i], i, row, nameW, active && focused, active);
+      const row = { x: body.x, y: body.y + (i - panel.top) * ROW, w: body.w, h: ROW };
+      this.row(p, hits, idx, items[i], i, row, nameW, focused && active, active);
     }
     p.unclip();
-    p.fill(list.x + nameW, list.y, 1, list.h, C.lo);
-    p.fill(list.x + nameW + COL_SIZE, list.y, 1, list.h, C.lo);
-    if (panel.error) p.text(RV, list.x + 4, list.y + 4, T.folderError, C.red);
-    scrollbar(p, hits, { x: list.x + listW, y: list.y, w: SCROLL, h: list.h }, {
+    p.fill(body.x + nameW, body.y, 1, body.h, C.lo);
+    p.fill(body.x + nameW + COL_SIZE, body.y, 1, body.h, C.lo);
+    if (panel.error) p.text(RV, body.x + 4, body.y + 4, T.folderError, C.red);
+    scrollbar(p, hits, sb, {
       top: panel.top, view: panel.vis, total: n,
       onTop: (t) => { panel.top = t; this.ws.requestDraw(); },
     });
+
     const cur = items[panel.cursor];
     const total = (panel.entries || []).reduce((sum, e) => sum + (e.dir ? 0 : e.size), 0);
-    const info = panel.search ? `Search: ${panel.search}_` : cur ? `${this.describe(cur)} · total ${formatSize(total)}` : '';
-    this.statLine(p, statRect, info, cur && !cur.up ? cur.date : '');
+    const info = panel.search ? `Search: ${panel.search}_` : cur ? `${this.describe(cur, panel)} · total ${formatSize(total)}` : '';
+    this.statLine(p, stat, info, cur && !cur.up ? cur.date : '');
   }
 
-  header(p, x, y, w) {
-    const nameW = w - SCROLL - COL_SIZE - COL_DATE;
-    p.fill(x, y, w, SUB, C.win);
-    p.text(RV, x + 3, y + 3, 'Name', C.bright);
-    p.text(RV, x + nameW + 3, y + 3, 'Size', C.bright);
-    p.text(RV, x + nameW + COL_SIZE + 3, y + 3, 'Modified', C.bright);
-    p.fill(x, y + SUB - 1, w, 1, C.lo);
-  }
-
-  // One row: the kind code, the name, the size on the right of its column, and the date.
-  // The cursor is brass in the focused active panel, dark in the other active one, and dim in the inactive panel.
+  // One row: the kind code and the name, the size right-aligned in its column, and the date. The cursor is brass
+  // in the focused active panel, dark-grey in the other active one, and not shown in the inactive panel, which dims it.
   row(p, hits, idx, item, i, r, nameW, focused, active) {
     const cursor = i === this.panels[idx].cursor;
-    if (cursor) {
-      if (focused) p.fill(r.x, r.y, r.w, r.h, C.sel);
-      else if (active) p.fill(r.x, r.y, r.w, r.h, C.lo);
-      else p.fill(r.x, r.y, r.w, r.h, C.csurf);
-    }
-    const kind = item.up ? 'up' : kindOf(item);
     const dark = cursor && focused;
+    if (cursor && active) p.fill(r.x, r.y, r.w, r.h, focused ? C.sel : C.lo);
+    const kind = item.up ? 'up' : kindOf(item);
+    const dim = cursor && !active;
     const name = item.dir && !item.up ? item.name + '/' : item.name;
     const size = item.up ? 'UP--DIR' : item.dir ? (kind === 'app' ? 'APP-DIR' : 'SUB-DIR') : formatSize(item.size);
-    p.text(RV, r.x + 3, r.y + 2, KIND[kind].code, dark ? C.dark : C[KIND[kind].color]);
-    p.text(RV, r.x + 21, r.y + 2, name, dark ? C.dark : item.dir ? C.bright : C.text);
-    p.text(RV, r.x + nameW + COL_SIZE - textWidth(RV, size) - 3, r.y + 2, size, dark ? C.dark : item.dir ? C.dim : C.text);
-    p.text(RV, r.x + nameW + COL_SIZE + 3, r.y + 2, item.date || '', dark ? C.dark : C.dim);
+    p.text(RV, r.x + 4, r.y + 2, KIND[kind].code, dark ? C.dark : C[KIND[kind].color]);
+    p.text(RV, r.x + 22, r.y + 2, name, dark ? C.dark : dim ? C.dim : item.dir ? C.bright : C.text);
+    p.text(RV, r.x + nameW + COL_SIZE - 4 - textWidth(RV, size), r.y + 2, size, dark ? C.dark : item.dir ? C.dim : C.text);
+    p.text(RV, r.x + nameW + COL_SIZE + 4, r.y + 2, item.date || '', dark ? C.dark : C.dim);
     hits.add(r, { click: () => this.click(idx, i) });
   }
 
@@ -358,34 +355,41 @@ export class PmcPane {
     return item ? (item.up ? '..' : item.name) : '';
   }
 
-  describe(item) {
+  // The status text of an entry: a folder's number of items, read on demand, or a file's size in bytes.
+  describe(item, panel) {
     if (item.up) return T.pmcUpDir;
-    if (item.dir) return `${item.name}/ · ${kindOf(item) === 'app' ? 'app' : 'folder'}`;
+    if (item.dir) {
+      if (kindOf(item) === 'app') return `${item.name}/ · app`;
+      const path = (panel.dir ? panel.dir + '/' : '') + item.name;
+      const entries = known(path);
+      if (!entries) { list(path).finally(() => this.ws.requestDraw()); return `${item.name}/ · …`; }
+      return `${item.name}/ · ${entries.length} items`;
+    }
     return `${item.name} · ${formatBytes(item.size)} bytes`;
   }
 
   // The status line: what the cursor is on, and its date in a box on the right.
+  // The status line under a panel: what the cursor is on, and its date in a sunken box on the right.
   statLine(p, r, text, date) {
-    const dateW = 60;
+    const dateW = textWidth(RV, date) + 12;
     const left = { x: r.x, y: r.y, w: r.w - dateW - 2, h: r.h };
-    p.fill(left.x, left.y, left.w, left.h, C.inset);
     p.bevel(left, 1, false);
-    p.text(RV, left.x + 4, left.y + 3, fitText(RV, text, left.w - 8), C.bright);
+    p.text(RV, left.x + 6, left.y + 3, fitText(RV, text, left.w - 12), C.text);
     const right = { x: r.x + r.w - dateW, y: r.y, w: dateW, h: r.h };
-    p.fill(right.x, right.y, right.w, right.h, C.inset);
     p.bevel(right, 1, false);
-    p.text(RV, right.x + 4, right.y + 3, date, C.dim);
+    p.text(RV, right.x + 6, right.y + 3, date, C.text);
   }
 
+  // The key bar: six cells with the key in a dark box and the name after it.
   keysBar(p, hits, r) {
-    const w = Math.floor(r.w / MC_KEYS.length);
+    const cellW = Math.floor((r.w - 2 * (MC_KEYS.length - 1)) / MC_KEYS.length);
     MC_KEYS.forEach((k, i) => {
-      const cell = { x: r.x + i * w, y: r.y, w: i === MC_KEYS.length - 1 ? r.w - i * w : w - 2, h: r.h };
-      box(p, cell, true, C.btn);
+      const cell = { x: r.x + i * (cellW + 2), y: r.y, w: cellW, h: r.h };
+      box(p, cell, true, C.btn, 1);
       const keyW = textWidth(RV, k.key);
-      p.fill(cell.x + 3, cell.y + 3, keyW + 2, 8, C.dark);
-      p.text(RV, cell.x + 4, cell.y + 3, k.key, C.bright);
-      p.text(RV, cell.x + 6 + keyW, cell.y + 3, k.label, C.text);
+      p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
+      p.text(RV, cell.x + 7, cell.y + 3, k.key, C.bright);
+      p.text(RV, cell.x + 4 + keyW + 6 + 4, cell.y + 3, k.label, C.text);
       // Letters only says how the search works; its click makes the panel active, like its keys would.
       hits.add(cell, { click: () => (k.action ? this.mcKey(k.action) : this.activate(this.listIdx)) });
     });

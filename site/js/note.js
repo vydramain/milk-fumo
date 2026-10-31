@@ -43,14 +43,17 @@ export class NoteBody {
     this.ws.requestDraw();
   }
 
+  // The note is a sunken well with the text inside it, padded as the prototype's .md (8 px by 10 px).
   draw(p, r, hits) {
     p.fill(r.x, r.y, r.w, r.h, C.inset);
+    p.bevel(r, 2, false);
+    const well = { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 };
     if (this.error) {
-      p.text(RV, r.x + PAD_X, r.y + PAD_Y, `Could not load ${this.path}`, C.red);
+      p.text(RV, well.x + PAD_X, well.y + PAD_Y, `Could not load ${this.path}`, C.red);
       return;
     }
     if (!this.blocks) return;
-    const view = { x: r.x + PAD_X, y: r.y + PAD_Y, w: r.w - 2 * PAD_X, h: r.h - 2 * PAD_Y };
+    const view = { x: well.x + PAD_X, y: well.y + PAD_Y, w: well.w - 2 * PAD_X, h: well.h - 2 * PAD_Y };
     let lay = layout(this.blocks, view.w, (a) => this.ws.progressOf(a));
     const scroll = lay.height > view.h;
     if (scroll) lay = layout(this.blocks, view.w - 14, (a) => this.ws.progressOf(a));
@@ -66,7 +69,7 @@ export class NoteBody {
       hits.add({ x: view.x + h.x, y, w: h.w, h: h.h }, { click: () => window.open(h.href, '_blank', 'noopener,noreferrer') });
     }
     if (scroll) {
-      scrollbar(p, hits, { x: r.x, y: r.y, w: r.w, h: r.h }, {
+      scrollbar(p, hits, well, {
         top: this.top, view: view.h, total: lay.height,
         onTop: (t) => { this.top = t; this.ws.requestDraw(); },
       });

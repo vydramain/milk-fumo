@@ -1,7 +1,7 @@
 // The tile layout: a tree, with no DOM. A split node divides its rectangle between a and b:
 // axis 'h' puts a left of b, axis 'v' puts a above b. A leaf holds tabs (pane ids), one of them active.
 // Tiles never overlap. The minimum sizes come from the panes through minOf(paneId) -> {w, h}.
-import { CHROME, CONTENT_INSET, FRAME, PAD, SPLITTER, TABS_H, TABS_STRIP, TITLE_H, EDGE_SHARE } from './metrics.js';
+import { CHROME, TILE_INSET, TILE_TOP, SPLITTER, TABS_H, TITLE_H, EDGE_SHARE } from './metrics.js';
 
 export function leaf(tabs) {
   return { tabs, active: 0 };
@@ -94,7 +94,7 @@ export function movePane(L, id, target, side) {
   return true;
 }
 
-// The minimum size of a node: a tile holds the largest minimum of its tabs plus the frame and the tab strip.
+// The minimum size of a node: a tile holds the largest minimum of its tabs plus its chrome, the tab strip included.
 export function minSize(node, minOf) {
   if (node.tabs) {
     let w = 0, h = 0;
@@ -103,7 +103,7 @@ export function minSize(node, minOf) {
       w = Math.max(w, m.w);
       h = Math.max(h, m.h);
     }
-    return { w: w + CHROME.w, h: h + CHROME.h + (node.tabs.length > 1 ? TABS_STRIP : 0) };
+    return { w: w + CHROME.w, h: h + CHROME.h };
   }
   const a = minSize(node.a, minOf), b = minSize(node.b, minOf);
   return node.axis === 'h'
@@ -136,23 +136,18 @@ export function place(root, rect, minOf) {
   return out;
 }
 
-// The inside of a tile: below the title bar, above the tab strip when the tile is stacked.
-export function contentRect(tile, stacked) {
-  const top = CONTENT_INSET + FRAME + PAD;
-  return {
-    x: tile.x + CONTENT_INSET,
-    y: tile.y + top,
-    w: tile.w - 2 * CONTENT_INSET,
-    h: tile.h - top - CONTENT_INSET - (stacked ? TABS_STRIP : 0),
-  };
+// The inside of a tile: between the title bar and the tab strip.
+export function contentRect(tile) {
+  return { x: tile.x + TILE_INSET, y: tile.y + TILE_TOP, w: tile.w - CHROME.w, h: tile.h - CHROME.h };
 }
 
 export function titleRect(tile) {
-  return { x: tile.x + CONTENT_INSET, y: tile.y + CONTENT_INSET, w: tile.w - 2 * CONTENT_INSET, h: TITLE_H };
+  return { x: tile.x + TILE_INSET, y: tile.y + TILE_INSET, w: tile.w - CHROME.w, h: TITLE_H };
 }
 
+// The tab strip: the bottom 14 px of the tile, inside its 2 px of padding and frame.
 export function tabsRect(tile) {
-  return { x: tile.x + CONTENT_INSET, y: tile.y + tile.h - CONTENT_INSET - TABS_H, w: tile.w - 2 * CONTENT_INSET, h: TABS_H };
+  return { x: tile.x + TILE_INSET, y: tile.y + tile.h - TILE_INSET - TABS_H, w: tile.w - CHROME.w, h: TABS_H };
 }
 
 export function inside(r, x, y) {
@@ -184,7 +179,7 @@ export function dropTarget(leaves, x, y) {
   for (const l of leaves) {
     const r = l.rect;
     if (!inside(r, x, y)) continue;
-    if (l.node.tabs.length > 1 && inside(tabsRect(r), x, y)) return { leaf: l.node, side: 'stack', rect: r };
+    if (inside(tabsRect(r), x, y)) return { leaf: l.node, side: 'stack', rect: r };
     const fx = (x - r.x) / r.w, fy = (y - r.y) / r.h;
     const dists = { left: fx, right: 1 - fx, top: fy, bottom: 1 - fy };
     const side = Object.keys(dists).reduce((a, b) => (dists[b] < dists[a] ? b : a));
@@ -203,18 +198,16 @@ export function dropPreview(drop) {
   return { x: r.x, y: r.y + r.h / 2, w: r.w, h: r.h / 2 };
 }
 
-// The border an arrow moves: the nearest split on the arrow's axis that has its border on that side of the tile.
-// Right and down move the border forward, so the first part grows by 1; left and up shrink it by 1.
+// The border an arrow moves: the nearest split on the arrow's axis. Right and down move that border forward,
+// so the first part grows by 1 and the second shrinks; left and up move it back. A tile can grow or shrink
+// whichever side of the border it is on.
 export function resizeTarget(root, id, dir) {
   const path = pathToPane(root, id);
   if (!path) return null;
   const axis = dir === 'left' || dir === 'right' ? 'h' : 'v';
   const forward = dir === 'right' || dir === 'down';
   for (let i = path.length - 2; i >= 0; i--) {
-    const node = path[i];
-    if (node.axis !== axis) continue;
-    const inFirst = path[i + 1] === node.a;
-    if (inFirst === forward) return { node, sign: forward ? 1 : -1 };
+    if (path[i].axis === axis) return { node: path[i], sign: forward ? 1 : -1 };
   }
   return null;
 }

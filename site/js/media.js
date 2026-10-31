@@ -131,18 +131,27 @@ export class Player {
     const time = timeText(e.currentTime);
     p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
     const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
-    p.text(RV, tx, now.y + 14, this.entry.name, C.ct);
+    p.text(RV, tx, now.y + 10, this.entry.name, C.ct, 2);
     const folder = this.dir ? '/' + this.dir + '/' : '/';
-    p.text(RV, tx, now.y + 30, `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}`, C.cs);
+    p.text(RV, tx, now.y + 40, `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}`, C.cs);
 
+    // The position: a sunken slider, a scale of ticks under it, and the caption with the times.
     const seek = { x: r.x + 2, y: r.y + 62, w: r.w - 4, h: 10 };
     const frac = this.duration() ? e.currentTime / this.duration() : 0;
     p.fill(seek.x, seek.y, seek.w, seek.h, C.inset);
+    p.bevel(seek, 1, false);
     p.fill(seek.x + 1, seek.y + 1, Math.round((seek.w - 2) * frac), seek.h - 2, C.sel);
     box(p, { x: seek.x + Math.round((seek.w - 2) * frac) - 2, y: seek.y - 2, w: 4, h: 14 }, true, C.btn);
     hits.add(seek, { press: (x) => { this.seek((x - seek.x) / seek.w); return (qx) => this.seek((qx - seek.x) / seek.w); } });
+    const ruler = { x: seek.x, y: seek.y + 13, w: seek.w, h: 8 };
+    for (let x = 0; x < ruler.w; x += 6) p.fill(ruler.x + x, ruler.y + (x % 30 ? 4 : 0), 1, x % 30 ? 4 : 8, C.dim);
+    const caption = { x: seek.x, y: ruler.y + 9, w: seek.w, h: 8 };
+    p.text(RV, caption.x, caption.y, timeText(e.currentTime), C.dim);
+    p.text(RV, caption.x + Math.floor((caption.w - textWidth(RV, 'Position')) / 2), caption.y, 'Position', C.dim);
+    const dur = timeText(this.duration());
+    p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.dim);
 
-    const row = r.y + 84;
+    const row = r.y + 104;
     this.audioButtons(p, hits, r.x + 2, row);
     const vol = { x: r.x + 2 + 5 * (BUTTON + 4) + 14 + BUTTON + 6, y: row + 13, w: 60, h: 14 };
     p.dither(vol, C.inset, C.lo);
@@ -199,7 +208,7 @@ export class Player {
     const icon = (code, click, on) => {
       const b = { x, y: r.y, w: 20, h: 16 };
       box(p, b, !on, on ? C.inset : C.btn);
-      p.text(VGA, b.x + 1, b.y + 3, code, CONTROL_COLOR[code]);
+      p.text(RV, b.x + 3, b.y + 4, code, CONTROL_COLOR[code]);
       hits.add(b, { click });
       x += 22;
     };

@@ -41,10 +41,17 @@ export function list(path) {
   if (!cache.has(path)) {
     const pending = fetchList(path);
     cache.set(path, pending);
+    pending.then((entries) => resolved.set(path, entries));
     // A failed listing is not kept: the next visit to the folder asks again.
     pending.catch(() => cache.delete(path));
   }
   return cache.get(path);
+}
+
+// The entries of a folder that has been read already, or undefined: for the status line, which cannot wait.
+const resolved = new Map();
+export function known(path) {
+  return resolved.get(path);
 }
 
 async function fetchList(path) {

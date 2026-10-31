@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as L from '../site/js/layout.js';
-import { CHROME, TABS_STRIP, PANE_MIN, SPLITTER } from '../site/js/metrics.js';
+import { CHROME, PANE_MIN, SPLITTER } from '../site/js/metrics.js';
 
 const min = { a: PANE_MIN.generic, b: PANE_MIN.generic, c: PANE_MIN.app };
 const minOf = (id) => min[id];
@@ -30,11 +30,10 @@ test('a closed tile gives its space back to its neighbor', () => {
   assert.equal(layout.root.tabs.length, 1);
 });
 
-test('the minimum of a tile is its pane plus the frame, and a stack adds the tab strip', () => {
+test('the minimum of a tile is its pane plus its chrome; the tab strip is part of the chrome, so a stack adds nothing', () => {
   const one = L.minSize(L.leaf(['a']), minOf);
   assert.deepEqual(one, { w: PANE_MIN.generic.w + CHROME.w, h: PANE_MIN.generic.h + CHROME.h });
-  const stacked = L.minSize(L.leaf(['a', 'b']), minOf);
-  assert.equal(stacked.h, one.h + TABS_STRIP);
+  assert.deepEqual(L.minSize(L.leaf(['a', 'b']), minOf), one);
 });
 
 test('a dropped title bar near an edge makes a neighbor; in the middle it stacks', () => {
@@ -48,7 +47,9 @@ test('an arrow moves the border on its side: right grows the first part when the
   const root = L.split('h', L.leaf(['a']), L.leaf(['b']));
   assert.equal(L.resizeTarget(root, 'a', 'right').sign, 1);
   assert.equal(L.resizeTarget(root, 'b', 'left').sign, -1);
-  assert.equal(L.resizeTarget(root, 'a', 'left'), null);
+  // A tile on the left can shrink with left, and one on the right can shrink with right.
+  assert.equal(L.resizeTarget(root, 'a', 'left').sign, -1);
+  assert.equal(L.resizeTarget(root, 'b', 'right').sign, 1);
 });
 
 test('moving a pane into a stack keeps one leaf with two tabs', () => {

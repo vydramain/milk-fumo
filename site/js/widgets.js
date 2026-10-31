@@ -29,10 +29,29 @@ export class Hits {
   }
 }
 
-// A raised or sunken 1px box, as the small buttons and fields of the prototype.
-export function box(p, r, raised, color = C.btn) {
+// A raised or sunken box, as the prototype's classes: `raised` and `sunken` are 2 px, `raised1` and `sunken1` 1 px.
+export function box(p, r, raised, color = C.btn, width = 1) {
   p.fill(r.x, r.y, r.w, r.h, color);
-  p.bevel(r, 1, raised);
+  p.bevel(r, width, raised);
+}
+
+// The panel of the prototype's .i-panel: a 1 px dark line on the top and left, a light line inside it, and a light
+// shadow outside on the right and bottom. Returns the inside, which is 1 px border and 4 px padding in.
+export function panelFrame(p, r) {
+  p.fill(r.x, r.y, r.w, 1, C.lo);
+  p.fill(r.x, r.y, 1, r.h, C.lo);
+  p.fill(r.x + 1, r.y + 1, r.w - 2, 1, C.hi);
+  p.fill(r.x + 1, r.y + 1, 1, r.h - 2, C.hi);
+  p.fill(r.x + r.w, r.y + 1, 1, r.h, C.hi);
+  p.fill(r.x + 1, r.y + r.h, r.w, 1, C.hi);
+  return { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 };
+}
+
+// A sunken well: the 2 px frame of the prototype's .sunken. Returns the inside.
+export function wellFrame(p, r, color = C.inset) {
+  p.fill(r.x, r.y, r.w, r.h, color);
+  p.bevel(r, 2, false);
+  return { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 };
 }
 
 // Text centered in a rectangle: x and y of the text.
@@ -45,8 +64,7 @@ export function centerText(font, r, s, scale = 1) {
 
 // A button: a raised box with a label. `on` makes it pressed.
 export function button(p, hits, r, label, { on = false, color = C.text, click } = {}) {
-  box(p, r, !on, on ? C.inset : C.btn);
-  if (on) p.bevel(r, 1, false);
+  box(p, r, !on, on ? C.inset : C.btn, 2);
   const at = centerText(RV, r, label);
   p.text(RV, at.x, at.y, label, on ? C.bright : color);
   if (click) hits.add(r, { click });
@@ -98,10 +116,4 @@ export function bitmap(p, x, y, rows, cols, color, scale = 1) {
       if ((bits >> (cols - 1 - c)) & 1) p.fill(x + c * scale, y + row * scale, scale, scale, color);
     }
   });
-}
-
-// A slanted tab of the tile strip: the prototype's tab, a parallelogram with its own bevel.
-export function tabShape(r) {
-  const skew = 6;
-  return [[r.x + skew, r.y], [r.x + r.w + skew, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]];
 }
