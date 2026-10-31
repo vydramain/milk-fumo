@@ -324,7 +324,7 @@ export class PmcPane {
     const name = item.dir && !item.up ? item.name + '/' : item.name;
     const size = item.up ? 'UP--DIR' : item.dir ? (kind === 'app' ? 'APP-DIR' : 'SUB-DIR') : formatSize(item.size);
     p.text(RV, r.x + 4, r.y + 2, KIND[kind].code, dark ? C.dark : C[KIND[kind].color]);
-    p.text(RV, r.x + 22, r.y + 2, name, dark ? C.dark : dim ? C.dim : item.dir ? C.bright : C.text);
+    p.text(RV, r.x + 22, r.y + 2, fitText(RV, name, nameW - 26), dark ? C.dark : dim ? C.dim : item.dir ? C.bright : C.text);
     p.text(RV, r.x + nameW + COL_SIZE - 4 - textWidth(RV, size), r.y + 2, size, dark ? C.dark : item.dir ? C.dim : C.text);
     p.text(RV, r.x + nameW + COL_SIZE + 4, r.y + 2, item.date || '', dark ? C.dark : C.dim);
     hits.add(r, { click: () => this.click(idx, i) });

@@ -1,14 +1,19 @@
 // The media player: an audio or video element created by the script and never put in the page.
 // Video frames are drawn into the canvas. The same player serves the audio and video tiles and the quick view.
+// Both layouts share the top: now playing, the position, the six buttons and the volume. Then the playlist (audio)
+// or the frame with its view buttons (video).
 import { C } from './theme.js';
 import { PANE_MIN } from './metrics.js';
-import { RV, VGA, textWidth } from './font.js';
+import { RV, VGA, textWidth, fitText } from './font.js';
 import { urlOf } from './catalog.js';
 import { box, button } from './widgets.js';
 
 const CONTROL_COLOR = { Pv: C.blue, Pl: C.green, Ps: C.yellow, Sp: C.red, Nx: C.blue, Mt: C.mauve };
 const SPEEDS = ['fit', '1x', '2x'];
-const BUTTON = 40;
+const BUTTON = 40, GAP = 4, PAD = 4;
+const NOW_H = 56;
+const ROW = NOW_H + 48;           // the buttons: below the position and its caption
+const VOLUME_H = 14;
 
 function timeText(sec) {
   if (!Number.isFinite(sec) || sec < 0) return '--:--';
@@ -41,8 +46,8 @@ export class Player {
     this.load(index, false);
   }
 
-  // The smallest tile a player fits in: its five buttons, as in the prototype.
-  get minimum() { return PANE_MIN.player; }
+  // The smallest tile a player fits in: its six buttons across, and for a video the frame under the controls.
+  get minimum() { return this.kind === 'video' ? PANE_MIN.video : PANE_MIN.player; }
 
   get entry() { return this.set[this.index]; }
 
@@ -123,17 +128,21 @@ export class Player {
     return true;
   }
 
-  // Audio layout: a now-playing well, the position, the buttons, the volume and the playlist.
-  drawAudio(p, r, hits) {
+  // The top of both layouts, from y = r.y: a now-playing well, the position, the six buttons and the volume.
+  // Returns the y under the volume.
+  transport(p, hits, r) {
     const e = this.element;
-    const now = { x: r.x, y: r.y, w: r.w, h: 56 };
+    const now = { x: r.x, y: r.y, w: r.w, h: NOW_H };
     p.fill(now.x, now.y, now.w, now.h, C.cb);
     const time = timeText(e.currentTime);
     p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
     const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
-    p.text(RV, tx, now.y + 10, this.entry.name, C.ct, 2);
+    const tw = now.x + now.w - 8 - tx;
+    p.text(RV, tx, now.y + 10, fitText(RV, this.entry.name, tw, 2), C.ct, 2);
     const folder = this.dir ? '/' + this.dir + '/' : '/';
-    p.text(RV, tx, now.y + 40, `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}`, C.cs);
+    const size = this.kind === 'video' ? ` · ${this.videoSize()}` : '';
+    const meta = `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}${size}`;
+    p.text(RV, tx, now.y + 40, fitText(RV, meta, tw), C.cs);
 
     // The position: a sunken slider, a scale of ticks under it, and the caption with the times.
     const seek = { x: r.x + 2, y: r.y + 62, w: r.w - 4, h: 10 };
@@ -151,30 +160,29 @@ export class Player {
     const dur = timeText(this.duration());
     p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.dim);
 
-    const row = r.y + 104;
-    this.audioButtons(p, hits, r.x + 2, row);
-    const vol = { x: r.x + 2 + 5 * (BUTTON + 4) + 14 + BUTTON + 6, y: row + 13, w: 60, h: 14 };
+    const row = r.y + ROW;
+    this.controls(p, hits, r.x + Math.floor((r.w - 6 * BUTTON - 5 * GAP) / 2), row);
+    const vol = { x: r.x + PAD, y: row + BUTTON + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
     p.dither(vol, C.inset, C.lo);
     p.bevel(vol, 1, false);
     const level = Math.round((vol.w - 4) * (e.muted ? 0 : e.volume));
     p.fill(vol.x + 2, vol.y + 4, level, 6, C.sel);
     p.text(RV, vol.x + vol.w + 6, vol.y + 3, `Vol. ${Math.round(e.volume * 100)}%`, C.text);
     hits.add(vol, { press: (x) => { this.setVolume((x - vol.x) / vol.w); return (qx) => this.setVolume((qx - vol.x) / vol.w); } });
-
-    this.playlist(p, hits, { x: r.x, y: row + 52, w: r.w, h: Math.max(0, r.y + r.h - (row + 52)) });
+    return vol.y + vol.h;
   }
 
-  audioButtons(p, hits, x, y) {
+  // The six transport buttons in one row: previous, play, pause, stop, next, mute.
+  controls(p, hits, x, y) {
     const items = [
       { code: 'Pv', label: 'Prev', click: () => this.load(this.index - 1, this.playing) },
       { code: 'Pl', label: 'Play', click: () => this.play(), on: this.playing },
       { code: 'Ps', label: 'Pause', click: () => this.pause() },
       { code: 'Sp', label: 'Stop', click: () => this.stop() },
       { code: 'Nx', label: 'Next', click: () => this.load(this.index + 1, this.playing) },
+      { code: 'Mt', label: 'Mute', click: () => this.toggleMute(), on: this.element.muted },
     ];
-    items.forEach((it, i) => this.controlButton(p, hits, { x: x + i * (BUTTON + 4), y, w: BUTTON, h: BUTTON }, it));
-    this.controlButton(p, hits, { x: x + 5 * (BUTTON + 4) + 10, y, w: BUTTON, h: BUTTON },
-      { code: 'Mt', label: 'Mute', click: () => this.toggleMute(), on: this.element.muted });
+    items.forEach((it, i) => this.controlButton(p, hits, { x: x + i * (BUTTON + GAP), y, w: BUTTON, h: BUTTON }, it));
   }
 
   controlButton(p, hits, r, { code, label, click, on = false }) {
@@ -182,6 +190,12 @@ export class Player {
     p.text(VGA, r.x + Math.floor((r.w - 18) / 2), r.y + 6, code, CONTROL_COLOR[code]);
     p.text(RV, r.x + Math.floor((r.w - textWidth(RV, label)) / 2), r.y + 27, label, C.text);
     hits.add(r, { click });
+  }
+
+  // Audio layout: the transport, then the playlist of the folder.
+  drawAudio(p, r, hits) {
+    const end = this.transport(p, hits, r);
+    this.playlist(p, hits, { x: r.x, y: end + 6, w: r.w, h: Math.max(0, r.y + r.h - (end + 6)) });
   }
 
   playlist(p, hits, r) {
@@ -202,54 +216,28 @@ export class Player {
     });
   }
 
-  // Video layout: the controls, the frame with the volume wheel on the left, the position and the caption.
+  // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame and its caption.
   drawVideo(p, r, hits) {
-    let x = r.x;
-    const icon = (code, click, on) => {
-      const b = { x, y: r.y, w: 20, h: 16 };
-      box(p, b, !on, on ? C.inset : C.btn);
-      p.text(RV, b.x + 3, b.y + 4, code, CONTROL_COLOR[code]);
-      hits.add(b, { click });
-      x += 22;
-    };
-    icon('Pl', () => this.play(), this.playing);
-    icon('Ps', () => this.pause(), false);
-    icon('Sp', () => this.stop(), false);
-    x += 6;
+    const end = this.transport(p, hits, r);
+    const y = end + 4;
+    let x = r.x + PAD;
     for (const s of SPEEDS) {
-      const b = { x, y: r.y, w: 30, h: 16 };
+      const b = { x, y, w: 30, h: 16 };
       button(p, hits, b, s === 'fit' ? 'Fit' : s, { on: this.speed === s, click: () => { this.speed = s; this.ws.requestDraw(); } });
       x += 33;
     }
     x += 6;
-    const cb = { x, y: r.y + 3, w: 10, h: 10 };
+    const cb = { x, y: y + 3, w: 10, h: 10 };
     box(p, cb, false, C.inset);
     if (this.loop) p.fill(cb.x + 3, cb.y + 3, 4, 4, C.sel);
-    p.text(RV, cb.x + 14, r.y + 4, 'Loop', C.text);
-    hits.add({ x: cb.x, y: r.y, w: 60, h: 16 }, { click: () => { this.loop = !this.loop; this.ws.requestDraw(); } });
+    p.text(RV, cb.x + 14, y + 4, 'Loop', C.text);
+    hits.add({ x: cb.x, y, w: 60, h: 16 }, { click: () => { this.loop = !this.loop; this.ws.requestDraw(); } });
 
-    const area = { x: r.x, y: r.y + 20, w: r.w, h: r.h - 20 - 16 };
-    const wheel = { x: area.x + 2, y: area.y + 6, w: 14, h: 60 };
-    p.fill(wheel.x, wheel.y, wheel.w, wheel.h, C.btn);
-    p.bevel(wheel, 1, false);
-    const level = Math.round((wheel.h - 4) * (this.element.muted ? 0 : this.element.volume));
-    p.fill(wheel.x + 3, wheel.y + wheel.h - 2 - level, wheel.w - 6, level, C.sel);
-    hits.add(wheel, {
-      wheel: (dy) => this.volumeBy(dy < 0 ? 0.05 : -0.05),
-      press: (px, py) => { this.setVolume((wheel.y + wheel.h - py) / wheel.h); return (qx, qy) => this.setVolume((wheel.y + wheel.h - qy) / wheel.h); },
-    });
-
-    const frame = { x: area.x + 20, y: area.y + 4, w: area.w - 40, h: area.h - 24 };
+    const frame = { x: r.x + PAD, y: y + 22, w: r.w - 2 * PAD, h: Math.max(0, r.y + r.h - 12 - (y + 22)) };
     p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
     this.drawFrame(p, frame);
-    const seek = { x: frame.x, y: r.y + r.h - 22, w: frame.w, h: 8 };
-    const frac = this.duration() ? this.element.currentTime / this.duration() : 0;
-    p.fill(seek.x, seek.y + 3, seek.w, 1, C.dim);
-    p.fill(seek.x + Math.round(seek.w * frac), seek.y, 2, 8, C.sel);
-    hits.add({ x: seek.x, y: seek.y - 4, w: seek.w, h: 16 }, { press: (px) => { this.seek((px - seek.x) / seek.w); return (qx) => this.seek((qx - seek.x) / seek.w); } });
-
-    const caption = `Volume — wheel on the left, position — scale below · ${this.entry.name} · ${this.videoSize()} · ${timeText(this.element.currentTime)} / ${timeText(this.duration())}`;
-    p.text(RV, r.x, r.y + r.h - 8, caption, C.dim);
+    const caption = `${this.entry.name} · ${timeText(this.element.currentTime)} / ${timeText(this.duration())}`;
+    p.text(RV, r.x + PAD, r.y + r.h - 9, fitText(RV, caption, r.w - 2 * PAD), C.dim);
   }
 
   videoSize() {
@@ -272,7 +260,7 @@ export class Player {
     p.unclip();
   }
 
-  // Draws the player in a rectangle; the audio and video layouts differ.
+  // Draws the player in a rectangle; the audio and video layouts differ below the transport.
   draw(p, r, hits) {
     if (this.kind === 'video') this.drawVideo(p, r, hits);
     else this.drawAudio(p, r, hits);

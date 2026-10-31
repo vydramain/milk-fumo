@@ -5,10 +5,24 @@ import { RV, textWidth } from './font.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
 export class Hits {
-  constructor() { this.list = []; }
+  constructor() { this.list = []; this.clips = []; }
+
+  // A tile's body is drawn inside its content rectangle, and its hits are kept inside it too: a button that
+  // reaches past the edge of its tile is not drawn, so it must not take a click that belongs to the next tile.
+  clip(r) { this.clips.push(r); }
+  unclip() { this.clips.pop(); }
 
   // on: { click(x, y), wheel(dy), press(x, y) -> { move, up } | move | undefined }
-  add(r, on) { this.list.push({ r, on }); }
+  add(r, on) {
+    const c = this.clips.at(-1);
+    if (c) {
+      const x0 = Math.max(r.x, c.x), y0 = Math.max(r.y, c.y);
+      const x1 = Math.min(r.x + r.w, c.x + c.w), y1 = Math.min(r.y + r.h, c.y + c.h);
+      if (x1 <= x0 || y1 <= y0) return;
+      r = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+    this.list.push({ r, on });
+  }
 
   // The topmost hit under a point that has the handler `key`, or null.
   find(x, y, key) {

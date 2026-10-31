@@ -6,6 +6,7 @@ import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
 import { Hits, box } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
+import { view } from './view.js';
 import { HOME_NOTE, TUTORIAL_NOTE } from './config.js';
 import { setOf, list, kindOf } from './catalog.js';
 import { PmcPane } from './pmc.js';
@@ -16,7 +17,7 @@ import { AppPane } from './app.js';
 
 const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-const KEYS_MENU = { KeyH: 'split-right', KeyV: 'split-down', Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close' };
+const KEYS_MENU = { KeyH: 'split-right', KeyV: 'split-down', Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
 const EMPTY_TILE_MIN = PANE_MIN.generic;
 
 // An empty tile: a button that opens pmc in it, and the keyboard way under the button. Only the button opens pmc.
@@ -371,6 +372,24 @@ export class Workspace {
     this.area = { x: MARGIN, y: MARGIN, w: w - 2 * MARGIN, h: h - 2 * MARGIN - MSG_H - ENV_H - 2 * MARGIN };
   }
 
+  // Shift+S: the UI scale goes between 1x and 2x. 2x is refused, with its size, when the window cannot hold the layout.
+  cycleScale() {
+    const next = view.ui === 1 ? 2 : 1;
+    if (!this.fitsScale(next)) {
+      const m = this.minimum();
+      this.msg = `${T.scaleNeeds} ${Math.ceil(m.w * next / view.dpr)}×${Math.ceil(m.h * next / view.dpr)}`;
+      return;
+    }
+    view.ui = next;
+    this.msg = `${T.scaleNow} ${next}x`;
+  }
+
+  // Whether the layout fits the window at a UI scale: the window in layout pixels is at least the minimum.
+  fitsScale(ui) {
+    const m = this.minimum();
+    return innerWidth * view.dpr / ui >= m.w && innerHeight * view.dpr / ui >= m.h;
+  }
+
   // The smallest window the current layout fits in: the layout's minimum plus the margins and the bars.
   minimum() {
     const m = L.minSize(this.L.root, (id) => this.minOf(id)) || { w: 0, h: 0 };
@@ -429,6 +448,7 @@ export class Workspace {
       'close': () => this.closeFocus(),
       'focus': () => this.focusNext(),
       'move': () => this.startMove(),
+      'scale': () => this.cycleScale(),
     };
     if (actions[name]) actions[name]();
     this.requestDraw();
@@ -544,14 +564,19 @@ export class Workspace {
     p.bevel(rect, 2, true);
     if (id === this.focus) this.focusRing(p, rect);
     this.hits.add(rect, { click: () => this.focusByUser(id) });
+    // The title bar and the tab strip are inside the tile, and their hits stay inside it too.
+    this.hits.clip(rect);
     const titleR = L.titleRect(rect);
     p.dither(titleR, C.win, C.lo);
     this.titleBar(p, id, titleR);
     this.tabStrip(p, node, rect);
+    this.hits.unclip();
     const content = L.contentRect(rect);
     this.rects.set(id, content);
     p.clip(content);
+    this.hits.clip(content);
     tile.body.draw(p, content, this.hits, id === this.focus);
+    this.hits.unclip();
     p.unclip();
   }
 
@@ -631,8 +656,11 @@ export class Workspace {
       const on = (c.command === 'resize' && this.mode === 'resize') || (c.command === 'move' && this.mode === 'move') || (c.command === 'maximize' && this.L.max);
       p.fill(r.x, r.y, r.w, r.h, on ? C.inset : C.win);
       p.bevel(r, 1, !on);
-      p.text(RV, r.x + 4, r.y + 4, c.key, C.sel);
-      p.text(RV, r.x + 6 + textWidth(RV, c.key), r.y + 4, c.label, C.text);
+      // The key and the label are cut to the cell, so a narrow window (or UI scale 2x) never runs one into the next.
+      const key = fitText(RV, c.key, w - 8);
+      const kw = textWidth(RV, key);
+      p.text(RV, r.x + 4, r.y + 4, key, C.sel);
+      p.text(RV, r.x + 6 + kw, r.y + 4, fitText(RV, c.label, Math.max(0, w - kw - 12)), C.text);
       this.hits.add(r, { click: () => this.command(c.command) });
     });
   }

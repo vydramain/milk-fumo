@@ -6,15 +6,25 @@ export const RV = { glyphs: RV_FONT, cols: 8, rows: 8, advance: 6, bit: (row, c)
 // PxPlus IBM VGA 9x16: 9 columns, advance 9. Row bit 8 is the leftmost column.
 export const VGA = { glyphs: VGA_9X16, cols: 9, rows: 16, advance: 9, bit: (row, c) => (row >> (8 - c)) & 1 };
 
+// Box and rule characters that rv_font lacks, drawn as rows of its 8x8 cell: a middle dot, a vertical bar, and
+// horizontal rules on the middle row (row 3 of the 7-row ink), in the same pixel weight as the letters.
+const RULES = {
+  0x00b7: [0, 0, 0, 0, 0b01000000, 0, 0, 0],                       // ·
+  0x2502: [0b00100000, 0b00100000, 0b00100000, 0b00100000, 0b00100000, 0b00100000, 0b00100000, 0b00100000], // │
+  0x2500: [0, 0, 0, 0b11111000, 0, 0, 0, 0],                       // ─
+  0x2014: [0, 0, 0, 0b11111100, 0, 0, 0, 0],                       // —
+};
+
 // Characters the tables do not have, drawn as their nearest ASCII form. A glyph is one cell, so the width holds.
 const SUBSTITUTE = {
-  '│': '|', '─': '-', '—': '-', '–': '-', '·': '.', '…': '.', '×': 'x',
+  '│': '|', '─': '-', '—': '-', '·': '.', '–': '-', '…': '.', '×': 'x',
   '“': '"', '”': '"', '‘': "'", '’': "'", '→': '>', '←': '<', '›': '>', '‹': '<',
 };
 
 export function glyphOf(font, ch) {
   const code = ch.codePointAt(0);
   if (font.glyphs[code]) return font.glyphs[code];
+  if (font === RV && RULES[code]) return RULES[code];
   const sub = SUBSTITUTE[ch];
   return (sub && font.glyphs[sub.codePointAt(0)]) || font.glyphs[0];
 }

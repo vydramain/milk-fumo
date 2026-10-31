@@ -174,12 +174,16 @@ export function layout(blocks, width, progress = () => 'none') {
   return { ops: L.ops, hits: L.hits, height: y };
 }
 
+// The narrowest column the three-column table keeps; a narrower tile lists each action's ways in lines under it.
+const MIN_COLUMN = 90;
+
 // The tutorial's table: a mark column, the action, the mouse way and the keyboard way.
 function layoutActions(L, width, y0, progress) {
   const mark = 14;
   const todo = Math.max(...TUTORIAL_ACTIONS.map((a) => textWidth(RV, a.todo))) + 10;
   const mouse = Math.floor((width - mark - todo) * 0.45);
   const keys = width - mark - todo - mouse;
+  if (mouse < MIN_COLUMN || keys < MIN_COLUMN) return layoutActionsStacked(L, width, y0, progress);
   const at = { todo: mark, mouse: mark + todo, keys: mark + todo + mouse };
   let y = y0;
   L.ops.push({ op: 'rect', x: 0, y, w: width, h: 13, color: C.win });
@@ -202,6 +206,30 @@ function layoutActions(L, width, y0, progress) {
     cols[0].forEach((line, i) => emitLine(L, line, at.todo + 3, y + 3 + i * LINE, color));
     cols[1].forEach((line, i) => emitLine(L, line, at.mouse + 3, y + 3 + i * LINE, color));
     cols[2].forEach((line, i) => emitLine(L, line, at.keys + 3, y + 3 + i * LINE, color));
+    L.ops.push({ op: 'rect', x: 0, y: y + h - 1, w: width, h: 1, color: C.lo });
+    y += h;
+  }
+  return y + 8;
+}
+
+// The table of a narrow tile: each action, then its mouse way and its keyboard way, each under the action.
+function layoutActionsStacked(L, width, y0, progress) {
+  const mark = 14, indent = 14;
+  let y = y0;
+  for (const action of TUTORIAL_ACTIONS) {
+    const state = progress(action);
+    const todo = fill(tokens(action.todo), width - mark - 6);
+    const ways = [
+      ...fill(tokens('Mouse: ' + action.mouse), width - mark - indent - 6),
+      ...fill(tokens('Keyboard: ' + action.keys), width - mark - indent - 6),
+    ];
+    const color = state === 'next' ? C.bright : C.text;
+    const h = (todo.length + ways.length) * LINE + 6;
+    if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: C.inset });
+    if (state === 'done') L.ops.push({ op: 'icon', x: 3, y: y + 3, rows: ICON_CHECK, color: C.sel });
+    if (state === 'next') L.ops.push({ op: 'icon', x: 3, y: y + 3, rows: ICON_ARROW, color: C.sel });
+    todo.forEach((line, i) => emitLine(L, line, mark + 3, y + 3 + i * LINE, color));
+    ways.forEach((line, i) => emitLine(L, line, mark + indent + 3, y + 3 + (todo.length + i) * LINE, color));
     L.ops.push({ op: 'rect', x: 0, y: y + h - 1, w: width, h: 1, color: C.lo });
     y += h;
   }

@@ -115,6 +115,7 @@ The reasons below are design reasoning; they do not explain the test result abov
 | Resize | drag the border | `Shift+R`, then arrows; `Enter` or `Esc` — done |
 | Fullscreen and back | `M` in the title bar | `Shift+F` |
 | Close a tile | `X` in the title bar | `Shift+Q`, also inside a game or app |
+| UI scale 1x or 2x | the **Scale** cell of the bottom bar | `Shift+S` |
 
 **The environment bar at the bottom is always visible.** It holds hints for every action, the first one being "`Shift`+arrows Focus". Every cell can be clicked and performs its action. Above the bar is a message line: for example, why a border will not move further.
 
@@ -142,8 +143,8 @@ pmc (PSEUDO Midnight Commander) is the file panel: the UI is that of the editor'
 | pmc | Published folders and files from the content directory, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
 | Note | Markdown text | both tiles of the start screen |
 | Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| Video player | Frame, Fit / 1x / 2x, loop; volume as a wheel on the left, position as a scale below | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| App | A folder whose name ends in `.exe` and that contains `index.html`: a web game or another web app in an iframe; Fit / Integer / 1x / 2x / 3x, restart | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| Video player | The same top as the audio player: time, position, the six buttons, volume; then Fit / 1x / 2x and loop, and the frame | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| App | A folder whose name ends in `.exe` and that contains `index.html`: a web game or another web app in an iframe; Fit / Integer / 1x / 2x / 3x, `Rs` Restart; a status line above it and a footer with the address and `Keyboard: app` | [`start-screen.html`](docs/prototypes/start-screen.html) |
 | Images | The selected image and switching through the set | [`explorer.html`](docs/prototypes/explorer.html) shows only the image well with the file name and size, without switching |
 
 ![Tiles](docs/screenshots/tiles.png)
@@ -194,9 +195,11 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 - the minimum of a split is the sum of the minimums along its axis plus the splitter, and the largest across it;
 - a border cannot be moved past a minimum, neither with the mouse nor with `Shift+R`; the message line says whose minimum is in the way.
 
+The UI scale (`Shift+S`, or its cell in the bottom bar) switches between 1x and 2x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large, and the same whole-pixel rule holds. The layout is the same; the window must hold it at 2x, so 2x is refused with the size it needs when the window is too small. 1.5x is not offered: a font pixel would then fall on a fractional device pixel and blur. The 2x minimum is the 1x minimum times two.
+
 Metrics at scale 1 and in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 px with 2 px padding, title bar 14 px, tab strip 14 px, splitter 4 px. The tile's frame takes 8 px across and 40 px down, as the prototypes' CSS does.
 
-Tile minimums for the prototypes, including the frame (chosen for them, not set by the editor; calculated from the constants in [`explorer.html`](docs/prototypes/explorer.html)): pmc — 540×162 (two panels, each with a 20 em name column plus size and date), player — 244×104 (five buttons), app — 328×220 (320×180 plus the frame), any other tile — 128×104 (20 em × 4 rows plus the frame). The prototype's pmc list rows are 12 px (explorer.html:139 `ROW = 12`).
+Tile minimums for the prototypes, including the frame (chosen for them, not set by the editor; calculated from the constants in [`explorer.html`](docs/prototypes/explorer.html)): pmc — 540×162 (two panels, each with a 20 em name column plus size and date), player — 276×240 (six buttons of 40 px, 268×200 plus the frame), video — 276×288 (the same top and a frame of at least 46 px), app — 328×220 (320×180 plus the frame), any other tile — 128×104 (20 em × 4 rows plus the frame). The prototype's pmc list rows are 12 px (explorer.html:139 `ROW = 12`).
 
 ## UI
 
@@ -252,7 +255,7 @@ New ones for the site: `Vi` — video (mauve), `Ap` — app (peach), `Up` — up
 | `rv_font` 5×7 from pdklib | interface: title bars, tabs, keys, lists; note headings and body text |
 | PxPlus IBM VGA 9×16 | text inside the Catppuccin wells (players, apps, code), at its native size; the large size is the same font drawn twice as big (as in the prototypes) |
 
-The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_font` bitmap tables of pdklib (`pdk/lib/include/pdklib/rv_font/`) and the PxPlus IBM VGA font. The site has no size switch for the text inside the wells. Note body text is `rv_font`; the site does not use WineTahomaBit, which only the prototypes use.
+The site's fonts are copied from 3dmppc-polymer, not from vgui2-deck: the `rv_font` bitmap tables of pdklib (`pdk/lib/include/pdklib/rv_font/`) and the PxPlus IBM VGA font. The text inside the wells has no size switch of its own; the UI scale (`Shift+S`) changes everything together. Note body text is `rv_font`; the site does not use WineTahomaBit, which only the prototypes use.
 
 The fonts reach the site as one JavaScript file of bitmap tables. The page tool `tools/fonts.html` makes it in a browser from those fonts: the `rv_font` tables in C++ and the PxPlus VGA TTF file. The file is committed; the site only reads it and does not depend on how the browser draws fonts. [`tools/build_rvfont.py`](tools/build_rvfont.py) builds an OTF for the prototypes only.
 
@@ -262,7 +265,7 @@ PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0; 3dmppc-polymer keeps them in `t
 
 ### Markdown in notes
 
-A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM VGA 9×16 on navy, at its native size. Keys are raised keycaps, written `[Shift]`. A link is written `[text](address)` and opens in a new browser tab; an address is kept only if it is safe (http or https, or a relative address without `//`, spaces, colons, ampersands or backslashes). A line `{{actions}}` is the tutorial's table: the app draws it, with a mark for each action done and for the next one to try. A note also has lists, quotes and horizontal rules. An earlier placeholder of the Home note showed every Markdown element: a list, a link, a quote, code and a horizontal rule.
+A first-level heading is `rv_font` at 16 px with a groove under it, a second-level one is `rv_font` at 8 px with a dithered rule. Body text is `rv_font`, code is PxPlus IBM VGA 9×16 on navy, at its native size. The box and rule characters `·` `│` `─` `—` are drawn as pixel glyphs of the same cell, not replaced by ASCII. In a tile narrower than the tutorial's table, each action is followed by its mouse and keyboard ways in lines under it. Keys are raised keycaps, written `[Shift]`. A link is written `[text](address)` and opens in a new browser tab; an address is kept only if it is safe (http or https, or a relative address without `//`, spaces, colons, ampersands or backslashes). A line `{{actions}}` is the tutorial's table: the app draws it, with a mark for each action done and for the next one to try. A note also has lists, quotes and horizontal rules. An earlier placeholder of the Home note showed every Markdown element: a list, a link, a quote, code and a horizontal rule.
 
 ## Running
 
@@ -272,6 +275,8 @@ Both environments use [`compose.yml`](compose.yml) and an env file that sets `HO
 - **Prod:** copy [`.env.prod.example`](.env.prod.example) to `.env.prod` and set `CONTENT_DIR` and `HOST_PORT`, then `docker compose --env-file .env.prod up -d`. The port is published on `127.0.0.1` only; TLS and any public proxy are set up on the host.
 
 The content directory is mounted read-only. The owner edits it over SFTP on the host.
+
+Nginx must be able to read every file of the content directory. A file that only its owner can read (mode 600) is served as 403, and its picture or track does not play. Check with `find <content> -type f ! -perm -o=r`.
 
 Font tables are generated by [`tools/fonts.html`](tools/fonts.html) from the pdklib headers and the PxPlus TTF in the browser: pick the three files and save `site/js/font_data.js`.
 

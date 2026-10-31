@@ -9,6 +9,7 @@ export const ENV_CELLS = [
   { key: 'Shift+R', label: 'Resize', command: 'resize' },
   { key: 'Shift+F', label: 'Fullscreen', command: 'maximize' },
   { key: 'Shift+Q', label: 'Close', command: 'close' },
+  { key: 'Shift+S', label: 'Scale', command: 'scale' },
 ];
 
 // The actions of the tutorial, in the order they are learned. `done` is the progress key.
@@ -36,13 +37,16 @@ export const T = {
   emptyHint: 'or Shift+Enter',
   noViewer: 'There is no viewer for this file type.',
   appNoIndex: 'This app has no index.html.',
-  appHint: 'Keys go to the app — click another tile to take them back.',
+  appLoading: 'Loading the app…',
+  appRunning: 'Running. Keys go to the app — click another tile to take them back.',
   appRestart: 'Restart',
   loadError: 'Could not load ',
   folderError: 'Could not load this folder',
   onlyOneTile: 'The last tile cannot be closed.',
   maximized: 'The tile is maximized — Shift+F restores the layout',
   resizeHint: 'Resize: the arrows move a border; Enter or Esc — done',
+  scaleNeeds: 'UI scale 2x needs a window of at least',
+  scaleNow: 'UI scale',
   moveHint: 'Move: the arrows move the tile; Enter or Esc — done',
   noTileThere: 'No tile in that direction.',
   noBorderThere: 'No border to move in that direction.',

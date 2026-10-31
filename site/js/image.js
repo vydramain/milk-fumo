@@ -1,7 +1,7 @@
 // The image viewer: the picture drawn in the canvas, and the set of pictures in its folder.
 // A picture is shown at its own size, or smaller when the window is smaller; it is never enlarged.
 import { urlOf, formatSize } from './catalog.js';
-import { RV, textWidth } from './font.js';
+import { RV, textWidth, fitText } from './font.js';
 import { C } from './theme.js';
 import { box } from './widgets.js';
 
@@ -54,7 +54,7 @@ export class ImageView {
     this.button(p, hits, prev, 'Pv', () => this.load(this.index - 1));
     this.button(p, hits, next, 'Nx', () => this.load(this.index + 1));
     const caption = `${this.entry.name} · ${formatSize(this.entry.size)} · ${this.index + 1} of ${this.set.length}`;
-    p.text(RV, next.x + next.w + 8, bar.y + 4, caption, C.ct);
+    p.text(RV, next.x + next.w + 8, bar.y + 4, fitText(RV, caption, r.x + r.w - (next.x + next.w + 8)), C.ct);
   }
 
   button(p, hits, r, label, click) {
