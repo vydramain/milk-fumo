@@ -1,16 +1,24 @@
-Привет. Я не знаю, как ты нашёл это доменное имя или вообще сюда попал, но раз попал, то, значит, что-то искал и что-то нашёл.
+# Hello
 
-Позволь ввести тебя в курс дела. (ну или нет, сам выбирай, читать ли это) Я — самовлюблённый эгоцентрик, поэтому мне хотелось бы сделать где-то в сети интернет собственную выставку своих творений, доступную широкой публике. Иначе я бы просто оставил всё у себя на диске. Широкая публика на данный момент — это ты. По совместительству добровольный подопытный. (подсудимый?) Спасибо, что пришёл.
+Hi. I don't know how you found this domain name or how you ended up here at all, but since you did, you must have been looking for something and found it.
 
-Отдельно отмечу, что я не преследую новомодный тренд (ага, да, ему уже больше 20 лет), где кто-то пытается стать популярным за счёт площадки. Я бы скорее засунул этот сайт в даркнет. (зачем?)
+## About this place
 
-Хочется создать именно место, которое ты случайно нашёл в интернете, оно тебя заинтересовало по вайбам (комфортик), и ты решил тут остаться на некоторое время.
+Let me bring you up to speed. (Or not. Your call whether to read this.) I am a self-absorbed egotist, so I wanted to build my own exhibition of my creations somewhere on the internet, open to the general public. Otherwise I would have just kept everything on my disk. The general public at the moment is you. By the way, a voluntary test subject. (The defendant?) Thanks for coming.
 
-Очень много чего здесь — это обработанный нейрослопным фильтром понос, изрыгаемый моим сознанием. Рассчитывай на большое количество мусора (trash), низкопробщины (lowprice), графомании (printing) и сомнительных решений (religion), погубивших продукт.
+I should add that I am not chasing the fashionable trend (yes, yes, it is more than 20 years old) where someone tries to become popular by riding a big platform. I would rather shove this site into the darknet. (Why?)
 
-Короч, оставляю вас среди собственной пропаганды технократического прагматизма и меритократического кооперативизма. (в бреду капиталистического империализма)
+> I wanted a place that you found by accident, that caught your eye by its vibe (comfy), and where you decided to stay for a while.
 
-Если хочешь связаться со мной, то вот мои контакты:
+There is a lot here. It is the slop-filtered vomit that my mind spits out. Expect a large amount of trash, lowprice, printing (graphomania) and religion (questionable decisions) that ruined the product.
 
-- соцсеть1
-- соцсеть2
+Anyway, I will leave you among my own propaganda of technocratic pragmatism and meritocratic cooperativism. (In the delirium of capitalist imperialism.)
+
+---
+
+## Contacts
+
+If you want to get in touch, here are my contacts:
+
+- social network 1
+- social network 2
