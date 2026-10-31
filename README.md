@@ -190,13 +190,13 @@ Mobile: a separate mobile mode, one tile with tabs at the bottom taken from a ge
 Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
 
 - the minimum of a tile's content is 20 em (the width of "M") × 4 row heights, unless the content has its own;
-- the minimum of a tile is the largest minimum of its tabs plus the frame, plus the tab strip when there is more than one tab;
+- the minimum of a tile is the largest minimum of its tabs plus its frame, which holds the tab strip as in the prototypes;
 - the minimum of a split is the sum of the minimums along its axis plus the splitter, and the largest across it;
 - a border cannot be moved past a minimum, neither with the mouse nor with `Shift+R`; the message line says whose minimum is in the way.
 
-Metrics at scale 1: font 8 px, em 6 px, padding 4 px, row height 16 px, frame bevel 3 px, tile frame 14×34 px, splitter 4 px.
+Metrics at scale 1 and in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 px with 2 px padding, title bar 14 px, tab strip 14 px, splitter 4 px. The tile's frame takes 8 px across and 40 px down, as the prototypes' CSS does.
 
-Tile minimums for the prototypes, including the frame (chosen for them, not set by the editor; calculated from the constants in [`explorer.html`](docs/prototypes/explorer.html)): pmc — 546×156 (two panels, each with a 20 em name column plus size and date), player — 250×98 (five buttons), app — 334×214 (320×180 plus the frame), any other tile — 134×98 (20 em × 4 rows plus the frame). The prototype's pmc list rows are 12 px (explorer.html:139 `ROW = 12`), unlike the 16 px row height in the metrics above.
+Tile minimums for the prototypes, including the frame (chosen for them, not set by the editor; calculated from the constants in [`explorer.html`](docs/prototypes/explorer.html)): pmc — 540×162 (two panels, each with a 20 em name column plus size and date), player — 244×104 (five buttons), app — 328×220 (320×180 plus the frame), any other tile — 128×104 (20 em × 4 rows plus the frame). The prototype's pmc list rows are 12 px (explorer.html:139 `ROW = 12`).
 
 ## UI
 
