@@ -144,7 +144,7 @@ pmc (PSEUDO Midnight Commander) is the file panel: the UI is that of the editor'
 | Note | Markdown text | both tiles of the start screen |
 | Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
 | Video player | The same top as the audio player: time, position, the six buttons, volume; then Fit / 1x / 2x and loop, and the frame | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| App | A folder whose name ends in `.exe` and that contains `index.html`: a web game or another web app in an iframe; Fit / Integer / 1x / 2x / 3x, `Rs` Restart; a status line above it and a footer with the address and `Keyboard: app` | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| App | A folder whose name ends in `.exe` and that contains `index.html`: a web game or another web app in an iframe that fills the tile's well; `Rs` Restart; a status line above it and a footer with `index.html` and `Keyboard: app` | [`start-screen.html`](docs/prototypes/start-screen.html) |
 | Images | The selected image and switching through the set | [`explorer.html`](docs/prototypes/explorer.html) shows only the image well with the file name and size, without switching |
 
 ![Tiles](docs/screenshots/tiles.png)

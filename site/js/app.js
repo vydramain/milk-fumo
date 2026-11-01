@@ -9,12 +9,9 @@ import { RV, textWidth, fitText } from './font.js';
 import { urlOf } from './catalog.js';
 import { T } from './texts.js';
 import { view } from './view.js';
-import { box, button } from './widgets.js';
+import { button } from './widgets.js';
 
-const APP_W = 320, APP_H = 180;
 const TOOLBAR = 16, FOOTER = 14, STATUS = 14;
-const SCALES = ['fit', 'integer', '1x', '2x', '3x'];
-const SCALE_LABEL = { fit: 'Fit', integer: 'Integer', '1x': '1x', '2x': '2x', '3x': '3x' };
 const MESSAGES = new Set(['APP_READY', 'TITLE', 'ERROR']);
 
 // Reads a message from an app. Anything else is ignored; text is cut to a sane length.
@@ -23,13 +20,6 @@ export function parseMessage(data) {
   if (data.type === 'APP_READY') return { type: data.type };
   const text = typeof data.text === 'string' ? data.text.slice(0, 200) : '';
   return { type: data.type, text };
-}
-
-// The scale an app is drawn at: the whole well for Fit, the largest whole factor for Integer, else the factor.
-export function scaleFor(mode, w, h) {
-  if (mode === 'fit') return Math.max(0.1, Math.min(w / APP_W, h / APP_H));
-  if (mode === 'integer') return Math.max(1, Math.floor(Math.min(w / APP_W, h / APP_H)));
-  return Number(mode[0]);
 }
 
 export class AppPane {
@@ -41,12 +31,11 @@ export class AppPane {
     this.title = name;
     this.status = 'loading';
     this.error = '';
-    this.scale = 'fit';
     this.drawnAt = -1;
     this.wrap = document.createElement('div');
     this.wrap.style.cssText = 'position:absolute;overflow:hidden;display:none;';
     this.frame = document.createElement('iframe');
-    this.frame.style.cssText = `position:absolute;width:${APP_W}px;height:${APP_H}px;border:0;transform-origin:0 0;`;
+    this.frame.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;border:0;';
     this.frame.addEventListener('load', () => this.attach());
     this.wrap.appendChild(this.frame);
     document.body.appendChild(this.wrap);
@@ -93,22 +82,16 @@ export class AppPane {
     this.ws.requestDraw();
   }
 
-  // Puts the iframe in the well, centered, and scaled. The wrapper clips it to the well.
-  // The well and the scale are in layout pixels; a layout pixel is view.ui device pixels, and the page's CSS
-  // pixels are the device pixels divided by the ratio.
+  // Puts the wrapper over the well; the iframe fills the wrapper. The well is in layout pixels; a layout pixel is
+  // view.ui device pixels, and the page's CSS pixels are the device pixels divided by the ratio.
   place(well) {
     const k = view.ui / view.dpr;
-    const s = scaleFor(this.scale, well.w, well.h);
-    const dx = Math.round((well.w - APP_W * s) / 2), dy = Math.round((well.h - APP_H * s) / 2);
     const st = this.wrap.style;
     st.display = 'block';
     st.left = `${well.x * k}px`;
     st.top = `${well.y * k}px`;
     st.width = `${well.w * k}px`;
     st.height = `${well.h * k}px`;
-    this.frame.style.left = `${dx * k}px`;
-    this.frame.style.top = `${dy * k}px`;
-    this.frame.style.transform = `scale(${s * k})`;
   }
 
   // Hides the iframe when its tile is not drawn (another tile is maximized, or it is not the front tab).
@@ -116,22 +99,10 @@ export class AppPane {
     this.wrap.style.display = 'none';
   }
 
-  // The toolbar: the scales, then the Restart button with its red Rs icon.
+  // The toolbar: the Restart button with its red Rs icon.
   drawToolbar(p, r, hits) {
-    let x = r.x;
-    for (const mode of SCALES) {
-      const label = SCALE_LABEL[mode];
-      const b = { x, y: r.y, w: textWidth(RV, label) + 12, h: TOOLBAR };
-      button(p, hits, b, label, { on: this.scale === mode, click: () => { this.scale = mode; this.ws.requestDraw(); } });
-      x += b.w + 2;
-    }
-    x += 6;
-    const icon = { x, y: r.y, w: 18, h: TOOLBAR };
-    const rs = { x: icon.x, y: icon.y, w: icon.w + 4 + textWidth(RV, T.appRestart) + 8, h: TOOLBAR };
-    box(p, icon, true, C.btn, 2);
-    p.text(RV, icon.x + Math.floor((icon.w - textWidth(RV, 'Rs')) / 2), icon.y + 4, 'Rs', C.red);
-    p.text(RV, icon.x + icon.w + 4, icon.y + 4, T.appRestart, C.text);
-    hits.add(rs, { click: () => this.restart() });
+    const rs = { x: r.x, y: r.y, w: TOOLBAR, h: TOOLBAR };
+    button(p, hits, rs, 'Rs', { color: C.red, click: () => this.restart() });
   }
 
   // Drawing: a toolbar, the navy well with a status line and the app, and a footer with the address and the keys.
@@ -155,10 +126,9 @@ export class AppPane {
     const foot = { x: r.x, y: r.y + r.h - FOOTER, w: r.w, h: FOOTER };
     const keys = { w: textWidth(RV, 'Keyboard: app') + 12, x: foot.x + foot.w - textWidth(RV, 'Keyboard: app') - 12 };
     const address = { x: foot.x, y: foot.y, w: foot.w - keys.w - 2, h: FOOTER };
-    const scaleText = this.scale === 'fit' ? 'fit' : `×${scaleFor(this.scale, area.w, area.h)}`;
     p.fill(address.x, address.y, address.w, address.h, C.inset);
     p.bevel(address, 1, false);
-    p.text(RV, address.x + 4, address.y + 4, `index.html · ${APP_W}×${APP_H} · ${scaleText}`, C.bright);
+    p.text(RV, address.x + 4, address.y + 4, 'index.html', C.bright);
     p.fill(keys.x, foot.y, foot.x + foot.w - keys.x, FOOTER, C.inset);
     p.bevel({ x: keys.x, y: foot.y, w: foot.x + foot.w - keys.x, h: FOOTER }, 1, false);
     p.text(RV, keys.x + 6, foot.y + 4, focused ? 'Keyboard: app' : 'Keyboard: —', focused ? C.sel : C.cov);
