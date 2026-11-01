@@ -36,6 +36,7 @@ export class AppPane {
     this.wrap.style.cssText = 'position:absolute;overflow:hidden;display:none;';
     this.frame = document.createElement('iframe');
     this.frame.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;border:0;';
+    this.frame.allowFullscreen = true;
     this.frame.addEventListener('load', () => this.attach());
     this.wrap.appendChild(this.frame);
     document.body.appendChild(this.wrap);
@@ -74,6 +75,12 @@ export class AppPane {
       this.error = T.loadError + this.path;
     }
     this.ws.requestDraw();
+  }
+
+  // The browser's fullscreen for the app's frame; a second request leaves it. Refusals are ignored.
+  fullscreen() {
+    const done = document.fullscreenElement === this.frame ? document.exitFullscreen() : this.frame.requestFullscreen();
+    if (done) done.catch(() => {});
   }
 
   restart() {

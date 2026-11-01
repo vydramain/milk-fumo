@@ -267,6 +267,13 @@ export class Workspace {
     this.progress.add('maximize');
   }
 
+  // An app's tile goes to the browser's fullscreen for the game; any other tile is maximized in the workspace.
+  fullscreenOrMaximize() {
+    const tile = this.panes.get(this.focus);
+    if (tile && tile.body && tile.body.fullscreen) tile.body.fullscreen();
+    else this.toggleMaximize();
+  }
+
   // Shift+Q, the X of the title bar, or the close key inside an app: the focused tile goes, its neighbor takes focus.
   closeFocus() {
     if (this.panes.size === 1) { this.msg = T.onlyOneTile; return; }
@@ -445,7 +452,7 @@ export class Workspace {
       'open-pmc': () => this.openPmcHere(),
       'stack': () => this.stackFocus(),
       'resize': () => this.startResize(),
-      'maximize': () => this.toggleMaximize(),
+      'maximize': () => this.fullscreenOrMaximize(),
       'close': () => this.closeFocus(),
       'focus': () => this.focusNext(),
       'move': () => this.startMove(),
@@ -611,7 +618,7 @@ export class Workspace {
     this.hits.add(close, { click: () => { this.focusByUser(id); this.closeFocus(); this.requestDraw(); } });
     this.hits.add(splitR, { click: () => { this.focusByUser(id); this.splitFocus('h', true); this.requestDraw(); } });
     this.hits.add(splitD, { click: () => { this.focusByUser(id); this.splitFocus('v', true); this.requestDraw(); } });
-    this.hits.add(max, { click: () => { this.focusByUser(id); this.toggleMaximize(); this.requestDraw(); } });
+    this.hits.add(max, { click: () => { this.focusByUser(id); this.fullscreenOrMaximize(); this.requestDraw(); } });
   }
 
   iconBox(p, r, label, pressed) {
