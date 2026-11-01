@@ -13,6 +13,7 @@ const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
 let ws = null;
 let queued = false;
+let started = false;
 
 // The layout's unit is a UI pixel: view.ui device pixels, 1 or 2 by Shift+S. The canvas buffer is the window in
 // device pixels, so a font pixel is always a whole number of device pixels and nothing is smoothed.
@@ -38,6 +39,8 @@ function draw() {
   queued = false;
   const d = dpr();
   view.dpr = d;
+  // The site opens at the largest scale the window holds: 2x when it fits, else 1x.
+  if (!started) { started = true; if (ws.fitsScale(2)) view.ui = 2; }
   // A window that shrank below the 2x layout goes back to 1x, the only scale every window holds.
   if (view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = 1;
   const mobile = MOBILE.matches;
