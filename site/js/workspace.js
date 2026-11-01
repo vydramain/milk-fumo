@@ -68,6 +68,7 @@ export class Workspace {
     this.msg = '';
     this.mode = null;          // 'resize' | 'move' | null
     this.drag = null;          // { move(x, y), up(x, y) } while a press is held
+    this.pressed = null;       // the rectangle of the click that is held: drawn sunken until the pointer is up
     this.dropAt = null;        // where a dragged tile would land
     this.progress = new Set();
     this.hits = new Hits();
@@ -463,7 +464,7 @@ export class Workspace {
     this.msg = '';
     const top = this.hits.at(x, y);
     if (top && top.on.press) this.drag = normalizeDrag(top.on.press(x, y));
-    else if (top && top.on.click) top.on.click(x, y);
+    else if (top && top.on.click) { this.pressed = top.r; top.on.click(x, y); }
     this.requestDraw();
   }
 
@@ -477,6 +478,7 @@ export class Workspace {
     if (this.drag && this.drag.up) this.drag.up(x, y);
     this.drag = null;
     this.dropAt = null;
+    this.pressed = null;
     this.requestDraw();
   }
 
@@ -550,6 +552,9 @@ export class Workspace {
       const r = L.dropPreview(this.dropAt);
       p.dither({ x: r.x, y: r.y, w: r.w, h: r.h }, C.win, C.sel);
     }
+    // Every clickable thing looks pressed the same way while the pointer is down on it.
+    const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
+    if (held) p.bevel(held.r, 2, false);
     this.drawBars(p, W, H);
     // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
     for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
@@ -664,6 +669,10 @@ export class Workspace {
       this.hits.add(r, { click: () => this.command(c.command) });
     });
   }
+}
+
+function sameRect(a, b) {
+  return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
 }
 
 // A press handler may return a move function, or an object with move and up; both are kept as an object.
