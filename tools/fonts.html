@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>milk-fumo — font tables</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 24px; max-width: 720px; line-height: 1.5; }
+label { display: block; margin: 8px 0; }
+pre { background: #eee; padding: 8px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h2>Font tables for the site</h2>
+<p>Pick the three source files, then press the button. The result is <code>site/js/font_data.js</code>.</p>
+<label>rv_font_data.hpp <input type="file" id="f-data" accept=".hpp"></label>
+<label>rv_font_cyrillic.hpp <input type="file" id="f-cyr" accept=".hpp"></label>
+<label>PxPlus_IBM_VGA_9x16.ttf <input type="file" id="f-vga" accept=".ttf"></label>
+<button id="go" disabled>Make font_data.js</button>
+<a id="save" hidden download="font_data.js">Download font_data.js</a>
+<pre id="log"></pre>
+<script>
+// The generator of site/js/font_data.js. It reads the rv_font tables from pdklib (C++ headers) and
+// rasterizes PxPlus IBM VGA 9x16 in the browser, so the site does not depend on how a browser draws fonts.
+//
+// rv_font: 8x8 cell, 5x7 ink. Each glyph is 8 rows; bit 7 of a row is the leftmost column.
+// VGA 9x16: each glyph is 16 rows of 9 columns; the 9th column is kept, as in the prototype.
+// Output: RV_FONT[codepoint] = 8 row bytes; VGA_9X16[codepoint] = 16 row values (bit 8 is the leftmost column).
+// Codepoint 0 holds the glyph for a character the font does not have.
+const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+const files = {};
+for (const id of ['f-data', 'f-cyr', 'f-vga']) {
+  document.getElementById(id).addEventListener('change', (e) => {
+    files[id] = e.target.files[0];
+    document.getElementById('go').disabled = !(files['f-data'] && files['f-cyr'] && files['f-vga']);
+  });
+}
+
+// Reads the uint8_t array named `name` from a C++ header, skipping // comments.
+function table(src, name) {
+  const m = new RegExp('uint8_t\\s+' + name + '\\s*\\[[^\\]]*\\]\\s*=\\s*\\{').exec(src);
+  if (!m) throw new Error('table ' + name + ' not found');
+  const end = src.indexOf('};', m.index + m[0].length);
+  const body = src.slice(m.index + m[0].length, end).split('\n').map((l) => l.split('//')[0]).join('\n');
+  return [...body.matchAll(/0x([0-9A-Fa-f]{2})/g)].map((x) => parseInt(x[1], 16));
+}
+
+// Cell of the VGA font: the full block U+2588 covers the whole cell, so its ink box is the cell.
+async function rasterVga(buffer, codes) {
+  const face = new FontFace('PxVGA', buffer);
+  await face.load();
+  document.fonts.add(face);
+  const size = 16;
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const draw = (ch) => {
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.font = size + 'px PxVGA';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#000';
+    ctx.fillText(ch, 16, 40);
+    return ctx.getImageData(0, 0, c.width, c.height).data;
+  };
+  const alphaAt = (d, x, y) => d[(y * c.width + x) * 4 + 3];
+  // The cell: the bounding box of the full block.
+  const block = draw('█');
+  let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    if (alphaAt(block, x, y) > 127) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  }
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  log('VGA cell: ' + w + 'x' + h);
+  if (w !== 9 || h !== 16) throw new Error('unexpected VGA cell ' + w + 'x' + h);
+  let partial = 0;
+  const out = {};
+  for (const code of codes) {
+    const d = draw(String.fromCodePoint(code));
+    const rows = [];
+    for (let y = 0; y < h; y++) {
+      let bits = 0;
+      for (let x = 0; x < w; x++) {
+        const a = alphaAt(d, x0 + x, y0 + y);
+        if (a !== 0 && a !== 255) partial++;
+        if (a > 127) bits |= 0x100 >> x;
+      }
+      rows.push(bits);
+    }
+    out[code] = rows;
+  }
+  if (partial) log('warning: ' + partial + ' antialiased pixels; the font is not on the pixel grid at 16px');
+  return out;
+}
+
+document.getElementById('go').addEventListener('click', async () => {
+  document.getElementById('log').textContent = '';
+  try {
+    const dataSrc = await files['f-data'].text();
+    const cyrSrc = await files['f-cyr'].text();
+    const ascii = table(dataSrc, 'rv_font_bits');
+    const cyr = table(cyrSrc, 'rv_font_cyrillic_bits');
+    if (ascii.length !== 96 * 8 || cyr.length !== 66 * 8) throw new Error('unexpected table sizes');
+    const rv = { 0: ascii.slice(95 * 8, 96 * 8) };
+    for (let i = 0; i < 95; i++) rv[32 + i] = ascii.slice(i * 8, i * 8 + 8);
+    for (let slot = 0; slot < 66; slot++) {
+      const code = slot < 64 ? 0x0410 + slot : slot === 64 ? 0x0401 : 0x0451;
+      rv[code] = cyr.slice(slot * 8, slot * 8 + 8);
+    }
+    const codes = [];
+    for (let c = 32; c < 127; c++) codes.push(c);
+    const vga = await rasterVga(await files['f-vga'].arrayBuffer(), codes);
+    vga[0] = vga[63] || vga[32].map(() => 0); // the notdef cell, drawn as the question mark
+    const fmt = (o, width) => Object.keys(o).map((k) => '  ' + k + ': [' + o[k].map((b) => '0x' + b.toString(16).padStart(width, '0').toUpperCase()).join(', ') + '],').join('\n');
+    const text = '// Generated by tools/fonts.html from the rv_font headers and PxPlus IBM VGA 9x16. Do not edit.\n' +
+      'export const RV_FONT = {\n' + fmt(rv, 2) + '\n};\n' +
+      'export const VGA_9X16 = {\n' + fmt(vga, 3) + '\n};\n';
+    const blob = new Blob([text], { type: 'text/javascript' });
+    const link = document.getElementById('save');
+    link.href = URL.createObjectURL(blob);
+    link.hidden = false;
+    log('glyphs: rv_font ' + Object.keys(rv).length + ', VGA ' + Object.keys(vga).length);
+    window.__fontData = text;
+  } catch (err) {
+    log('error: ' + err.message);
+  }
+});
+</script>
+</body>
+</html>
