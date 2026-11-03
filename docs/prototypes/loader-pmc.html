@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>pmc tile prototype</title>
+<link rel="stylesheet" href="loader.css">
+<style>
+/* pmc specifics: the pmc tile (its two panels, the load bar in each status line); the state switcher as in loader.html */
+body { font-family: system-ui, sans-serif; background: #282E20; color: #D8DED3; padding: 16px 20px; }
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.switch { display: flex; align-items: center; gap: 4px; height: 20px; margin-bottom: 8px; color: var(--text); }
+.switch span { margin-right: 4px; }
+.switch button { font: inherit; height: 14px; padding: 0 6px; color: var(--text); background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+body[data-state="load"] [data-value="load"], body[data-state="done"] [data-value="done"], body[data-state="errr"] [data-value="errr"] { background: var(--sel); color: var(--dark); }
+
+/* 194 px: the body is 154 px, which holds the toolbar, two 106 px panels with five 12 px rows, and the keys */
+.pmc { height: 194px; --teal: #94e2d5; }
+/* panelFrame: a dark line on the top and left, a light line inside it and outside on the right and bottom; 5 px in */
+.pm { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid;
+  border-color: var(--lo) transparent transparent var(--lo); box-shadow: inset 1px 1px 0 var(--hi), 1px 1px 0 var(--hi); }
+
+/* centring with even rests only (offset = rest / 2): .tb 14 px in 16 (1); .bt 'Up' 12 px in 14 (1), 8 px line in 12 (2);
+   .field 8 px line in 10 (1); .switch 14 px in 20 (3), 8 px line in 20 (6). Text y matches pmc.js: field 3, view 3, button 4 */
+.tb { display: flex; align-items: center; gap: 4px; height: 16px; flex: none; }
+.bt { width: 18px; height: 16px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--btn);
+  border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.bt.cv { color: var(--cov); }
+.field { flex: 1; min-width: 0; height: 14px; display: flex; align-items: center; padding: 0 2px; white-space: nowrap; color: var(--bright);
+  background: var(--inset); border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+/* 'View' is 24 px in 32 px: the rest is 8, the offset 4 */
+.view { width: 36px; height: 14px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--btn);
+  border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+.areas { flex: 1; min-height: 0; display: flex; gap: 4px; }
+.pn { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.well { flex: 1; min-height: 0; display: flex; background: var(--inset); border: 2px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* the path label is centred in pmc.js as floor((451 - text) / 2) on the 451 px bar, the text 6 px a char: the rest is odd,
+   so the left is explicit. Left "/music/jazztime/" (96 px): 177; right "/" (6 px): 222 */
+.pbar { height: 13px; flex: none; display: flex; align-items: flex-start; padding-top: 3px; white-space: nowrap;
+  background: var(--win); border-bottom: 1px solid var(--lo); }
+.lp .pbar { padding-left: 177px; }
+.rp .pbar { padding-left: 222px; }
+.pbar.act { background: var(--sel); color: var(--dark); }
+/* the header: the cells are stretched over its 12 px, the text is 3 px down (pmc.js:284-288) */
+.phd { height: 13px; flex: none; display: flex; align-items: flex-start; line-height: 8px; background: var(--win); color: var(--bright);
+  border-bottom: 1px solid var(--lo); white-space: nowrap; }
+.phd > span { align-self: stretch; padding-top: 3px; }
+.pbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--inset); }
+.sb { width: 14px; flex: none; display: flex; flex-direction: column;
+  background: conic-gradient(var(--lo) 25%, var(--inset) 0 50%, var(--lo) 0 75%, var(--inset) 0) 0 0 / 2px 2px; }
+.sb b { position: relative; height: 14px; flex: none; background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sb b.dn { margin-top: auto; }
+.sb b::before { content: ""; position: absolute; left: 2px; top: 4px; border: solid transparent; border-width: 0 4px 4px;
+  border-bottom-color: var(--bright); }
+.sb b.dn::before { border-width: 4px 4px 0; border-bottom-color: transparent; border-top-color: var(--bright); }
+
+/* the status line (pmc.js statLine): the text, cut before the load bar; the bar 2 px from the right edge of the left
+   section (1 px border, 1 px padding), its top at the content top, the 11 px bar in the 12 px inside */
+.stat { height: 14px; flex: none; margin-top: 2px; display: flex; gap: 2px; }
+.stat > span { min-width: 0; overflow: hidden; white-space: nowrap; padding: 0 5px; line-height: 12px; border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.stat .sl { flex: 1; display: flex; align-items: flex-start; padding: 0 1px 0 5px; }
+.stat .tx { flex: 1; min-width: 0; overflow: hidden; margin-right: 4px; }
+.stat .sd { width: 72px; flex: none; }
+
+/* list row (pmc.js row): the text 2 px down, the cells stretched over the row (the size and date lines run the full
+   height, the 1 px row line below included); the 1 px margin of loader.css goes */
+.lrow > :not(.ld) { align-self: stretch; margin: 0 0 -1px; padding-top: 2px; }
+/* brass cursor: the file under the cursor in done; the parent row, the only row, in load and errr */
+.lrow.cur, body:not([data-state="done"]) .lp .lrow.up { background: var(--sel); }
+.lrow.cur > span, body:not([data-state="done"]) .lp .lrow.up > span { color: var(--dark); }
+.kc { width: 22px; flex: none; padding-left: 4px; }
+.nm { flex: 1; min-width: 0; padding-right: 4px; overflow: hidden; text-overflow: ellipsis; }
+.phd .nm { padding-left: 4px; }
+.sz { width: 56px; flex: none; border-left: 1px solid var(--lo); text-align: right; padding-right: 4px; }
+.phd .sz { text-align: left; padding: 3px 0 0 3px; }
+.dt { width: 70px; flex: none; border-left: 1px solid var(--lo); padding-left: 3px; }
+.lrow .dt { color: var(--dim); }
+.k-up { color: var(--cov); } .k-fd { color: var(--sel); } .k-sn { color: var(--teal); } .k-tx { color: var(--ct); }
+.n-dir { color: var(--bright); } .s-dim { color: var(--dim); }
+
+/* the key bar (pmc.js keysBar): six cells of floor((942 - 10) / 6) = 155 px, 2 px apart; loader.css has 134 px */
+.keys .key { width: 155px; }
+
+/* the left panel follows the state: its bar, its rows and its status text. Without a listing (load, errr) only the
+   parent row stays, under the cursor, with its status text; with the listing (done) the files and the file's status */
+body[data-state="load"] .lp .ld { --t: "load"; --w: 0%; }
+body[data-state="done"] .lp .ld { --t: "done"; --w: 100%; }
+body[data-state="errr"] .lp .ld { --t: "errr"; --w: 0%; }
+body:not([data-state="done"]) .lp .lrow:not(.up) { display: none; }
+body:not([data-state="done"]) .lp .st-done, body[data-state="done"] .lp .st-up { display: none; }
+/* the right panel is read in full: its bar stays done */
+.rp .ld { --t: "done"; --w: 100%; }
+</style>
+</head>
+<body data-state="load">
+
+<p class="note">Смотреть при масштабе браузера 100% и масштабе экрана 1: при дробном масштабе HTML размывается, сайт — нет</p>
+<div class="i switch">
+  <span>Состояние</span><button type="button" data-set="state" data-value="load">load</button><button type="button" data-set="state" data-value="done">done</button><button type="button" data-set="state" data-value="errr">errr</button>
+</div>
+
+<div class="i">
+<div class="i-tile pmc">
+  <div class="i-head"><span class="bx">X</span><span class="ttl">pmc: /music/jazztime/</span><span class="grow"></span><span class="bx sv"></span><span class="bx sh"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="pm">
+      <div class="tb"><span class="bt cv">Up</span><span class="bt c-nv">Hm</span><span class="field">/music/jazztime/</span><span class="view">View</span></div>
+      <div class="areas">
+        <div class="pn lp">
+          <div class="well"><div class="col">
+            <div class="pbar act"><span>/music/jazztime/</span></div>
+            <div class="phd"><span class="nm">Name</span><span class="sz">Size</span><span class="dt">Modified</span></div>
+            <div class="pbody">
+              <div class="lrow up"><span class="kc k-up">Up</span><span class="nm n-dir">..</span><span class="sz s-dim">UP--DIR</span><span class="dt"></span></div>
+              <div class="lrow cur"><span class="kc k-sn">Sn</span><span class="nm">isntshelovely.mp3</span><span class="sz">3.3M</span><span class="dt">2019-05-12</span></div>
+              <div class="lrow"><span class="kc k-sn">Sn</span><span class="nm">thegirlfromipanema.mp3</span><span class="sz">4.5M</span><span class="dt">2019-05-12</span></div>
+              <div class="lrow"><span class="kc k-sn">Sn</span><span class="nm">vabank.mp3</span><span class="sz">2.5M</span><span class="dt">2021-11-03</span></div>
+              <div class="lrow"><span class="kc k-sn">Sn</span><span class="nm">watermelonman.mp3</span><span class="sz">3.0M</span><span class="dt">2021-11-03</span></div>
+            </div>
+          </div>
+          <div class="sb"><b></b><b class="dn"></b></div></div>
+          <div class="stat"><span class="sl"><span class="tx"><span class="st-done">isntshelovely.mp3 · 3 412 551 bytes · total 13.3M</span><span class="st-up">.. · up one level · total 0B</span></span><span class="ld ld-mini"><i class="ld-fill"></i></span></span><span class="sd"><span class="st-done">2019-05-12</span></span></div>
+        </div>
+        <div class="pn rp">
+          <div class="well"><div class="col">
+            <div class="pbar"><span>/</span></div>
+            <div class="phd"><span class="nm">Name</span><span class="sz">Size</span><span class="dt">Modified</span></div>
+            <div class="pbody">
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">games/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2024-02-10</span></div>
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">music/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2023-08-30</span></div>
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">pictures/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2024-06-01</span></div>
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">video/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2022-12-19</span></div>
+              <div class="lrow"><span class="kc k-tx">Tx</span><span class="nm">readme.md</span><span class="sz">2K</span><span class="dt">2024-06-01</span></div>
+            </div>
+          </div>
+          <div class="sb"><b></b><b class="dn"></b></div></div>
+          <div class="stat"><span class="sl"><span class="tx">games/ · 3 items · total 2K</span><span class="ld ld-mini"><i class="ld-fill"></i></span></span><span class="sd">2024-02-10</span></div>
+        </div>
+      </div>
+      <div class="keys">
+        <span class="key"><span class="kk">Enter</span><span class="kn">Open</span></span>
+        <span class="key"><span class="kk">F3</span><span class="kn">View</span></span>
+        <span class="key"><span class="kk">Tab</span><span class="kn">Panel</span></span>
+        <span class="key"><span class="kk">Esc</span><span class="kn">List</span></span>
+        <span class="key"><span class="kk">Ctrl+PgUp</span><span class="kn">Up</span></span>
+        <span class="key"><span class="kk">Letters</span><span class="kn">Search</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on"><span>pmc</span></span></div>
+</div>
+</div>
+
+<script>
+document.querySelectorAll('[data-set]').forEach(function (b) {
+  b.addEventListener('click', function () { document.body.dataset[b.dataset.set] = b.dataset.value; });
+});
+</script>
+</body>
+</html>
