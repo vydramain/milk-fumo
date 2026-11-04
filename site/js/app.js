@@ -127,7 +127,7 @@ export class AppPane {
   draw(p, r, hits, focused = false) {
     this.drawnAt = this.ws.frame;
     const bar = { x: r.x, y: r.y + r.h - BAR, w: r.w, h: BAR };
-    keyBar(p, hits, bar, this.cells(), this.ws.held);
+    keyBar(p, hits, bar, this.cells(), this.ws.drawHeld);
     const foot = { x: r.x, y: bar.y - 4 - BAR, w: r.w, h: BAR };
     footBar(p, foot, 'index.html', this.load, focused && this.status === 'ready');
 

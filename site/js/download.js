@@ -24,7 +24,7 @@ export class Download {
   }
 
   get href() {
-    if (this.state !== 'done') return null;
+    if (this.state !== 'done' || this.#stopped) return null;
     return (this.#href ??= URL.createObjectURL(this.blob));
   }
 
@@ -46,7 +46,7 @@ export class Download {
 
   async #run(url) {
     try {
-      const res = await fetch(url, { signal: this.#ctl.signal });
+      const res = await fetch(url, { cache: 'no-cache', signal: this.#ctl.signal });
       if (!res.ok) throw new Error(`${res.status} ${url}`);
       this.total = Number(res.headers.get('content-length')) || 0;
       const reader = res.body.getReader();

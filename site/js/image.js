@@ -32,11 +32,11 @@ export class ImageView {
     this.load(index);
   }
 
-  // Wants the picture and the next one; a done picture is shown without a new request.
+  // Wants the picture and the next one, none after the last; a done picture is shown without a new request.
   load(index) {
     this.index = (index + this.set.length) % this.set.length;
     this.downloads.want(this.path(this.index));
-    this.downloads.want(this.path((this.index + 1) % this.set.length));
+    if (this.index + 1 < this.set.length) this.downloads.want(this.path(this.index + 1));
     this.changed();
   }
 
@@ -68,7 +68,7 @@ export class ImageView {
 
   draw(p, r, hits) {
     const bar = { x: r.x, y: r.y + r.h - BAR, w: r.w, h: BAR };
-    keyBar(p, hits, bar, this.cells(), this.ws.held);
+    keyBar(p, hits, bar, this.cells(), this.ws.drawHeld);
     const foot = { x: r.x, y: bar.y - 4 - BAR, w: r.w, h: BAR };
     const path = this.path(this.index);
     const d = this.downloads.peek(path);

@@ -9,7 +9,7 @@ import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
 import { T, PMC_KEYS } from './texts.js';
-import { box, scrollbar, panelFrame, wellFrame, keyBar, loadBar, LOAD_W } from './widgets.js';
+import { box, scrollbar, panelFrame, wellFrame, keyBar, loadBar, LOAD_W, NO_KEYS } from './widgets.js';
 
 const COL_SIZE = 56;
 const COL_DATE = 70;
@@ -22,12 +22,12 @@ const MC_KEYS = [
   { action: 'quick', codes: ['F3'] },
   { action: 'tab', codes: ['Tab'] },
   { action: 'back', codes: ['Escape'] },
-  { action: 'up', codes: ['PageUp'] },
+  { action: 'up', codes: ['Ctrl+PageUp'] },
   { action: null, codes: [] },
 ];
 
 function newPanel(dir) {
-  return { dir, entries: null, error: false, cursor: 0, top: 0, vis: 1, search: '', rect: null };
+  return { dir, entries: null, error: false, cursor: 0, top: 0, vis: 1, search: '' };
 }
 
 export class PmcPane {
@@ -44,10 +44,6 @@ export class PmcPane {
   }
 
   get minimum() { return PANE_MIN.pmc; }
-
-  title() {
-    return 'pmc';
-  }
 
   // The items of a panel: the parent entry first, when there is one, then the listing.
   items(panel) {
@@ -173,7 +169,7 @@ export class PmcPane {
   key(e) {
     const k = e.code;
     const onView = this.quick && this.act === this.quickIdx;
-    if (onView && this.quick.view && this.quick.view.key && this.quick.view.key(e, this.panels[this.quickIdx].rect || { h: 0 })) return true;
+    if (onView && this.quick.view && this.quick.view.key && this.quick.view.key(e)) return true;
     if (e.ctrlKey && k === 'PageUp' && !onView) this.up(this.act);
     else if (e.ctrlKey || e.altKey || e.metaKey) return false;
     else if (k === 'Tab') this.switchPanel();
@@ -218,7 +214,7 @@ export class PmcPane {
     }
     if (kind === 'note') return new NoteBody(this.ws, path);
     if (kind === 'folder' || kind === 'app') return new FolderInfo(this.ws, path, item);
-    return new Message(kind, item);
+    return new Message();
   }
 
   // The layout of the prototype's explorer: the .i-panel frame; the toolbar; two panels, each a sunken well with
@@ -235,8 +231,13 @@ export class PmcPane {
       { x: area.x, y: area.y, w: half, h: area.h },
       { x: area.x + half + 4, y: area.y, w: area.w - half - 4, h: area.h },
     ];
+    // The tile's held keys sink the quick view's bar while its panel is active, pmc's own bar otherwise.
+    const held = this.ws.drawHeld;
+    const onView = this.quick && this.act === this.quickIdx;
+    this.ws.drawHeld = onView ? held : NO_KEYS;
     rects.forEach((rect, i) => this.panel(p, hits, i, rect, focused));
-    this.keyBar(p, hits, keys);
+    this.ws.drawHeld = held;
+    this.keyBar(p, hits, keys, onView ? NO_KEYS : held);
   }
 
   toolbar(p, hits, bar) {
@@ -269,7 +270,6 @@ export class PmcPane {
     p.text(RV, pathBar.x + Math.floor((pathBar.w - textWidth(RV, shown)) / 2), pathBar.y + 3, shown, active ? C.dark : C.text);
     hits.add(pathBar, { click: () => this.activate(idx) });
     const body = { x: col.x, y: col.y + 26, w: col.w, h: col.h - 26 };
-    panel.rect = body;
 
     if (quick) {
       p.fill(body.x, body.y, body.w, body.h, C.inset);
@@ -361,11 +361,6 @@ export class PmcPane {
     this.ws.requestDraw();
   }
 
-  cursorName(idx) {
-    const item = this.cursorItem(idx);
-    return item ? (item.up ? '..' : item.name) : '';
-  }
-
   // The status text of an entry: a folder's number of items, read on demand, or a file's size in bytes.
   describe(item, panel) {
     if (item.up) return T.pmcUpDir;
@@ -393,12 +388,12 @@ export class PmcPane {
   }
 
   // The key bar. Letters only says how the search works; its click makes the panel active, like its keys would.
-  keyBar(p, hits, r) {
+  keyBar(p, hits, r, held) {
     const cells = MC_KEYS.map((k, i) => ({
       ...PMC_KEYS[i], codes: k.codes,
       click: () => (k.action ? this.mcKey(k.action) : this.activate(this.listIdx)),
     }));
-    keyBar(p, hits, r, cells, this.ws.held);
+    keyBar(p, hits, r, cells, held);
   }
 
   mcKey(action) {
@@ -440,13 +435,8 @@ class FolderInfo {
   dispose() {}
 }
 
-// A quick view that is only a message: an app's screen, or a file that has no viewer.
+// A quick view that is only a message: a file that has no viewer.
 class Message {
-  constructor(kind, item) {
-    this.kind = kind;
-    this.item = item;
-  }
-
   draw(p, r) {
     p.fill(r.x, r.y, r.w, r.h, C.cb);
     p.text(RV, r.x + 8, r.y + 8, T.noViewer, C.ct);

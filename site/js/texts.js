@@ -33,7 +33,6 @@ export const T = {
   appNoIndex: 'This app has no index.html.',
   appLoading: 'Loading the app…',
   appRunning: 'Running. Keys go to the app — click another tile to take them back.',
-  appRestart: 'Restart',
   loadError: 'Could not load ',
   folderError: 'Could not load this folder',
   onlyOneTile: 'The last tile cannot be closed.',
@@ -50,6 +49,10 @@ export const T = {
   quickFooter: 'F3 on a file of this type opens it here · F3 or Esc — close',
   noteType: 'MD',
   pmcUpDir: '.. · up one level',
+  keyboardApp: 'Keyboard: app',
+  keyboardNone: 'Keyboard: —',
+  // The title and the tab of a tile, by its tab id; an app's title is its folder name.
+  tile: { pmc: 'pmc', Player: 'Player', Video: 'Video', Image: 'Image', Note: 'Note', File: 'File', App: 'App' },
 };
 
 // The key bar of pmc: the key as shown and the name after it.

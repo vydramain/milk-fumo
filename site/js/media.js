@@ -280,7 +280,7 @@ export class Player {
   // The key bar: the last 14 px of the body. Returns the y 4 px above it, where the layout above ends.
   keys(p, hits, r) {
     const bar = { x: r.x, y: r.y + r.h - KEYS_H, w: r.w, h: KEYS_H };
-    keyBar(p, hits, bar, this.cells(), this.ws.held);
+    keyBar(p, hits, bar, this.cells(), this.ws.drawHeld);
     return bar.y - 4;
   }
 

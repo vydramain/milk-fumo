@@ -130,7 +130,9 @@ canvas.addEventListener('wheel', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (screenTooSmall() || MOBILE.matches) return;
-  if (!ws.held.has(e.code)) { ws.held.add(e.code); requestDraw(); }
+  // A Ctrl combination is held as 'Ctrl+' + code too, for the cells of Ctrl keys.
+  const codes = e.ctrlKey ? [e.code, 'Ctrl+' + e.code] : [e.code];
+  if (codes.some((c) => !ws.held.has(c))) { codes.forEach((c) => ws.held.add(c)); requestDraw(); }
   if (ws.key(e)) {
     e.preventDefault();
     requestDraw();
@@ -138,7 +140,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-  if (ws.held.delete(e.code)) requestDraw();
+  if (ws.held.delete(e.code) | ws.held.delete('Ctrl+' + e.code)) requestDraw();
 });
 
 // A click that goes into an app's frame gives the focus to that app's tile. Keys released outside the window are lost.

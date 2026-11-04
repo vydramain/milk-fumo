@@ -40,8 +40,9 @@ test('counts bytes and ends done', async () => {
   assert.equal(d.blob.size, 30);
   assert.equal(d.blob.type, 'audio/mpeg');
   assert.ok(d.href.startsWith('blob:'));
-  assert.equal(d.href, d.href);
-  URL.revokeObjectURL(d.href);
+  const h = d.href;
+  assert.equal(d.href, h);
+  URL.revokeObjectURL(h);
 });
 
 test('unknown length keeps share 0 until done', async () => {

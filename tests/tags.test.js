@@ -132,7 +132,7 @@ function player(files = {}) {
     const name = Object.keys(files).find((n) => url.endsWith(encodeURIComponent(n)));
     return name ? Promise.resolve(new Response(files[name])) : new Promise(() => {});
   };
-  const ws = { requestDraw() {}, held: new Set() };
+  const ws = { requestDraw() {}, drawHeld: new Set() };
   const set = ['a.mp3', 'b.mp3', 'c.mp3'].map((name) => ({ name }));
   return { pl: new Player(ws, 'audio', 'music', set, 0), calls };
 }

@@ -43,8 +43,8 @@ export class NoteBody {
   }
 
   // Keys of a focused note: arrows, Page Up and Page Down, Home and End scroll it.
-  key(e, view = this.view || { h: 0 }) {
-    const page = view.h - STEP;
+  key(e) {
+    const page = (this.view ? this.view.h : 0) - STEP;
     const k = e.code;
     if (k === 'ArrowDown') this.top += STEP;
     else if (k === 'ArrowUp') this.top -= STEP;
@@ -65,7 +65,7 @@ export class NoteBody {
   // The note is a sunken well with the text inside it, padded as the prototype's .md (8 px by 10 px).
   draw(p, r, hits) {
     const bar = { x: r.x, y: r.y + r.h - BAR_H, w: r.w, h: BAR_H };
-    keyBar(p, hits, bar, this.cells(), this.ws.held);
+    keyBar(p, hits, bar, this.cells(), this.ws.drawHeld);
     const foot = { x: r.x, y: bar.y - 4 - BAR_H, w: r.w, h: BAR_H };
     const d = this.download;
     const size = d.blob ? d.blob.size : d.total;

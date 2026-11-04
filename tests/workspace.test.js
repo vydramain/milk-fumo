@@ -260,3 +260,23 @@ test('a window shrunk under 1.5 falls to largestScale, not to 1 when 1.5 still f
   assert.equal(ws.fitsScale(2), false);
   assert.equal(ws.largestScale(), 1.5);
 });
+
+test('held keys reach only the focused tile body', () => {
+  const ws = new Workspace(() => {});
+  const seen = new Map();
+  for (const t of ws.panes.values()) t.body = { draw: () => seen.set(t.tab, ws.drawHeld) };
+  ws.held.add('PageDown');
+  const p = new Proxy({}, { get: () => () => {} });
+  ws.render(p, 1200, 800);
+  assert.equal(ws.titleOf(ws.focus), 'pmc');
+  assert.ok(seen.get('pmc').has('PageDown'));
+  assert.equal(seen.get('Note').size, 0);
+});
+
+test('a note pages by the text window of its last draw', () => {
+  const note = new NoteBody({ requestDraw() {} }, 'a.md');
+  note.view = { h: 100 };
+  note.key({ code: 'PageDown' });
+  assert.equal(note.top, 100 - 12);
+  note.dispose();
+});

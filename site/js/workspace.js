@@ -4,7 +4,7 @@ import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from
 import * as L from './layout.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box } from './widgets.js';
+import { Hits, box, NO_KEYS } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
 import { view } from './view.js';
 import { HOME_NOTE } from './config.js';
@@ -24,7 +24,7 @@ const TILE_MIN = PANE_MIN.generic;
 const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4
 const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without movement or a player key
 // The tab and title of the tile that shows each kind of file: at most one tile of each.
-const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };
+const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };  // tab ids; the names are T.tile
 
 // A file that is still loading, or a list that could not be read.
 class LoadingBody {
@@ -60,9 +60,9 @@ export class Workspace {
     this.pressed = null;       // the rectangle of the click that is held: drawn sunken until the pointer is up
     this.dropAt = null;        // where a dragged tile would land
     this.held = new Set();     // KeyboardEvent.code of the keys that are down: key-bar cells are drawn sunken
+    this.drawHeld = NO_KEYS;   // the held keys of the tile being drawn: only the focused tile gets `held`
     this.progress = new Set();
     this.hits = new Hits();
-    this.rects = new Map();    // pane id -> content rectangle, from the last draw
     this.tiles = [];           // { id, r }: the whole rectangle of every tile drawn in the last frame
     this.area = { x: MARGIN, y: MARGIN, w: 0, h: 0 };
     this.frame = 0;
@@ -75,7 +75,7 @@ export class Workspace {
 
   // Start: the readme note on the left and pmc on the right, focused, 1:1.
   setup() {
-    const note = makeTile(new NoteBody(this, HOME_NOTE), 'Note', 'Note');
+    const note = makeTile(new NoteBody(this, HOME_NOTE), T.tile.Note, 'Note');
     this.panes.set(note.id, note);
     const pmc = this.newPmcTile();
     this.L = L.newLayout(L.split('h', L.leaf([note.id]), L.leaf([pmc.id])));
@@ -165,7 +165,7 @@ export class Workspace {
   }
 
   newPmcTile() {
-    const tile = makeTile(null, 'pmc', 'pmc');
+    const tile = makeTile(null, T.tile.pmc, 'pmc');
     this.panes.set(tile.id, tile);
     this.fillTile(tile, new PmcPane(this), 'pmc');
     return tile;
@@ -173,11 +173,11 @@ export class Workspace {
 
   // Shift+Enter: the focus goes to pmc, or pmc opens in a new tile beside the focused one when there is none.
   openPmcHere() {
-    if (this.L.max) { this.msg = T.maximized; return; }
     const pmc = this.tileOfType('pmc');
     if (pmc) {
-      this.setFocus(pmc.id);
+      this.reveal(pmc.id);
     } else {
+      if (this.L.max) { this.msg = T.maximized; return; }
       const tile = this.newPmcTile();
       L.addBeside(this.L, L.leafOf(this.L.root, this.focus), 'h', L.leaf([tile.id]), true);
       this.setFocus(tile.id);
@@ -349,7 +349,7 @@ export class Workspace {
     if (tile) {
       this.reveal(tile.id);
     } else {
-      tile = makeTile(new LoadingBody(this), type, type);
+      tile = makeTile(new LoadingBody(this), T.tile[type], type);
       this.panes.set(tile.id, tile);
       L.addBeside(this.L, L.leafOf(this.L.root, pmc.id), 'h', L.leaf([tile.id]), true);
     }
@@ -473,8 +473,7 @@ export class Workspace {
     this.msg = '';
     const tile = this.panes.get(this.focus);
     if (!tile || !tile.body.key) return false;
-    const r = this.rects.get(this.focus) || { h: 0 };
-    return tile.body.key(e, r) || false;
+    return tile.body.key(e) || false;
   }
 
   // Keys in the video's fullscreen: the layout is hidden, so Shift+F leaves, Shift+Q closes the video's own tile, every
@@ -602,7 +601,6 @@ export class Workspace {
 
   render(p, W, H) {
     this.hits = new Hits();
-    this.rects = new Map();
     this.tiles = [];
     this.frame++;
     this.screen = { w: W, h: H };
@@ -629,6 +627,7 @@ export class Workspace {
     p.fill(r.x, r.y, r.w, r.h, C.win);
     p.bevel(r, 1, true);
     const end = v.seekBar(p, this.hits, { x: r.x + 6, y: r.y + 6, w: r.w - 12 });
+    this.drawHeld = this.held;
     v.keys(p, this.hits, { x: r.x + 4, y: end + 4, w: r.w - 8, h: 14 });
   }
 
@@ -671,9 +670,9 @@ export class Workspace {
     this.tabStrip(p, node, rect);
     this.hits.unclip();
     const content = L.contentRect(rect);
-    this.rects.set(id, content);
     p.clip(content);
     this.hits.clip(content);
+    this.drawHeld = id === this.focus ? this.held : NO_KEYS;
     tile.body.draw(p, content, this.hits, id === this.focus);
     this.hits.unclip();
     p.unclip();
@@ -728,7 +727,7 @@ export class Workspace {
 
   tabLabel(id) {
     const t = this.panes.get(id);
-    return t ? t.tab || '' : '';
+    return t ? T.tile[t.tab] || t.tab || '' : '';
   }
 
   // The message line and the environment bar at the bottom of the window.

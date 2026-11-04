@@ -2,6 +2,7 @@
 // with the frame's hit list. A click is checked against the list from the top down.
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
+import { T } from './texts.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
 export class Hits {
@@ -154,6 +155,9 @@ export function loadBar(p, x, y, load) {
 
 // The key bar: cells of equal width, 2 px apart, the key in a dark box and the name after it. A cell with `click` is
 // a button; it is drawn sunken while one of its `codes` is in `held`.
+// The held set of a tile that is not focused: its cells never sink.
+export const NO_KEYS = Object.freeze(new Set());
+
 export function keyBar(p, hits, r, cells, held) {
   const w = Math.floor((r.w - 2 * (cells.length - 1)) / cells.length);
   cells.forEach((k, i) => {
@@ -173,7 +177,7 @@ export function keyBar(p, hits, r, cells, held) {
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),
 // then the keyboard field: `Keyboard: app` in C.sel when `appKeys`, `Keyboard: —` in C.cov otherwise.
 export function footBar(p, r, text, load, appKeys) {
-  const kw = textWidth(RV, 'Keyboard: app') + 12;
+  const kw = textWidth(RV, T.keyboardApp) + 12;
   const kx = r.x + r.w - kw;
   const bx = kx - 2 - LOAD_W;
   const addr = { x: r.x, y: r.y, w: (load ? bx : kx) - 2 - r.x, h: r.h };
@@ -183,5 +187,5 @@ export function footBar(p, r, text, load, appKeys) {
   loadBar(p, bx, r.y + 1, load);
   p.fill(kx, r.y, kw, r.h, C.inset);
   p.bevel({ x: kx, y: r.y, w: kw, h: r.h }, 1, false);
-  p.text(RV, kx + 6, r.y + 4, appKeys ? 'Keyboard: app' : 'Keyboard: —', appKeys ? C.sel : C.cov);
+  p.text(RV, kx + 6, r.y + 4, appKeys ? T.keyboardApp : T.keyboardNone, appKeys ? C.sel : C.cov);
 }

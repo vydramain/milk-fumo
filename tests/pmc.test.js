@@ -18,7 +18,7 @@ const dir = (name) => ({ name, dir: true, size: 0, date: '2026-11-04' });
 function setup() {
   const calls = { openFile: [], openApp: [], open: [], made: [], disposed: [] };
   const ws = {
-    requestDraw() {}, held: new Set(),
+    requestDraw() {}, drawHeld: new Set(),
     openFile: (...a) => calls.openFile.push(a), openApp: (...a) => calls.openApp.push(a),
   };
   const pmc = new PmcPane(ws);
@@ -97,8 +97,9 @@ test('F3 on an app or a folder shows FolderInfo', () => {
   pmc.f3();
   assert.equal(pmc.quick.kind, 'folder');
   assert.equal(pmc.quick.view.constructor.name, 'FolderInfo');
-  pmc.panels[0].entries.push(dir('game.app'));
-  at('game.app');
+  pmc.panels[0].entries.push(dir('game.exe'));
+  at('game.exe');
+  assert.equal(kindOf(pmc.cursorItem(0)), 'app');
   pmc.f3();
   assert.equal(pmc.quick.view.constructor.name, 'FolderInfo');
 });
@@ -132,8 +133,8 @@ test('a failed listing gives no unhandled rejection and FolderInfo shows no fals
   globalThis.fetch = async () => ({ ok: true, json: async () => { throw new SyntaxError('not json'); } });
   const { pmc, at } = setup();
   pmc.makeView = PmcPane.prototype.makeView;
-  pmc.panels[0].entries.push(dir('g.app'));
-  at('g.app');
+  pmc.panels[0].entries.push(dir('g.exe'));
+  at('g.exe');
   pmc.f3();
   await new Promise((r) => setTimeout(r, 20));
   process.off('unhandledRejection', onRejection);
