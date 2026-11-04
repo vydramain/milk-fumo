@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Workspace } from '../site/js/workspace.js';
 import { NoteBody } from '../site/js/note.js';
+import { Player } from '../site/js/media.js';
 import { ENV_CELLS, TUTORIAL_ACTIONS } from '../site/js/texts.js';
 import { list } from '../site/js/catalog.js';
 
@@ -151,4 +152,75 @@ test('a press anywhere in a tile focuses it; its widgets still take the press; a
   ws.pointerUp(101, 50);
   assert.equal(border, 1);
   assert.equal(ws.focus, note.id);
+});
+
+test('fullscreen video: the panel and the cursor show for 3 s after a move, and while the pointer is over the panel', () => {
+  const ws = new Workspace(() => {});
+  ws.screen = { w: 800, h: 600 };
+  assert.equal(ws.cursorHidden(), false);
+  ws.fullVideo = {};
+  ws.panelUntil = Date.now() + 1000;
+  assert.equal(ws.cursorHidden(), false);
+  ws.panelUntil = Date.now() - 1;
+  ws.point = { x: 400, y: 100 };
+  assert.equal(ws.cursorHidden(), true);
+  ws.point = { x: 400, y: 590 };
+  assert.equal(ws.cursorHidden(), false);
+});
+
+test('double click: a video frame enters the fullscreen, anywhere but the shown panel leaves it; audio maximizes', () => {
+  globalThis.document.documentElement = { requestFullscreen: async () => {} };
+  globalThis.document.fullscreenElement = null;
+  const ws = new Workspace(() => {});
+  ws.screen = { w: 800, h: 600 };
+  const video = new Player(ws, 'video', 'video', [item('a.webm')], 0);
+  const tile = { id: 'v1', body: video, label: 'Video', tab: 'Video' };
+  ws.panes.set(tile.id, tile);
+  ws.tiles = [{ id: tile.id, r: { x: 0, y: 0, w: 400, h: 400 } }];
+  video.frameRect = { x: 10, y: 100, w: 300, h: 200 };
+  assert.equal(ws.doubleClick(5, 50), false);
+  assert.equal(ws.fullVideo, null);
+  assert.equal(ws.doubleClick(50, 150), true);
+  assert.equal(ws.fullVideo, video);
+  ws.panelUntil = Date.now() + 1000;
+  assert.equal(ws.doubleClick(400, 590), false);   // on the panel: its cells take the clicks
+  assert.equal(ws.fullVideo, video);
+  assert.equal(ws.doubleClick(400, 100), true);
+  assert.equal(ws.fullVideo, null);
+  // An audio Player has no fullscreen: Shift+F maximizes its tile.
+  const audio = new Player(ws, 'audio', 'music', [item('a.mp3')], 0);
+  ws.panes.set('a1', { id: 'a1', body: audio, label: 'Player', tab: 'Player' });
+  ws.focus = 'a1';
+  ws.L.max = null;
+  ws.fullscreenOrMaximize();
+  assert.equal(ws.L.max, 'a1');
+  assert.equal(ws.fullVideo, null);
+});
+
+test('fullscreen video: Shift+R and other Shift combinations are swallowed, Space reaches the player, Shift+F leaves', () => {
+  globalThis.document.documentElement = { requestFullscreen: async () => {} };
+  globalThis.document.fullscreenElement = null;
+  const ws = new Workspace(() => {});
+  const video = new Player(ws, 'video', 'video', [item('a.webm')], 0);
+  ws.panes.set('v1', { id: 'v1', body: video, label: 'Video', tab: 'Video' });
+  const focus = ws.focus;
+  let toggled = 0;
+  video.toggle = () => { toggled++; };
+  video.fullscreen();
+  assert.equal(ws.fullVideo, video);
+  const saved = globalThis.setTimeout;
+  globalThis.setTimeout = () => 0;   // showPanel's 3 s redraw would keep the test process alive
+  try {
+    assert.equal(ws.key({ code: 'KeyR', shiftKey: true }), true);
+    assert.equal(ws.mode, null);
+    assert.equal(ws.key({ code: 'ArrowRight', shiftKey: true }), true);
+    assert.equal(ws.focus, focus);
+    assert.equal(ws.key({ code: 'Space' }), true);
+    assert.equal(toggled, 1);
+    assert.ok(ws.panelUntil > Date.now());
+  } finally {
+    globalThis.setTimeout = saved;
+  }
+  assert.equal(ws.key({ code: 'KeyF', shiftKey: true }), true);
+  assert.equal(ws.fullVideo, null);
 });

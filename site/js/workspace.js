@@ -19,6 +19,8 @@ const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
 const TILE_MIN = PANE_MIN.generic;
+const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4
+const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without movement or a player key
 // The tab and title of the tile that shows each kind of file: at most one tile of each.
 const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };
 
@@ -62,6 +64,10 @@ export class Workspace {
     this.tiles = [];           // { id, r }: the whole rectangle of every tile drawn in the last frame
     this.area = { x: MARGIN, y: MARGIN, w: 0, h: 0 };
     this.frame = 0;
+    this.fullVideo = null;     // the video Player shown alone in the browser's fullscreen (spec 6)
+    this.panelUntil = 0;       // Date.now() before which the fullscreen panel shows
+    this.point = null;         // the pointer's last position, for the panel
+    this.screen = { w: 0, h: 0 };
     this.setup();
   }
 
@@ -247,11 +253,55 @@ export class Workspace {
     this.progress.add('maximize');
   }
 
-  // An app's tile goes to the browser's fullscreen for the game; any other tile is maximized in the workspace.
+  // An app's or a video's tile goes to the browser's fullscreen; any other tile is maximized in the workspace.
+  // A body's fullscreen() returns false when it has none (an audio Player). In fullscreen, the video comes back.
   fullscreenOrMaximize() {
+    if (this.fullVideo) { this.fullVideo.fullscreen(); return; }
     const tile = this.panes.get(this.focus);
-    if (tile && tile.body && tile.body.fullscreen) tile.body.fullscreen();
-    else this.toggleMaximize();
+    if (!(tile && tile.body && tile.body.fullscreen && tile.body.fullscreen() !== false)) this.toggleMaximize();
+  }
+
+  // ---- the fullscreen video ------------------------------------------------------------------
+
+  // The panel over the bottom of the frame shows for 3 s more; a timer draws the frame that hides it.
+  showPanel() {
+    this.panelUntil = Date.now() + PANEL_MS;
+    setTimeout(this.requestDraw, PANEL_MS);
+    this.requestDraw();
+  }
+
+  panelRect() {
+    return { x: 0, y: this.screen.h - PANEL_H, w: this.screen.w, h: PANEL_H };
+  }
+
+  // The panel shows for 3 s after a move or a player key, and stays while the pointer is over it.
+  panelShown(now = Date.now()) {
+    const r = this.panelRect(), q = this.point;
+    return now < this.panelUntil || (!!q && q.x >= r.x && q.y >= r.y && q.x < r.x + r.w && q.y < r.y + r.h);
+  }
+
+  // The cursor hides with the panel, only in fullscreen.
+  cursorHidden() {
+    return !!this.fullVideo && !this.panelShown();
+  }
+
+  // A double click on a video's frame, or anywhere in fullscreen but on the shown panel, toggles the fullscreen.
+  // Its two presses have already focused the tile (pointerDown).
+  doubleClick(x, y) {
+    const inside = (r) => !!r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+    if (this.fullVideo) {
+      if (this.panelShown() && inside(this.panelRect())) return false;
+      this.fullVideo.fullscreen();
+      return true;
+    }
+    for (const { id } of this.tiles) {
+      const body = this.panes.get(id).body;
+      if (body instanceof Player && body.kind === 'video' && inside(body.frameRect)) {
+        body.fullscreen();
+        return true;
+      }
+    }
+    return false;
   }
 
   // Shift+Q, the X of the title bar, or the close key inside an app: the focused tile goes, its neighbor takes focus.
@@ -394,6 +444,7 @@ export class Workspace {
       if (k === 'Escape') { this.drag = null; this.dropAt = null; this.msg = ''; }
       return true;
     }
+    if (this.fullVideo) return this.fullKey(e);
     if (this.mode === 'resize' || this.mode === 'move') return this.modeKey(e);
     const shift = e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey;
     const ctrlShift = e.shiftKey && e.ctrlKey && !e.altKey && !e.metaKey;
@@ -410,6 +461,24 @@ export class Workspace {
     if (!tile || !tile.body.key) return false;
     const r = this.rects.get(this.focus) || { h: 0 };
     return tile.body.key(e, r) || false;
+  }
+
+  // Keys in the video's fullscreen: the layout is hidden, so Shift+F leaves, Shift+Q closes the video's own tile, every
+  // other Shift or Ctrl+Shift combination is swallowed. The rest go to the player and show the panel for 3 s.
+  fullKey(e) {
+    if (e.shiftKey) {
+      const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
+      if (plain && !e.repeat && e.code === 'KeyF') this.fullVideo.fullscreen();
+      else if (plain && !e.repeat && e.code === 'KeyQ') {
+        const tile = this.tileOf(this.fullVideo);
+        if (tile) { this.focus = tile.id; this.closeFocus(); }
+      }
+      this.requestDraw();
+      return true;
+    }
+    const used = this.fullVideo.key(e);
+    if (used) this.showPanel();
+    return used;
   }
 
   modeKey(e) {
@@ -454,6 +523,8 @@ export class Workspace {
   }
 
   pointerMove(x, y) {
+    this.point = { x, y };
+    if (this.fullVideo) this.showPanel();
     if (!this.drag || !this.drag.move) return;
     this.drag.move(x, y);
     this.requestDraw();
@@ -520,6 +591,34 @@ export class Workspace {
     this.rects = new Map();
     this.tiles = [];
     this.frame++;
+    this.screen = { w: W, h: H };
+    if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
+    else this.renderTiles(p, W, H);
+    // Every clickable thing looks pressed the same way while the pointer is down on it.
+    const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
+    if (held) p.bevel(held.r, 2, false);
+    if (!this.fullVideo) this.drawBars(p, W, H);
+    // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
+    for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
+    // The browser tab shows the focused tile's title; it follows focus changes and closing.
+    const t = this.titleOf(this.focus);
+    if (document.title !== t) document.title = t;
+  }
+
+  // Spec 6: only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.
+  renderFullVideo(p, W, H) {
+    const v = this.fullVideo;
+    p.fill(0, 0, W, H, C.crust);
+    v.drawFrame(p, { x: 0, y: 0, w: W, h: H }, 'fit');
+    if (!this.panelShown()) return;
+    const r = this.panelRect();
+    p.fill(r.x, r.y, r.w, r.h, C.win);
+    p.bevel(r, 1, true);
+    const end = v.seekBar(p, this.hits, { x: r.x + 6, y: r.y + 6, w: r.w - 12 });
+    v.keys(p, this.hits, { x: r.x + 4, y: end + 4, w: r.w - 8, h: 14 });
+  }
+
+  renderTiles(p, W, H) {
     p.fill(0, 0, W, H, C.dark);
     this.resize(W, H);
     const placed = L.place(this.L.root, this.area, (id) => this.minOf(id));
@@ -538,15 +637,6 @@ export class Workspace {
       const r = L.dropPreview(this.dropAt);
       p.dither({ x: r.x, y: r.y, w: r.w, h: r.h }, C.win, C.sel);
     }
-    // Every clickable thing looks pressed the same way while the pointer is down on it.
-    const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
-    if (held) p.bevel(held.r, 2, false);
-    this.drawBars(p, W, H);
-    // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
-    for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
-    // The browser tab shows the focused tile's title; it follows focus changes and closing.
-    const t = this.titleOf(this.focus);
-    if (document.title !== t) document.title = t;
   }
 
   // A tile is drawn in order: its frame, the click that focuses it, the title bar, the tabs, and its body.

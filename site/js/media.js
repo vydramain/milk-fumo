@@ -8,7 +8,7 @@ import { C } from './theme.js';
 import { PANE_MIN } from './metrics.js';
 import { RV, VGA, textWidth, fitText } from './font.js';
 import { urlOf } from './catalog.js';
-import { box, button, keyBar, loadBar, LOAD_W } from './widgets.js';
+import { box, button, keyBar, loadBar, footBar, LOAD_W } from './widgets.js';
 import { Downloads } from './download.js';
 import { readTags } from './tags.js';
 import { PLAYER_KEYS as K } from './texts.js';
@@ -18,6 +18,7 @@ const PAD = 4;
 const NOW_H = 56;
 const VOLUME_H = 14;
 const KEYS_H = 14;
+const FOOT_H = 14;
 const TAG_LIMIT = 1 << 20;        // tags are looked for in the first 1 MiB only
 
 function timeText(sec) {
@@ -164,8 +165,24 @@ export class Player {
     return Number.isFinite(this.element.duration) ? this.element.duration : NaN;
   }
 
-  // Closing the tile stops the element and aborts and frees its downloads.
+  // Spec 6: a video goes to the browser's fullscreen, showing only its frame; again, it comes back. An audio player
+  // has no fullscreen: false, and the workspace maximizes the tile instead. Refusals are ignored.
+  fullscreen() {
+    if (this.kind !== 'video') return false;
+    if (this.ws.fullVideo === this) {
+      this.ws.fullVideo = null;
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } else {
+      this.ws.fullVideo = this;
+      document.documentElement.requestFullscreen().catch(() => { this.ws.fullVideo = null; this.ws.requestDraw(); });
+    }
+    this.ws.requestDraw();
+    return true;
+  }
+
+  // Closing the tile stops the element and aborts and frees its downloads; a fullscreen video leaves the fullscreen.
   dispose() {
+    if (this.ws.fullVideo === this) this.fullscreen();
     this.element.pause();
     this.element.removeAttribute('src');
     this.element.load();
@@ -227,8 +244,23 @@ export class Player {
     const meta = `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}${size}`;
     p.text(RV, tx, now.y + (head.art ? 40 : 30), fitText(RV, meta, tw), C.cs);
 
-    // The position: a sunken slider, a scale of ticks under it, and the caption with the times.
-    const seek = { x: r.x + 2, y: r.y + 62, w: r.w - 4, h: 10 };
+    const end = this.seekBar(p, hits, { x: r.x + 2, y: r.y + 62, w: r.w - 4 });
+
+    const vol = { x: r.x + PAD, y: end + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
+    p.dither(vol, C.inset, C.lo);
+    p.bevel(vol, 1, false);
+    const level = Math.round((vol.w - 4) * (e.muted ? 0 : e.volume));
+    p.fill(vol.x + 2, vol.y + 4, level, 6, C.sel);
+    p.text(RV, vol.x + vol.w + 6, vol.y + 3, `Vol. ${Math.round(e.volume * 100)}%`, C.text);
+    hits.add(vol, { press: (x) => { this.setVolume((x - vol.x) / vol.w); return (qx) => this.setVolume((qx - vol.x) / vol.w); } });
+    return vol.y + vol.h;
+  }
+
+  // The position, from y = r.y across r.w: a sunken slider, a scale of ticks under it, and the caption with the times.
+  // Its knob reaches 2 px above r.y. Returns the y under the caption (r.y + 30). The tile and the fullscreen panel share it.
+  seekBar(p, hits, r) {
+    const e = this.element;
+    const seek = { x: r.x, y: r.y, w: r.w, h: 10 };
     const frac = this.duration() ? e.currentTime / this.duration() : 0;
     p.fill(seek.x, seek.y, seek.w, seek.h, C.inset);
     p.bevel(seek, 1, false);
@@ -242,15 +274,7 @@ export class Player {
     p.text(RV, caption.x + Math.floor((caption.w - textWidth(RV, 'Position')) / 2), caption.y, 'Position', C.dim);
     const dur = timeText(this.duration());
     p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.dim);
-
-    const vol = { x: r.x + PAD, y: caption.y + caption.h + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
-    p.dither(vol, C.inset, C.lo);
-    p.bevel(vol, 1, false);
-    const level = Math.round((vol.w - 4) * (e.muted ? 0 : e.volume));
-    p.fill(vol.x + 2, vol.y + 4, level, 6, C.sel);
-    p.text(RV, vol.x + vol.w + 6, vol.y + 3, `Vol. ${Math.round(e.volume * 100)}%`, C.text);
-    hits.add(vol, { press: (x) => { this.setVolume((x - vol.x) / vol.w); return (qx) => this.setVolume((qx - vol.x) / vol.w); } });
-    return vol.y + vol.h;
+    return caption.y + caption.h;
   }
 
   // The key bar: the last 14 px of the body. Returns the y 4 px above it, where the layout above ends.
@@ -290,7 +314,8 @@ export class Player {
     });
   }
 
-  // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame and its caption, the key bar.
+  // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame, the foot panel 4 px above
+  // the key bar (spec 4: `name · 00:00 / 01:12`, the load bar, `Keyboard: —`) and the key bar.
   drawVideo(p, r, hits) {
     const bottom = this.keys(p, hits, r);
     const end = this.transport(p, hits, r);
@@ -308,11 +333,13 @@ export class Player {
     p.text(RV, cb.x + 14, y + 4, 'Loop', C.text);
     hits.add({ x: cb.x, y, w: 60, h: 16 }, { click: () => this.toggleLoop() });
 
-    const frame = { x: r.x + PAD, y: y + 22, w: r.w - 2 * PAD, h: Math.max(0, bottom - 12 - (y + 22)) };
+    const foot = { x: r.x, y: bottom - FOOT_H, w: r.w, h: FOOT_H };
+    const frame = { x: r.x + PAD, y: y + 22, w: r.w - 2 * PAD, h: Math.max(0, foot.y - 4 - (y + 22)) };
+    this.frameRect = frame;     // a double click on it toggles the fullscreen (Workspace.doubleClick)
     p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
     this.drawFrame(p, frame);
-    const caption = `${this.entry.name} · ${timeText(this.element.currentTime)} / ${timeText(this.duration())}`;
-    p.text(RV, r.x + PAD, bottom - 9, fitText(RV, caption, r.w - 2 * PAD), C.dim);
+    const line = `${this.entry.name} · ${timeText(this.element.currentTime)} / ${timeText(this.duration())}`;
+    footBar(p, foot, line, this.downloads.peek(this.path(this.index)) || null, false);
   }
 
   videoSize() {
@@ -321,14 +348,15 @@ export class Player {
   }
 
   // The frame is drawn from the element: fitted, or at 1x or 2x of its own pixels, clipped to the frame.
-  drawFrame(p, frame) {
+  // The fullscreen always fits it.
+  drawFrame(p, frame, speed = this.speed) {
     const v = this.element;
     if (!v.videoWidth) {
       const t = 'video frame';
       p.text(RV, frame.x + Math.floor((frame.w - textWidth(RV, t)) / 2), frame.y + Math.floor(frame.h / 2) - 4, t, C.cov);
       return;
     }
-    const s = this.speed === 'fit' ? Math.min(frame.w / v.videoWidth, frame.h / v.videoHeight) : Number(this.speed[0]);
+    const s = speed === 'fit' ? Math.min(frame.w / v.videoWidth, frame.h / v.videoHeight) : Number(speed[0]);
     const w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
     p.clip(frame);
     p.image(v, frame.x + Math.floor((frame.w - w) / 2), frame.y + Math.floor((frame.h - h) / 2), w, h);

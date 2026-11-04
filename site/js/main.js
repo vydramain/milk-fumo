@@ -45,7 +45,8 @@ function draw() {
   if (view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = 1;
   const mobile = MOBILE.matches;
   const small = !mobile && screenTooSmall();
-  const size = mobile || small ? { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) } : canvasSize();
+  // The fullscreen video is drawn at the window's size, so its panel is always on screen.
+  const size = mobile || small || ws.fullVideo ? { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) } : canvasSize();
   canvas.width = size.w;
   canvas.height = size.h;
   canvas.style.width = size.w / d + 'px';
@@ -55,6 +56,8 @@ function draw() {
   else if (small) drawMessage(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
   else ws.render(new Paint(ctx, view.ui), Math.floor(size.w / view.ui), Math.floor(size.h / view.ui));
   if (!mobile && !small && ws.animated()) requestDraw();
+  const cursor = ws.cursorHidden() ? 'none' : '';
+  if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
 }
 
 // The screens that replace the workspace: a tile with a title and lines of text, or the text alone.
@@ -110,6 +113,12 @@ canvas.addEventListener('pointercancel', (e) => {
   const { x, y } = pointer(e);
   ws.pointerUp(x, y);
 });
+// A double click on a video's frame, or anywhere in its fullscreen, toggles the fullscreen.
+canvas.addEventListener('dblclick', (e) => {
+  if (screenTooSmall() || MOBILE.matches) return;
+  const { x, y } = pointer(e);
+  if (ws.doubleClick(x, y)) requestDraw();
+});
 canvas.addEventListener('wheel', (e) => {
   if (screenTooSmall() || MOBILE.matches) return;
   const { x, y } = pointer(e);
@@ -146,6 +155,12 @@ window.addEventListener('blur', () => {
 // The apps' messages: each app is checked against its own frame.
 window.addEventListener('message', (e) => {
   for (const app of ws.apps()) app.message(e);
+});
+
+// Leaving the browser's fullscreen (Esc, or the browser's own controls) returns the video to its tile.
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) ws.fullVideo = null;
+  requestDraw();
 });
 
 window.addEventListener('resize', requestDraw);
