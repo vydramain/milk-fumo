@@ -24,12 +24,12 @@ Within the first minute a visitor should:
 | Source | What is taken |
 |---|---|
 | [bird-fumo](https://github.com/vydramain/bird-fumo) | viewers and launching: explorer, images, audio, video, web apps; the app `postMessage` protocol (without its privileged messages) |
-| [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | the workspace: tiles, splits, tabs, minimum sizes; the widget catalog and fonts |
+| [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | the workspace: tiles, tabs, minimum sizes; the widget catalog and fonts |
 | [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette; its fonts are used by the prototypes only |
 | SGI IRIX | the look: raised frames, brass, dense utility type |
 | Midnight Commander, Volkov Commander | the pmc UX: two panels, cursor, function keys |
 
-Stitch, a generated draft, contributed the split buttons in the title bar and the player queue. Its own palette, fonts, icons and telemetry decorations were dropped.
+Stitch, a generated draft, contributed the player queue (its split buttons were removed in v3). Its own palette, fonts, icons and telemetry decorations were dropped.
 
 ## How the site works
 
@@ -62,21 +62,23 @@ What Shift costs: it types capitals in text fields, it takes `Shift`+arrows and 
 | To do | Mouse | Keyboard |
 |---|---|---|
 | Go to another tile | click it | `Shift` + arrows |
-| Split a tile | the `│` `─` buttons in the title bar | `Shift+H` beside, `Shift+V` below |
-| Open pmc | "pmc" in an empty tile | `Shift+Enter` |
+| Open or focus pmc | the **Open** cell of the bottom bar | `Shift+Enter` |
 | Move a tile | drag its title bar to the edge of another | `Ctrl+Shift` + arrows |
 | Stack into tabs | drop its title bar onto the tabs | `Shift+W` |
 | Resize | drag the border | `Shift+R`, then arrows; `Enter` or `Esc` to finish |
-| Fullscreen and back | `M` in the title bar | `Shift+F` |
+| Fullscreen and back | `M` in the title bar | `Shift+F` (a video also: double click on its frame) |
 | Close a tile | `X` in the title bar | `Shift+Q`, also inside a game or app |
-| UI scale 1x or 2x | the **Scale** cell of the bottom bar | `Shift+S` |
+| Restart an app | the **Restart** cell of its key bar | `Shift+0`, also inside the app's frame |
+| UI scale 1x, 1.5x or 2x | the **Scale** cell of the bottom bar | `Shift+S` |
 
-The environment bar at the bottom is always visible. It shows the key for each action, and every cell can be clicked. Above it is a message line, for example one that says why a border will not move further.
+The environment bar at the bottom is always visible. It shows the key for each action, and every cell can be clicked. Every tile also ends with its own key bar, and its cells can be clicked too. Above it is a message line, for example one that says why a border will not move further.
 
 ## Tiles
 
 - The screen is divided into rectangular tiles. **Tiles never overlap.**
-- A new tile shares its neighbor's space 1:1. A closed tile gives its space back.
+- A new tile shares its neighbor's space 1:1. A closed tile gives its space back. There is no manual splitting: tiles appear by opening a file or with `Shift+Enter`.
+- **One tile per type:** pmc, Player, Video, Image, Note. An app has one tile per app. Opening a file of a type that already has a tile focuses that tile and opens the file there.
+- The title bar of a tile holds `X` and `M`. A tile's title is the app name only; the browser tab title follows the focused tile, and the favicon is `Mf`.
 - The layout is a tree of splits whose leaves hold tabs. Stacked tiles show tabs at their bottom, like tabs on folders in a card file.
 - A tile can be maximized to the whole screen and the layout restored.
 - Dragging a title bar to the edge of another tile creates a neighbor; dropping it in the centre or on the tab strip stacks it into tabs. The future place is highlighted; `Esc` cancels.
@@ -84,7 +86,7 @@ The environment bar at the bottom is always visible. It shows the key for each a
 
 ### Start screen
 
-Two Markdown notes split the screen 1:1: **Home** on the left and **Tutorial** on the right, focused. There are no buttons; the start screen is the tutorial. The paths of both notes are set in [`site/js/config.js`](site/js/config.js).
+Two tiles split the screen 1:1: the Note `readme.md` on the left and **pmc** on the right, focused. There are no buttons; the start screen is the tutorial. `readme.md` merges the author's text and the instructions (the old `home.md` and `tutorial.md` are no longer used), so the content root needs `readme.md`. Its path is set in [`site/js/config.js`](site/js/config.js).
 
 The tutorial is written so that someone who knows i3 recognizes it, and someone who sees tiles for the first time learns how to use them. The table of actions marks progress: `✓` beside an action already done, `›` beside the next one to try.
 
@@ -99,33 +101,49 @@ pmc (PSEUDO Midnight Commander) is the file panel. The UI is that of the editor'
 - **Enter or double click:**
   - a folder — enter it; `..` goes one level up, and the cursor lands on the folder just left;
   - a folder whose name ends in `.exe` — an app; `Enter` launches it;
-  - a file — the tile splits into two equal parts; pmc stays on the left with the focus, and the file opens in a new tile on the right, of its type.
+  - an app — a new tile for a different app; the tile of the same app is focused if it is open;
+  - a file — if a tile of its type exists, it is focused and the file opens there; otherwise a new tile opens beside pmc. With the quick view showing a file of the same type, `Enter` opens it in the quick view.
 - `Ctrl+PgUp` — one level up.
-- **`F3` — quick view.** The other panel shows what the cursor is on: a folder's information, a track's player with its set, an image, a `.md` note, or an app's screen. `F3` or `Esc` brings the list back. (`F3` replaces MC's `Ctrl+Q`, which quits Firefox.)
+- **`F3` — quick view.** The other panel shows what the cursor is on: a folder's information, a track's player with its set, an image, a `.md` note, or an app's screen. `F3` on a file of another type replaces the viewer; on a file of the same type the same viewer opens that file. `F3` closes the quick view when the focus is on it or the cursor is on the file it shows; `Esc` brings the list back. `F3` on an app shows the folder's information. The quick view does not follow the cursor: it changes only by `F3` or `Enter`. (`F3` replaces MC's `Ctrl+Q`, which quits Firefox.)
 - **Letters** — quick search by the start of a name; `Backspace` erases; `Esc` clears.
 - **Columns** — Name, Size, Modified. Folders come first and show `SUB-DIR` instead of a size; `..` shows `UP--DIR`. A status line under the list describes the file under the cursor and the folder's total.
 - There is no copy, move or delete: the site is read-only.
-- The tile's bottom line is pmc's own key bar. Only pmc has it; every key in it can be clicked.
+- The tile's bottom line is pmc's key bar: Enter Open, F3 View, Tab Panel, Esc List, Ctrl+PgUp Up, Letters Search. Every key in it can be clicked.
+- The status line under each list shows the loading bar (`load`, `done`, `errr`).
 
 ## Tile types
 
 | Type | Content | Reference |
 |---|---|---|
 | pmc | Published folders and files, two panels | [`explorer.html`](docs/prototypes/explorer.html) |
-| Note | Markdown text | the two start-screen tiles |
-| Audio player | Time, position, buttons, volume, playlist from the folder | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| Video player | The audio player's top, then Fit / 1x / 2x and loop, and the frame | [`start-screen.html`](docs/prototypes/start-screen.html) |
-| App | A folder whose name ends in `.exe` and contains `index.html`: a web game in an iframe that fills the tile; `Rs` restarts it; a status line above and a footer below | [`start-screen.html`](docs/prototypes/start-screen.html) |
+| Note | Markdown text | [`index.html#tiles`](docs/prototypes/index.html#tiles) |
+| Audio player | Time, position, volume, playlist from the folder; tags (title, artist, album, year) in the header and the playlist | [`index.html#player`](docs/prototypes/index.html#player) |
+| Video player | The audio player's top, then Fit / 1x / 2x and loop, and the frame; fullscreen | [`index.html#tiles`](docs/prototypes/index.html#tiles), [`index.html#fullvideo`](docs/prototypes/index.html#fullvideo) |
+| App | A folder whose name ends in `.exe` and contains `index.html`: a web game in an iframe that fills the tile; `Shift+0` restarts it; a foot panel and a key bar below | [`index.html#tiles`](docs/prototypes/index.html#tiles) |
 | Image | The selected image and switching through the folder's set | [`explorer.html`](docs/prototypes/explorer.html) shows the image without switching |
 
 ![Tiles](docs/screenshots/tiles.png)
 
-Several pmc tiles, notes, players and apps can be open at once.
+Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 s, `Volume` +5%). Tiles other than pmc and Player also have a foot panel: the file's line, the loading bar and a `Keyboard:` field.
+
+| Tile | Key bar |
+|---|---|
+| Player | P Prev · Space Play · Space Pause · S Stop · N Next · M Mute · L/R Seek · U/D Volume |
+| Video | the Player's cells plus L Loop before Seek |
+| Image | Left/P Prev · Right/N Next |
+| App | Shift+0 Restart · Shift+Q Close · Shift+F Fullscreen |
+| Note | U/D Scroll · PgUp/PgDn Page · Home/End Top/Bottom |
+
+**Loading.** The bar shows `load`, `done` or `errr` in the Player's rows, in the foot panels (Video, Image, Note, App) and in pmc's status line. Files are downloaded counting bytes and kept while the tile is open; the next file of the folder is preloaded; an `errr` file is retried when it is selected again. An app counts progress only by its `index.html`.
+
+**Audio tags.** ID3v2 and Vorbis/Opus tags are shown in the Player header and in the playlist.
+
+**Video fullscreen.** `Shift+F`, `M` in the title bar or a double click on the frame. On mouse move a panel with the position bar and the key bar appears and hides after 3 seconds; `Esc` or the same action returns. See [`index.html#fullvideo`](docs/prototypes/index.html#fullvideo).
 
 ### Main scenario
 
 1. The visitor reads the start screen.
-2. Opens pmc, enters the music folder and opens a track: a player appears beside it, pmc stays.
+2. Uses pmc on the right, enters the music folder and opens a track: the Player appears beside it, pmc stays; the next track opens in the same Player.
 3. Opens a game and places it.
 4. Moves the player under pmc or stacks them into tabs.
 5. Maximizes the game and restores the layout.
@@ -158,7 +176,7 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 - a split's minimum is the sum of the minimums along its axis plus the splitter, and the largest across it;
 - a border cannot move past a minimum, with the mouse or with `Shift+R`.
 
-**UI scale.** `Shift+S` switches between 1x and 2x. At 2x each layout pixel is two device pixels, so the layout is the same and every font pixel and border is twice as large. The window must hold the 2x layout, so 2x is refused with the size it needs when the window is too small. 1.5x is not offered: a font pixel would fall on a fractional device pixel and blur.
+**UI scale.** `Shift+S` cycles 1x → 1.5x → 2x → 1x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large. A scale the window cannot hold is skipped, with the size it needs; at start and when the window shrinks the largest scale that fits is taken. 1.5x is drawn without smoothing, so a font pixel falls on a whole device pixel or none and letters come out uneven.
 
 Metrics at 1x, in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 px with 2 px padding, title bar 14 px, tab strip 14 px, splitter 4 px. A tile's frame takes 8 px across and 40 px down.
 
@@ -168,7 +186,7 @@ The look is IRIX through 3dmppc-editor:
 
 - rectangles without rounding, a raised tile frame, a sunken content area;
 - **a brass frame around the focused tile**;
-- a dithered title bar: `X` on the left, `│` `─` `M` on the right;
+- a dithered title bar: `X` on the left, `M` on the right;
 - tabs are slanted folder tabs **at the bottom** of the tile; the active one is brass;
 - pmc and notes sit on olive; players, apps and code sit in navy wells (Catppuccin Mocha);
 - file icons are two-letter codes instead of pictures.
@@ -205,7 +223,7 @@ From the editor's [`rv_editor_glyphs.hpp`](https://github.com/vydramain/3dmppc-p
 | `Fi` | other file | muted |
 | `Vi` | video | mauve |
 | `Ap` | app | peach |
-| `Up` `Pv` `Nx` `Mt` `Hm` `Pl` `Ps` `Sp` `Rs` | up, previous, next, mute, home, play, pause, stop, restart | — |
+| `Up` | the `..` row, up one level | — |
 
 ### Fonts
 
@@ -225,7 +243,7 @@ PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0, and so is the Cyrillic of `rv_f
 - Box and rule characters (`·` `│` `─` `—`) are drawn as pixel glyphs of the same cell.
 - Notes support lists, quotes, horizontal rules and links. A link `[text](address)` opens in a new browser tab. An address is kept only if it is http, https, or a relative address without `//`, spaces, colons, ampersands or backslashes.
 - Keys are drawn as raised keycaps, written `[Shift]`.
-- A line `{{actions}}` is replaced by the tutorial's action table; the app draws the done and next marks.
+- A line `{{actions}}` is replaced by the tutorial's action table (in `readme.md`); the app draws the done and next marks.
 - In a tile narrower than the table, each action is followed by its mouse and keyboard ways in lines under it.
 
 ## Running
@@ -233,7 +251,7 @@ PxPlus IBM VGA and EGA (VileR) are CC BY-SA 4.0, and so is the Cyrillic of `rv_f
 Both environments use [`compose.yml`](compose.yml) and an env file that sets `HOST_PORT` and `CONTENT_DIR`. The container listens on port 80 and mounts the content directory read-only.
 
 - **Dev:** `docker compose --env-file .env.dev up` serves the site at `localhost:8080`, with the fixture in [`dev/content`](dev/content).
-- **Prod:** copy [`.env.prod.example`](.env.prod.example) to `.env.prod`, set `CONTENT_DIR` and `HOST_PORT`, then run `docker compose --env-file .env.prod up -d`. The port is published on `127.0.0.1` only; TLS and any public proxy are set up on the host.
+- **Prod:** compose is one way: copy [`.env.prod.example`](.env.prod.example) to `.env.prod`, set `CONTENT_DIR` and `HOST_PORT`, then run `docker compose --env-file .env.prod up -d`. The port is published on `127.0.0.1` only; TLS and any public proxy are set up on the host. Any nginx with [`nginx/nginx.conf`](nginx/nginx.conf) works as well. A proxy in front must not cap the response size (Godot games are cut at about 5 MB by such a cap). The content root needs `readme.md`.
 
 nginx must be able to read every file in the content directory. A file that only its owner can read (mode 600) is served as 403, and its picture or track does not play. Check with:
 
@@ -283,7 +301,7 @@ The tests in [`tests/`](tests/) cover the pure modules: layout, font, Markdown a
 
 | File | What it shows |
 |---|---|
-| [`docs/prototypes/start-screen.html`](docs/prototypes/start-screen.html) | the start screen, plus static references for the audio player, video player and app |
+| [`docs/prototypes/index.html`](docs/prototypes/index.html) | on one page: the start screen, the player, the image, app, video and note tiles, pmc, video fullscreen, the browser tab and the icon; the load bar and the key bars in each |
 | [`docs/prototypes/explorer.html`](docs/prototypes/explorer.html) | pmc: MC keys, moving between tiles, the environment bar, resizing, maximizing, closing and minimum sizes |
 
 They open directly from the file in a browser (checked in Chromium). `explorer.html` needs a screen of at least 960×540 and shows the mobile notice on touch-first devices.
@@ -291,9 +309,8 @@ They open directly from the file in a browser (checked in Chromium). `explorer.h
 The prototypes are older than the site and differ from it in places. Known differences:
 
 - `explorer.html` opens a new tile at 2:1, not 1:1;
-- `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done";
-- `start-screen.html` has no "`Shift`+arrows Focus" cell and no `✓` mark, and it says a file opens in the neighboring tile rather than a new tile on the right;
-- the prototypes take note body text from WineTahomaBit and call pmc "Explorer";
+- `Shift+H`, `Shift+V`, `Shift+Enter` and `Shift+W` in `explorer.html` only say "not done", and it still has the split buttons;
+- `explorer.html` takes note body text from WineTahomaBit and calls pmc "Explorer";
 - the prototypes are HTML and CSS pages, not canvas;
 - in `explorer.html` pmc cannot be closed, and focus does not move while a tile is maximized.
 

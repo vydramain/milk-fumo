@@ -33,7 +33,8 @@ export const SCREEN_MIN = { w: 960, h: 540 };
 export const PANE_MIN = {
   generic: { w: 20 * EM, h: 4 * FRAME },                                   // 120 x 64
   pmc: { w: 2 * (20 * EM + 56 + 70 + 14 + 4) + 4, h: FRAME + 26 + 3 * ROW + 14 + 14 + 4 * PAD }, // 532 x 122
-  // The player: six buttons of 40 px with 4 px between, 4 px of padding each side; a video adds its frame.
+  // The player: the width of the former six 40 px transport buttons (now the key bar of 8 or 9 cells, cut short at
+  // this width), the height of the header, position, volume, a few playlist rows and the key bar; a video adds its frame.
   player: { w: 6 * 40 + 5 * 4 + 2 * 4, h: 200 },                           // 268 x 200
   video: { w: 6 * 40 + 5 * 4 + 2 * 4, h: 248 },                            // 268 x 248
   app: { w: 320, h: 180 },

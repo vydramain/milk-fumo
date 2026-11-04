@@ -41,9 +41,9 @@ export function list(path) {
   if (!cache.has(path)) {
     const pending = fetchList(path);
     cache.set(path, pending);
-    pending.then((entries) => resolved.set(path, entries));
-    // A failed listing is not kept: the next visit to the folder asks again.
-    pending.catch(() => cache.delete(path));
+    // A failed listing is not kept: the next visit to the folder asks again. One handler for both outcomes, so the
+    // derived promise never rejects unhandled; callers still get the rejection from `pending`.
+    pending.then((entries) => resolved.set(path, entries), () => cache.delete(path));
   }
   return cache.get(path);
 }

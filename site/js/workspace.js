@@ -4,10 +4,10 @@ import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from
 import * as L from './layout.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box } from './widgets.js';
+import { Hits, box, NO_KEYS } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
 import { view } from './view.js';
-import { HOME_NOTE, TUTORIAL_NOTE } from './config.js';
+import { HOME_NOTE } from './config.js';
 import { setOf, list, kindOf } from './catalog.js';
 import { PmcPane } from './pmc.js';
 import { NoteBody } from './note.js';
@@ -15,38 +15,27 @@ import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 
+// The UI scales Shift+S cycles through.
+export const SCALES = [1, 1.5, 2];
 const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-const KEYS_MENU = { KeyH: 'split-right', KeyV: 'split-down', Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
-const EMPTY_TILE_MIN = PANE_MIN.generic;
-
-// An empty tile: a button that opens pmc in it, and the keyboard way under the button. Only the button opens pmc.
-class EmptyBody {
-  constructor(ws) { this.ws = ws; this.minimum = EMPTY_TILE_MIN; }
-  draw(p, r, hits) {
-    const label = T.emptyOpen;
-    const w = textWidth(RV, label) + 24;
-    const button = { x: r.x + Math.floor((r.w - w) / 2), y: r.y + Math.floor((r.h - 20) / 2) - 6, w, h: 20 };
-    box(p, button, true, C.btn, 2);
-    p.text(RV, button.x + 12, button.y + 6, label, C.bright);
-    hits.add(button, { click: () => this.ws.openPmcIn(this.ws.tileOf(this)) });
-    const hint = T.emptyHint;
-    p.text(RV, r.x + Math.floor((r.w - textWidth(RV, hint)) / 2), button.y + 26, hint, C.dim);
-  }
-  key() { return false; }
-  dispose() {}
-}
+const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
+const TILE_MIN = PANE_MIN.generic;
+const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4
+const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without movement or a player key
+// The tab and title of the tile that shows each kind of file: at most one tile of each.
+const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };  // tab ids; the names are T.tile
 
 // A file that is still loading, or a list that could not be read.
 class LoadingBody {
-  constructor(ws) { this.ws = ws; this.minimum = EMPTY_TILE_MIN; }
+  constructor(ws) { this.ws = ws; this.minimum = TILE_MIN; }
   draw(p, r) { p.text(RV, r.x + 4, r.y + 4, T.loading, C.cov); }
   key() { return false; }
   dispose() {}
 }
 
 class MessageBody {
-  constructor(text) { this.text = text; this.minimum = EMPTY_TILE_MIN; }
+  constructor(text) { this.text = text; this.minimum = TILE_MIN; }
   draw(p, r) { p.fill(r.x, r.y, r.w, r.h, C.cb); p.text(RV, r.x + 6, r.y + 6, this.text, C.ct); }
   key() { return false; }
   dispose() {}
@@ -70,22 +59,27 @@ export class Workspace {
     this.drag = null;          // { move(x, y), up(x, y) } while a press is held
     this.pressed = null;       // the rectangle of the click that is held: drawn sunken until the pointer is up
     this.dropAt = null;        // where a dragged tile would land
+    this.held = new Set();     // KeyboardEvent.code of the keys that are down: key-bar cells are drawn sunken
+    this.drawHeld = NO_KEYS;   // the held keys of the tile being drawn: only the focused tile gets `held`
     this.progress = new Set();
     this.hits = new Hits();
-    this.rects = new Map();    // pane id -> content rectangle, from the last draw
+    this.tiles = [];           // { id, r }: the whole rectangle of every tile drawn in the last frame
     this.area = { x: MARGIN, y: MARGIN, w: 0, h: 0 };
     this.frame = 0;
+    this.fullVideo = null;     // the video Player shown alone in the browser's fullscreen (spec 6)
+    this.panelUntil = 0;       // Date.now() before which the fullscreen panel shows
+    this.point = null;         // the pointer's last position, for the panel
+    this.screen = { w: 0, h: 0 };
     this.setup();
   }
 
-  // Start: the Home note on the left and the Tutorial on the right, focused, 1:1.
+  // Start: the readme note on the left and pmc on the right, focused, 1:1.
   setup() {
-    const home = makeTile(new NoteBody(this, HOME_NOTE), 'Home: ' + HOME_NOTE, 'Home');
-    const tutorial = makeTile(new NoteBody(this, TUTORIAL_NOTE), 'Tutorial: ' + TUTORIAL_NOTE, 'Tutorial');
-    this.panes.set(home.id, home);
-    this.panes.set(tutorial.id, tutorial);
-    this.L = L.newLayout(L.split('h', L.leaf([home.id]), L.leaf([tutorial.id])));
-    this.setFocus(tutorial.id);
+    const note = makeTile(new NoteBody(this, HOME_NOTE), T.tile.Note, 'Note');
+    this.panes.set(note.id, note);
+    const pmc = this.newPmcTile();
+    this.L = L.newLayout(L.split('h', L.leaf([note.id]), L.leaf([pmc.id])));
+    this.setFocus(pmc.id);
   }
 
   // ---- state -------------------------------------------------------------------------------
@@ -97,13 +91,19 @@ export class Workspace {
 
   minOf(id) {
     const t = this.panes.get(id);
-    return t ? t.body.minimum || EMPTY_TILE_MIN : EMPTY_TILE_MIN;
+    return t ? t.body.minimum || TILE_MIN : TILE_MIN;
   }
 
+  // The title of a tile is the name of its application: pmc, Player, Video, Image, Note, or the app's folder name.
   titleOf(id) {
     const t = this.panes.get(id);
-    if (!t) return '';
-    return t.body instanceof PmcPane ? t.body.title() : t.label;
+    return t ? t.label : '';
+  }
+
+  // The one tile of a type, by its tab name; an app's tile is found by the app's name too.
+  tileOfType(tab, name) {
+    for (const t of this.panes.values()) if (t.tab === tab && (tab !== 'App' || t.body.name === name)) return t;
+    return null;
   }
 
   setFocus(id) {
@@ -111,6 +111,12 @@ export class Workspace {
     if (!leaf) return;
     leaf.active = leaf.tabs.indexOf(id);
     this.focus = id;
+  }
+
+  // Focuses a tile that is opened again: a maximized other tile would hide it, so the layout is restored first.
+  reveal(id) {
+    if (this.L.max && this.L.max !== id) this.L.max = null;
+    this.setFocus(id);
   }
 
   focusByUser(id) {
@@ -158,43 +164,25 @@ export class Workspace {
     this.focusByUser(next.tabs[next.active]);
   }
 
-  newEmptyTile() {
-    const tile = makeTile(new EmptyBody(this), T.emptyTitle, 'Empty');
+  newPmcTile() {
+    const tile = makeTile(null, T.tile.pmc, 'pmc');
     this.panes.set(tile.id, tile);
+    this.fillTile(tile, new PmcPane(this), 'pmc');
     return tile;
   }
 
-  // Splits the focused tile: a new empty tile beside it, on the right or below.
-  splitFocus(axis, after) {
-    if (this.L.max) { this.msg = T.maximized; return; }
-    const tile = this.newEmptyTile();
-    const leaf = L.leafOf(this.L.root, this.focus);
-    L.addBeside(this.L, leaf, axis, L.leaf([tile.id]), after);
-    this.setFocus(tile.id);
-    this.progress.add('split');
-  }
-
-  // Shift+Enter: pmc fills an empty focused tile, or opens in a new tile beside a full one.
+  // Shift+Enter: the focus goes to pmc, or pmc opens in a new tile beside the focused one when there is none.
   openPmcHere() {
-    if (this.L.max) { this.msg = T.maximized; return; }
-    const current = this.panes.get(this.focus);
-    if (current && current.body instanceof EmptyBody) {
-      this.fillTile(current, new PmcPane(this), 'pmc');
+    const pmc = this.tileOfType('pmc');
+    if (pmc) {
+      this.reveal(pmc.id);
     } else {
-      const tile = this.newEmptyTile();
+      if (this.L.max) { this.msg = T.maximized; return; }
+      const tile = this.newPmcTile();
       L.addBeside(this.L, L.leafOf(this.L.root, this.focus), 'h', L.leaf([tile.id]), true);
-      this.fillTile(tile, new PmcPane(this), 'pmc');
       this.setFocus(tile.id);
     }
     this.progress.add('open');
-  }
-
-  openPmcIn(tile) {
-    if (!tile) return;
-    this.fillTile(tile, new PmcPane(this), 'pmc');
-    this.focusByUser(tile.id);
-    this.progress.add('open');
-    this.requestDraw();
   }
 
   fillTile(tile, body, tab) {
@@ -267,11 +255,55 @@ export class Workspace {
     this.progress.add('maximize');
   }
 
-  // An app's tile goes to the browser's fullscreen for the game; any other tile is maximized in the workspace.
+  // An app's or a video's tile goes to the browser's fullscreen; any other tile is maximized in the workspace.
+  // A body's fullscreen() returns false when it has none (an audio Player). In fullscreen, the video comes back.
   fullscreenOrMaximize() {
+    if (this.fullVideo) { this.fullVideo.fullscreen(); return; }
     const tile = this.panes.get(this.focus);
-    if (tile && tile.body && tile.body.fullscreen) tile.body.fullscreen();
-    else this.toggleMaximize();
+    if (!(tile && tile.body && tile.body.fullscreen && tile.body.fullscreen() !== false)) this.toggleMaximize();
+  }
+
+  // ---- the fullscreen video ------------------------------------------------------------------
+
+  // The panel over the bottom of the frame shows for 3 s more; a timer draws the frame that hides it.
+  showPanel() {
+    this.panelUntil = Date.now() + PANEL_MS;
+    setTimeout(this.requestDraw, PANEL_MS);
+    this.requestDraw();
+  }
+
+  panelRect() {
+    return { x: 0, y: this.screen.h - PANEL_H, w: this.screen.w, h: PANEL_H };
+  }
+
+  // The panel shows for 3 s after a move or a player key, and stays while the pointer is over it.
+  panelShown(now = Date.now()) {
+    const r = this.panelRect(), q = this.point;
+    return now < this.panelUntil || (!!q && q.x >= r.x && q.y >= r.y && q.x < r.x + r.w && q.y < r.y + r.h);
+  }
+
+  // The cursor hides with the panel, only in fullscreen.
+  cursorHidden() {
+    return !!this.fullVideo && !this.panelShown();
+  }
+
+  // A double click on a video's frame, or anywhere in fullscreen but on the shown panel, toggles the fullscreen.
+  // Its two presses have already focused the tile (pointerDown).
+  doubleClick(x, y) {
+    const inside = (r) => !!r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+    if (this.fullVideo) {
+      if (this.panelShown() && inside(this.panelRect())) return false;
+      this.fullVideo.fullscreen();
+      return true;
+    }
+    for (const { id } of this.tiles) {
+      const body = this.panes.get(id).body;
+      if (body instanceof Player && body.kind === 'video' && inside(body.frameRect)) {
+        body.fullscreen();
+        return true;
+      }
+    }
+    return false;
   }
 
   // Shift+Q, the X of the title bar, or the close key inside an app: the focused tile goes, its neighbor takes focus.
@@ -307,44 +339,42 @@ export class Workspace {
     if (tile) { this.focus = tile.id; this.closeFocus(); this.requestDraw(); }
   }
 
-  // Opens a new tile to the right of pmc's tile: a file, a folder's app, a player, a picture or a note.
+  // Opens a file in the tile of its type: an open one is focused and shows the file, else a new tile opens to the
+  // right of pmc's tile. A viewer with open(dir, set, index) keeps its body; any other gets a new one.
   openFile(pmc, dir, item) {
     const kind = kindOf(item);
     const path = (dir ? dir + '/' : '') + item.name;
-    const tile = makeTile(new LoadingBody(this), item.name, '');
-    this.panes.set(tile.id, tile);
-    L.addBeside(this.L, L.leafOf(this.L.root, pmc.id), 'h', L.leaf([tile.id]), true);
+    const type = TYPE_OF[kind] || 'File';
+    let tile = TYPE_OF[kind] && this.tileOfType(type);
+    if (tile) {
+      this.reveal(tile.id);
+    } else {
+      tile = makeTile(new LoadingBody(this), T.tile[type], type);
+      this.panes.set(tile.id, tile);
+      L.addBeside(this.L, L.leafOf(this.L.root, pmc.id), 'h', L.leaf([tile.id]), true);
+    }
     this.requestDraw();
-    // A listing can arrive after the tile was closed: then the new body is dropped at once.
-    const alive = (body) => {
-      if (this.panes.has(tile.id)) return true;
-      if (body.dispose) body.dispose();
-      return false;
-    };
     if (kind === 'audio' || kind === 'video' || kind === 'image') {
       list(dir).then((entries) => {
+        // A listing can arrive after the tile was closed: then nothing is made.
+        if (!this.panes.has(tile.id)) return;
         const set = setOf(entries, kind);
         const index = Math.max(0, set.indexOf(item));
-        if (kind === 'image') {
-          const body = new ImageView(this, dir, set, index);
-          if (alive(body)) this.fillTile(tile, body, 'Image');
-        } else {
-          const body = new Player(this, kind, dir, set, index);
-          if (alive(body)) this.fillTile(tile, body, kind === 'video' ? 'Video' : 'Player');
-        }
-        tile.label = (kind === 'image' ? 'Image: ' : kind === 'video' ? 'Video: ' : 'Player: ') + item.name;
-      }).catch(() => { if (this.panes.has(tile.id)) this.fillTile(tile, new MessageBody(T.loadError + path), 'File'); });
+        if (tile.body.open) tile.body.open(dir, set, index);
+        else this.fillTile(tile, kind === 'image' ? new ImageView(this, dir, set, index) : new Player(this, kind, dir, set, index), type);
+      }).catch(() => { if (this.panes.has(tile.id)) this.fillTile(tile, new MessageBody(T.loadError + path), type); });
     } else if (kind === 'note') {
-      this.fillTile(tile, new NoteBody(this, path), 'Note');
-      tile.label = 'Note: ' + item.name;
+      this.fillTile(tile, new NoteBody(this, path), type);
     } else {
-      this.fillTile(tile, new MessageBody(T.noViewer), 'File');
-      tile.label = item.name;
+      this.fillTile(tile, new MessageBody(T.noViewer), type);
     }
   }
 
+  // Opens an app in a new tile to the right of pmc's tile, or focuses the tile of the same app.
   openApp(pmc, dir, name) {
-    const tile = makeTile(new AppPane(this, dir, name), 'App: ' + (dir ? dir + '/' : '') + name + '/', 'App');
+    const open = this.tileOfType('App', name);
+    if (open) { this.reveal(open.id); this.requestDraw(); return; }
+    const tile = makeTile(new AppPane(this, dir, name), name, 'App');
     this.panes.set(tile.id, tile);
     L.addBeside(this.L, L.leafOf(this.L.root, pmc.id), 'h', L.leaf([tile.id]), true);
     this.requestDraw();
@@ -354,7 +384,7 @@ export class Workspace {
   animated() {
     for (const t of this.panes.values()) {
       if (t.body.animated && t.body.animated()) return true;
-      if (t.body instanceof PmcPane && t.body.quickOn && t.body.view && t.body.view.animated && t.body.view.animated()) return true;
+      if (t.body instanceof PmcPane && t.body.quick && t.body.quick.view.animated && t.body.quick.view.animated()) return true;
     }
     return false;
   }
@@ -364,7 +394,6 @@ export class Workspace {
     const list = [];
     for (const t of this.panes.values()) {
       if (t.body instanceof AppPane) list.push(t.body);
-      if (t.body instanceof PmcPane && t.body.view instanceof AppPane) list.push(t.body.view);
     }
     return list;
   }
@@ -380,16 +409,24 @@ export class Workspace {
     this.area = { x: MARGIN, y: MARGIN, w: w - 2 * MARGIN, h: h - 2 * MARGIN - MSG_H - ENV_H - 2 * MARGIN };
   }
 
-  // Shift+S: the UI scale goes between 1x and 2x. 2x is refused, with its size, when the window cannot hold the layout.
+  // Shift+S: the UI scale goes 1x, 1.5x, 2x and back. A scale the window cannot hold is skipped, with its size in the
+  // message; the cycle goes on to the next one (1x always fits).
   cycleScale() {
-    const next = view.ui === 1 ? 2 : 1;
-    if (!this.fitsScale(next)) {
+    let skipped = '';
+    let next = view.ui;
+    do {
+      next = SCALES[(SCALES.indexOf(next) + 1) % SCALES.length];
+      if (this.fitsScale(next)) break;
       const m = this.minimum();
-      this.msg = `${T.scaleNeeds} ${Math.ceil(m.w * next / view.dpr)}×${Math.ceil(m.h * next / view.dpr)}`;
-      return;
-    }
+      skipped = `${T.scaleNeeds(next)} ${Math.ceil(m.w * next / view.dpr)}×${Math.ceil(m.h * next / view.dpr)}`;
+    } while (next !== 1);
     view.ui = next;
-    this.msg = `${T.scaleNow} ${next}x`;
+    this.msg = skipped || `${T.scaleNow} ${next}x`;
+  }
+
+  // The largest scale of SCALES the window holds, else 1.
+  largestScale() {
+    return [...SCALES].reverse().find((s) => this.fitsScale(s)) ?? 1;
   }
 
   // Whether the layout fits the window at a UI scale: the window in layout pixels is at least the minimum.
@@ -417,11 +454,16 @@ export class Workspace {
       if (k === 'Escape') { this.drag = null; this.dropAt = null; this.msg = ''; }
       return true;
     }
+    if (this.fullVideo) return this.fullKey(e);
     if (this.mode === 'resize' || this.mode === 'move') return this.modeKey(e);
     const shift = e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey;
     const ctrlShift = e.shiftKey && e.ctrlKey && !e.altKey && !e.metaKey;
     if (ctrlShift && ARROWS[k]) { this.moveDir(ARROWS[k]); return true; }
     if (shift && ARROWS[k]) { this.msg = ''; this.focusDir(ARROWS[k]); return true; }
+    if (shift && k === 'Digit0') {
+      const body = this.panes.get(this.focus)?.body;
+      if (body instanceof AppPane) { if (!e.repeat) body.restart(); return true; }
+    }
     if (shift && KEYS_MENU[k]) {
       if (e.repeat) return true;
       this.msg = '';
@@ -431,8 +473,25 @@ export class Workspace {
     this.msg = '';
     const tile = this.panes.get(this.focus);
     if (!tile || !tile.body.key) return false;
-    const r = this.rects.get(this.focus) || { h: 0 };
-    return tile.body.key(e, r) || false;
+    return tile.body.key(e) || false;
+  }
+
+  // Keys in the video's fullscreen: the layout is hidden, so Shift+F leaves, Shift+Q closes the video's own tile, every
+  // other Shift or Ctrl+Shift combination is swallowed. The rest go to the player and show the panel for 3 s.
+  fullKey(e) {
+    if (e.shiftKey) {
+      const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
+      if (plain && !e.repeat && e.code === 'KeyF') this.fullVideo.fullscreen();
+      else if (plain && !e.repeat && e.code === 'KeyQ') {
+        const tile = this.tileOf(this.fullVideo);
+        if (tile) { this.focus = tile.id; this.closeFocus(); }
+      }
+      this.requestDraw();
+      return true;
+    }
+    const used = this.fullVideo.key(e);
+    if (used) this.showPanel();
+    return used;
   }
 
   modeKey(e) {
@@ -447,8 +506,6 @@ export class Workspace {
 
   command(name) {
     const actions = {
-      'split-right': () => this.splitFocus('h', true),
-      'split-down': () => this.splitFocus('v', true),
       'open-pmc': () => this.openPmcHere(),
       'stack': () => this.stackFocus(),
       'resize': () => this.startResize(),
@@ -464,11 +521,14 @@ export class Workspace {
 
   // ---- pointer -----------------------------------------------------------------------------
 
-  // A press goes to the topmost widget under the point: its press handler starts a drag, or its click runs at once.
-  // A press anywhere also ends a resize or move mode.
+  // A press inside a tile focuses it first, whatever widget of the tile takes the press; a border or the bars focus
+  // nothing. Then the press goes to the topmost widget under the point: its press handler starts a drag, or its
+  // click runs at once. A press anywhere also ends a resize or move mode.
   pointerDown(x, y) {
     if (this.mode) this.mode = null;
     this.msg = '';
+    const tile = this.tiles.find(({ r }) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+    if (tile) this.focusByUser(tile.id);
     const top = this.hits.at(x, y);
     if (top && top.on.press) this.drag = normalizeDrag(top.on.press(x, y));
     else if (top && top.on.click) { this.pressed = top.r; top.on.click(x, y); }
@@ -476,6 +536,8 @@ export class Workspace {
   }
 
   pointerMove(x, y) {
+    this.point = { x, y };
+    if (this.fullVideo) this.showPanel();
     if (!this.drag || !this.drag.move) return;
     this.drag.move(x, y);
     this.requestDraw();
@@ -539,8 +601,37 @@ export class Workspace {
 
   render(p, W, H) {
     this.hits = new Hits();
-    this.rects = new Map();
+    this.tiles = [];
     this.frame++;
+    this.screen = { w: W, h: H };
+    if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
+    else this.renderTiles(p, W, H);
+    if (!this.fullVideo) this.drawBars(p, W, H);
+    // Every clickable thing looks pressed the same way while the pointer is down on it.
+    const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
+    if (held) p.bevel(held.r, 2, false);
+    // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
+    for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
+    // The browser tab shows the focused tile's title; it follows focus changes and closing.
+    const t = this.titleOf(this.focus);
+    if (document.title !== t) document.title = t;
+  }
+
+  // Spec 6: only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.
+  renderFullVideo(p, W, H) {
+    const v = this.fullVideo;
+    p.fill(0, 0, W, H, C.crust);
+    v.drawFrame(p, { x: 0, y: 0, w: W, h: H }, 'fit');
+    if (!this.panelShown()) return;
+    const r = this.panelRect();
+    p.fill(r.x, r.y, r.w, r.h, C.win);
+    p.bevel(r, 1, true);
+    const end = v.seekBar(p, this.hits, { x: r.x + 6, y: r.y + 6, w: r.w - 12 });
+    this.drawHeld = this.held;
+    v.keys(p, this.hits, { x: r.x + 4, y: end + 4, w: r.w - 8, h: 14 });
+  }
+
+  renderTiles(p, W, H) {
     p.fill(0, 0, W, H, C.dark);
     this.resize(W, H);
     const placed = L.place(this.L.root, this.area, (id) => this.minOf(id));
@@ -559,12 +650,6 @@ export class Workspace {
       const r = L.dropPreview(this.dropAt);
       p.dither({ x: r.x, y: r.y, w: r.w, h: r.h }, C.win, C.sel);
     }
-    // Every clickable thing looks pressed the same way while the pointer is down on it.
-    const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
-    if (held) p.bevel(held.r, 2, false);
-    this.drawBars(p, W, H);
-    // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
-    for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
   }
 
   // A tile is drawn in order: its frame, the click that focuses it, the title bar, the tabs, and its body.
@@ -572,6 +657,7 @@ export class Workspace {
   drawLeaf(p, node, rect) {
     const id = node.tabs[node.active];
     const tile = this.panes.get(id);
+    this.tiles.push({ id, r: rect });
     p.fill(rect.x, rect.y, rect.w, rect.h, C.win);
     p.bevel(rect, 2, true);
     if (id === this.focus) this.focusRing(p, rect);
@@ -584,9 +670,9 @@ export class Workspace {
     this.tabStrip(p, node, rect);
     this.hits.unclip();
     const content = L.contentRect(rect);
-    this.rects.set(id, content);
     p.clip(content);
     this.hits.clip(content);
+    this.drawHeld = id === this.focus ? this.held : NO_KEYS;
     tile.body.draw(p, content, this.hits, id === this.focus);
     this.hits.unclip();
     p.unclip();
@@ -600,32 +686,24 @@ export class Workspace {
     p.fill(r.x + r.w, r.y, 2, r.h, C.sel);
   }
 
-  // The title bar: the drag area first, then the buttons on top of it: X, the split buttons, and M.
+  // The title bar: the drag area first, then the buttons on top of it: X and M.
   titleBar(p, id, titleR) {
-    const label = fitText(RV, this.titleOf(id), titleR.w - 14 - 52 - 6);
+    const label = fitText(RV, this.titleOf(id), titleR.w - 14 - 12 - 6);
     const ttl = { x: titleR.x + 14, y: titleR.y, w: textWidth(RV, label) + 12, h: TITLE_H };
     this.hits.add(titleR, { press: (x, y) => this.tileDrag(id, x, y) });
     p.fill(ttl.x, ttl.y, ttl.w, ttl.h, C.win);
     p.text(RV, ttl.x + 6, ttl.y + 3, label, C.bright);
     const close = { x: titleR.x, y: titleR.y + 1, w: 12, h: 12 };
-    const splitR = { x: titleR.x + titleR.w - 40, y: titleR.y + 1, w: 12, h: 12 };
-    const splitD = { x: titleR.x + titleR.w - 26, y: titleR.y + 1, w: 12, h: 12 };
     const max = { x: titleR.x + titleR.w - 12, y: titleR.y + 1, w: 12, h: 12 };
     this.iconBox(p, close, 'X', false);
-    this.iconBox(p, splitR, '|', false);
-    this.iconBox(p, splitD, '-', false);
     this.iconBox(p, max, 'M', this.L.max === id);
     this.hits.add(close, { click: () => { this.focusByUser(id); this.closeFocus(); this.requestDraw(); } });
-    this.hits.add(splitR, { click: () => { this.focusByUser(id); this.splitFocus('h', true); this.requestDraw(); } });
-    this.hits.add(splitD, { click: () => { this.focusByUser(id); this.splitFocus('v', true); this.requestDraw(); } });
     this.hits.add(max, { click: () => { this.focusByUser(id); this.fullscreenOrMaximize(); this.requestDraw(); } });
   }
 
   iconBox(p, r, label, pressed) {
     box(p, r, !pressed, pressed ? C.inset : C.win);
-    if (label === '|') p.fill(r.x + 5, r.y + 3, 1, 6, C.bright);
-    else if (label === '-') p.fill(r.x + 3, r.y + 5, 6, 1, C.bright);
-    else p.text(RV, r.x + 3, r.y + 3, label, pressed ? C.sel : C.bright);
+    p.text(RV, r.x + 3, r.y + 3, label, pressed ? C.sel : C.bright);
   }
 
   // The tab strip: a slanted tab per pane; the active one is brass with dark text. Always drawn, as in the prototype.
@@ -649,7 +727,7 @@ export class Workspace {
 
   tabLabel(id) {
     const t = this.panes.get(id);
-    return t ? t.tab || '' : '';
+    return t ? T.tile[t.tab] || t.tab || '' : '';
   }
 
   // The message line and the environment bar at the bottom of the window.
@@ -661,11 +739,13 @@ export class Workspace {
     p.bevel(msg, 1, false);
     if (this.msg) p.text(RV, msg.x + 6, msg.y + 3, this.msg, C.bright);
     const cells = ENV_CELLS;
+    const has = (...codes) => codes.some((c) => this.held.has(c));
     const gap = 2;
     const w = Math.floor((W - 2 * MARGIN - gap * (cells.length - 1)) / cells.length);
     cells.forEach((c, i) => {
       const r = { x: MARGIN + i * (w + gap), y: envY, w, h: ENV_H };
-      const on = (c.command === 'resize' && this.mode === 'resize') || (c.command === 'move' && this.mode === 'move') || (c.command === 'maximize' && this.L.max);
+      const down = has('ShiftLeft', 'ShiftRight') && has(...c.codes) && has('ControlLeft', 'ControlRight') === !!c.ctrl;
+      const on = down || (c.command === 'resize' && this.mode === 'resize') || (c.command === 'move' && this.mode === 'move');
       p.fill(r.x, r.y, r.w, r.h, on ? C.inset : C.win);
       p.bevel(r, 1, !on);
       // The key and the label are cut to the cell, so a narrow window (or UI scale 2x) never runs one into the next.
