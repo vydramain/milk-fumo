@@ -66,16 +66,23 @@ export class AppPane {
     this.ws.requestDraw();
   }
 
-  // Shift+Q closes its tile and Shift+0 restarts it, inside the app: the page can see the app's keys because the app has the same address.
+  // Shift+Q closes its tile, Shift+0 restarts it and Shift+F toggles its fullscreen, inside the app: the page can see
+  // the app's keys because the app has the same address. The app never sees these keys, down or up.
   attach() {
     if (!this.frame.getAttribute('src')) return; // the blank page of a frame without src
     try {
       const win = this.frame.contentWindow;
+      const ours = (e) => e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && ['KeyQ', 'Digit0', 'KeyF'].includes(e.code);
+      const swallow = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
       win.addEventListener('keydown', (e) => {
-        if (!e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+        if (!ours(e)) return;
+        swallow(e);
+        if (e.repeat) return;
         if (e.code === 'KeyQ') this.ws.closeApp(this);
-        else if (e.code === 'Digit0' && !e.repeat) this.restart();
+        else if (e.code === 'Digit0') this.restart();
+        else this.fullscreen();
       }, true);
+      win.addEventListener('keyup', (e) => { if (ours(e)) swallow(e); }, true);
       if (this.status === 'loading') this.status = 'ready';
     } catch (err) {
       this.status = 'error';
