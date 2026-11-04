@@ -75,8 +75,8 @@ export const PLAYER_KEYS = {
   next: { key: 'N', label: 'Next' },
   mute: { key: 'M', label: 'Mute' },
   loop: { key: 'L', label: 'Loop' },
-  seek: { key: 'Left/Right', label: 'Seek' },
-  volume: { key: 'Up/Down', label: 'Volume' },
+  seek: { key: 'L/R', label: 'Seek' },
+  volume: { key: 'U/D', label: 'Volume' },
 };
 
 // The key bars of the picture and of the note.
@@ -85,7 +85,7 @@ export const IMAGE_KEYS = {
   next: { key: 'Right/N', label: 'Next' },
 };
 export const NOTE_KEYS = {
-  scroll: { key: 'Up/Down', label: 'Scroll' },
+  scroll: { key: 'U/D', label: 'Scroll' },
   page: { key: 'PgUp/PgDn', label: 'Page' },
   edge: { key: 'Home/End', label: 'Top/Bottom' },
 };

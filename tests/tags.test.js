@@ -144,7 +144,7 @@ test('player: Space sinks Play while paused, Pause while playing', () => {
   assert.deepEqual(space(), ['Play']);
   pl.play();
   assert.deepEqual(space(), ['Pause']);
-  assert.deepEqual(pl.cells().map((c) => c.key), ['P', 'Space', 'Space', 'S', 'N', 'M', 'Left/Right', 'Up/Down']);
+  assert.deepEqual(pl.cells().map((c) => c.key), ['P', 'Space', 'Space', 'S', 'N', 'M', 'L/R', 'U/D']);
   pl.dispose();
 });
 
