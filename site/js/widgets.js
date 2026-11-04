@@ -1,7 +1,7 @@
 // Widgets of the immediate-mode UI. A widget draws itself and, in the same call, registers its rectangle
 // with the frame's hit list. A click is checked against the list from the top down.
 import { C } from './theme.js';
-import { RV, textWidth } from './font.js';
+import { RV, textWidth, fitText } from './font.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
 export class Hits {
@@ -130,4 +130,58 @@ export function bitmap(p, x, y, rows, cols, color, scale = 1) {
       if ((bits >> (cols - 1 - c)) & 1) p.fill(x + c * scale, y + row * scale, scale, scale, color);
     }
   });
+}
+
+export const LOAD_W = 37, LOAD_H = 11;
+
+// The load bar of the prototype's .ld.ld-mini: a 1 px sunken well, a 1 px checker fill of floor(share * 35) px, and the
+// word `load`, `done` or `errr` 6 px in: bright over the empty part, dark over the fill. `load` is
+// { state, share } or null, which draws nothing.
+export function loadBar(p, x, y, load) {
+  if (!load) return;
+  const well = { x, y, w: LOAD_W, h: LOAD_H };
+  p.fill(x, y, LOAD_W, LOAD_H, C.inset);
+  p.bevel(well, 1, false);
+  const fill = load.state === 'done' ? 35 : load.state === 'errr' ? 0 : Math.floor(Math.min(1, Math.max(0, load.share)) * 35);
+  if (fill > 0) p.dither({ x: x + 1, y: y + 1, w: fill, h: 9 }, C.sel, C.inset);
+  p.text(RV, x + 7, y + 2, load.state, C.bright);
+  if (fill > 0) {
+    p.clip({ x: x + 1, y: y + 1, w: fill, h: 9 });
+    p.text(RV, x + 7, y + 2, load.state, C.dark);
+    p.unclip();
+  }
+}
+
+// The key bar: cells of equal width, 2 px apart, the key in a dark box and the name after it. A cell with `click` is
+// a button; it is drawn sunken while one of its `codes` is in `held`.
+export function keyBar(p, hits, r, cells, held) {
+  const w = Math.floor((r.w - 2 * (cells.length - 1)) / cells.length);
+  cells.forEach((k, i) => {
+    const cell = { x: r.x + i * (w + 2), y: r.y, w, h: r.h };
+    const down = k.codes.some((c) => held.has(c));
+    box(p, cell, !down, down ? C.inset : C.btn, 1);
+    const key = fitText(RV, k.key, w - 14);
+    const keyW = textWidth(RV, key);
+    p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
+    p.text(RV, cell.x + 7, cell.y + 3, key, C.bright);
+    const nx = cell.x + 4 + keyW + 6 + 4;
+    p.text(RV, nx, cell.y + 3, fitText(RV, k.label, cell.x + w - nx - 2), C.text);
+    if (k.click) hits.add(cell, { click: k.click });
+  });
+}
+
+// The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),
+// then the keyboard field: `Keyboard: app` in C.sel when `appKeys`, `Keyboard: —` in C.cov otherwise.
+export function footBar(p, r, text, load, appKeys) {
+  const kw = textWidth(RV, 'Keyboard: app') + 12;
+  const kx = r.x + r.w - kw;
+  const bx = kx - 2 - LOAD_W;
+  const addr = { x: r.x, y: r.y, w: (load ? bx : kx) - 2 - r.x, h: r.h };
+  p.fill(addr.x, addr.y, addr.w, addr.h, C.inset);
+  p.bevel(addr, 1, false);
+  p.text(RV, addr.x + 4, addr.y + 4, fitText(RV, text, addr.w - 8), C.bright);
+  loadBar(p, bx, r.y + 1, load);
+  p.fill(kx, r.y, kw, r.h, C.inset);
+  p.bevel({ x: kx, y: r.y, w: kw, h: r.h }, 1, false);
+  p.text(RV, kx + 6, r.y + 4, appKeys ? 'Keyboard: app' : 'Keyboard: —', appKeys ? C.sel : C.cov);
 }

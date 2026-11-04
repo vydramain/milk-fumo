@@ -8,20 +8,21 @@ import { KIND, kindOf, list, known, setOf, formatSize, formatBytes } from './cat
 import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
-import { T } from './texts.js';
-import { box, scrollbar, panelFrame, wellFrame } from './widgets.js';
+import { T, PMC_KEYS } from './texts.js';
+import { box, scrollbar, panelFrame, wellFrame, keyBar } from './widgets.js';
 import { AppPane } from './app.js';
 
 const COL_SIZE = 56;
 const COL_DATE = 70;
 const DOUBLE_MS = 400;
+// What a key-bar cell does and which keys sink it; the labels are in texts.js.
 const MC_KEYS = [
-  { key: 'Enter', label: 'Open', action: 'enter' },
-  { key: 'F3', label: 'View', action: 'quick' },
-  { key: 'Tab', label: 'Panel', action: 'tab' },
-  { key: 'Esc', label: 'List', action: 'back' },
-  { key: 'Ctrl+PgUp', label: 'Up', action: 'up' },
-  { key: 'Letters', label: 'Search', action: null },
+  { action: 'enter', codes: ['Enter'] },
+  { action: 'quick', codes: ['F3'] },
+  { action: 'tab', codes: ['Tab'] },
+  { action: 'back', codes: ['Escape'] },
+  { action: 'up', codes: ['PageUp'] },
+  { action: null, codes: [] },
 ];
 
 function newPanel(dir) {
@@ -220,7 +221,7 @@ export class PmcPane {
       { x: area.x + half + 4, y: area.y, w: area.w - half - 4, h: area.h },
     ];
     rects.forEach((rect, i) => this.panel(p, hits, i, rect, focused));
-    this.keysBar(p, hits, keys);
+    this.keyBar(p, hits, keys);
   }
 
   toolbar(p, hits, bar) {
@@ -380,19 +381,13 @@ export class PmcPane {
     p.text(RV, right.x + 6, right.y + 3, date, C.text);
   }
 
-  // The key bar: six cells with the key in a dark box and the name after it.
-  keysBar(p, hits, r) {
-    const cellW = Math.floor((r.w - 2 * (MC_KEYS.length - 1)) / MC_KEYS.length);
-    MC_KEYS.forEach((k, i) => {
-      const cell = { x: r.x + i * (cellW + 2), y: r.y, w: cellW, h: r.h };
-      box(p, cell, true, C.btn, 1);
-      const keyW = textWidth(RV, k.key);
-      p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
-      p.text(RV, cell.x + 7, cell.y + 3, k.key, C.bright);
-      p.text(RV, cell.x + 4 + keyW + 6 + 4, cell.y + 3, k.label, C.text);
-      // Letters only says how the search works; its click makes the panel active, like its keys would.
-      hits.add(cell, { click: () => (k.action ? this.mcKey(k.action) : this.activate(this.listIdx)) });
-    });
+  // The key bar. Letters only says how the search works; its click makes the panel active, like its keys would.
+  keyBar(p, hits, r) {
+    const cells = MC_KEYS.map((k, i) => ({
+      ...PMC_KEYS[i], codes: k.codes,
+      click: () => (k.action ? this.mcKey(k.action) : this.activate(this.listIdx)),
+    }));
+    keyBar(p, hits, r, cells, this.ws.held);
   }
 
   mcKey(action) {

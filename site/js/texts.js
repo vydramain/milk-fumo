@@ -56,3 +56,13 @@ export const T = {
   quickFooter: 'Follows the cursor of the other panel · F3 or Esc — list',
   pmcUpDir: '.. · up one level',
 };
+
+// The key bar of pmc: the key as shown and the name after it.
+export const PMC_KEYS = [
+  { key: 'Enter', label: 'Open' },
+  { key: 'F3', label: 'View' },
+  { key: 'Tab', label: 'Panel' },
+  { key: 'Esc', label: 'List' },
+  { key: 'Ctrl+PgUp', label: 'Up' },
+  { key: 'Letters', label: 'Search' },
+];

@@ -70,6 +70,7 @@ export class Workspace {
     this.drag = null;          // { move(x, y), up(x, y) } while a press is held
     this.pressed = null;       // the rectangle of the click that is held: drawn sunken until the pointer is up
     this.dropAt = null;        // where a dragged tile would land
+    this.held = new Set();     // KeyboardEvent.code of the keys that are down: key-bar cells are drawn sunken
     this.progress = new Set();
     this.hits = new Hits();
     this.rects = new Map();    // pane id -> content rectangle, from the last draw

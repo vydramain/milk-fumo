@@ -121,14 +121,21 @@ canvas.addEventListener('wheel', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (screenTooSmall() || MOBILE.matches) return;
+  if (!ws.held.has(e.code)) { ws.held.add(e.code); requestDraw(); }
   if (ws.key(e)) {
     e.preventDefault();
     requestDraw();
   }
 });
 
-// A click that goes into an app's frame gives the focus to that app's tile.
+window.addEventListener('keyup', (e) => {
+  if (ws.held.delete(e.code)) requestDraw();
+});
+
+// A click that goes into an app's frame gives the focus to that app's tile. Keys released outside the window are lost.
 window.addEventListener('blur', () => {
+  ws.held.clear();
+  requestDraw();
   const el = document.activeElement;
   if (el && el.tagName === 'IFRAME') {
     ws.focusApp(el);
