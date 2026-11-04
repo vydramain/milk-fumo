@@ -1,6 +1,6 @@
 // Markdown notes: the parser and the layout. The layout gives drawing operations in the note's own
-// coordinates, so scrolling is one offset. Supported: # and ## headings, paragraphs, lists, quotes, rules,
-// fenced code, [key] keycaps, [text](address) links, and the {{actions}} line: the tutorial's table.
+// coordinates, so scrolling is one offset. Supported: #, ## and ### headings, paragraphs, lists, quotes, rules,
+// fenced code, **bold**, *italic*, [key] keycaps, [text](address) links, and the {{actions}} line: the tutorial's table.
 import { CODE_LINE } from './metrics.js';
 import { RV, VGA, textWidth } from './font.js';
 import { C } from './theme.js';
@@ -22,6 +22,7 @@ export function parse(text) {
     if (line.trim().startsWith('```')) { para = list = null; code = []; continue; }
     if (line.trim() === '') { para = list = null; continue; }
     if (line.startsWith('# ')) { para = list = null; blocks.push({ type: 'h1', text: line.slice(2) }); continue; }
+    if (line.startsWith('### ')) { para = list = null; blocks.push({ type: 'h3', text: line.slice(4) }); continue; }
     if (line.startsWith('## ')) { para = list = null; blocks.push({ type: 'h2', text: line.slice(3) }); continue; }
     if (/^(---|\*\*\*|___)$/.test(line)) { para = list = null; blocks.push({ type: 'hr' }); continue; }
     if (line.trim() === '{{actions}}') { para = list = null; blocks.push({ type: 'actions' }); continue; }
@@ -46,21 +47,23 @@ export function safeHref(href) {
   return !href.startsWith('//') && !/[\s:&\\]/.test(href);
 }
 
-// Inline tokens: words, spaces, keycaps and links. Text outside the marks is plain rv_font.
-export function tokens(text) {
+// Inline tokens: words, spaces, keycaps and links. **bold** and *italic* spans mark their words with a style.
+export function tokens(text, style) {
   const out = [];
-  const re = /\[([^\]]+)\]\(([^)]+)\)|\[([^\]]+)\]/g;
+  const re = /\*\*(.+?)\*\*|\*([^*\s][^*]*)\*|\[([^\]]+)\]\(([^)]+)\)|\[([^\]]+)\]/g;
   const words = (s, href) => {
     for (const piece of s.split(/( +)/)) {
       if (!piece) continue;
-      out.push(piece[0] === ' ' ? { kind: 'space' } : { kind: 'word', text: piece, href });
+      out.push(piece[0] === ' ' ? { kind: 'space' } : { kind: 'word', text: piece, href, style });
     }
   };
   let last = 0, m;
   while ((m = re.exec(text))) {
     words(text.slice(last, m.index));
-    if (m[1] !== undefined) words(m[1], safeHref(m[2]) ? m[2] : undefined);
-    else out.push({ kind: 'key', text: m[3] });
+    if (m[1] !== undefined) out.push(...tokens(m[1], 'b'));
+    else if (m[2] !== undefined) out.push(...tokens(m[2], 'i'));
+    else if (m[3] !== undefined) words(m[3], safeHref(m[4]) ? m[4] : undefined);
+    else out.push({ kind: 'key', text: m[5] });
     last = re.lastIndex;
   }
   words(text.slice(last));
@@ -95,7 +98,8 @@ export function fill(toks, width) {
   return lines;
 }
 
-// Draws one line of tokens at (x, y). Keycaps are raised boxes; links are bright with a dotted underline.
+// Draws one line of tokens at (x, y). Keycaps are raised boxes; links are bright with a dotted underline;
+// bold words are bright and one pixel thicker; italic words lean.
 function emitLine(L, line, x, y, color) {
   let cx = x;
   for (const t of line) {
@@ -110,7 +114,8 @@ function emitLine(L, line, x, y, color) {
     }
     const w = textWidth(RV, t.text);
     const link = !!t.href;
-    L.ops.push({ op: 'text', x: cx, y, font: RV, scale: 1, color: link ? C.bright : color, s: t.text });
+    const bold = t.style === 'b', italic = t.style === 'i';
+    L.ops.push({ op: 'text', x: cx, y, font: RV, scale: 1, color: link || bold ? C.bright : color, s: t.text, bold, italic });
     if (link) {
       for (let i = 0; i < w; i += 2) L.ops.push({ op: 'rect', x: cx + i, y: y + 9, w: 1, h: 1, color: C.sel });
       L.hits.push({ x: cx, y, w, h: LINE, href: t.href });
@@ -138,6 +143,10 @@ export function layout(blocks, width, progress = () => 'none') {
       L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s: b.text });
       const x = textWidth(RV, b.text) + 6;
       L.ops.push({ op: 'dither', x, y: y + 4, w: Math.max(0, width - x), h: 4, a: C.lo, b: C.inset });
+      y += 14;
+    } else if (b.type === 'h3') {
+      y += 4;
+      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s: b.text, bold: true });
       y += 14;
     } else if (b.type === 'p') {
       for (const line of fill(tokens(b.text), width)) { emitLine(L, line, 0, y, C.text); y += LINE; }

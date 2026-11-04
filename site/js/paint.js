@@ -57,19 +57,21 @@ export class Paint {
     return this.patterns.get(key);
   }
 
-  // Text at a top-left corner, at an integer scale: a font pixel is `scale` CSS pixels.
-  text(font, x, y, s, color, scale = 1) {
+  // Text at a top-left corner, at an integer scale: a font pixel is `scale` CSS pixels. Bold widens every run by one
+  // font pixel; italic shifts the upper half of the cell one font pixel right.
+  text(font, x, y, s, color, scale = 1, bold = false, italic = false) {
     let cx = x;
     for (const ch of s) {
       const rows = glyphOf(font, ch);
       for (let row = 0; row < font.rows; row++) {
         const bits = rows[row] || 0;
+        const dx = italic && row < font.rows / 2 ? scale : 0;
         let c = 0;
         while (c < font.cols) {
           if (!font.bit(bits, c)) { c++; continue; }
           const start = c;
           while (c < font.cols && font.bit(bits, c)) c++;
-          this.fill(cx + start * scale, y + row * scale, (c - start) * scale, scale, color);
+          this.fill(cx + dx + start * scale, y + row * scale, (c - start + (bold ? 1 : 0)) * scale, scale, color);
         }
       }
       cx += font.advance * scale;

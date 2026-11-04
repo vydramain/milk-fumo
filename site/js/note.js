@@ -108,7 +108,7 @@ export class NoteBody {
     const y = view.y + op.y - top;
     const x = view.x + op.x;
     if (y + (op.h || 16) < view.y || y > view.y + view.h) return;
-    if (op.op === 'text') p.text(op.font, x, y, op.s, op.color, op.scale);
+    if (op.op === 'text') p.text(op.font, x, y, op.s, op.color, op.scale, op.bold, op.italic);
     else if (op.op === 'rect') p.fill(x, y, op.w, op.h, op.color);
     else if (op.op === 'bevel') p.bevel({ x, y, w: op.w, h: op.h }, op.width, op.raised);
     else if (op.op === 'dither') p.dither({ x, y, w: op.w, h: op.h }, op.a, op.b);

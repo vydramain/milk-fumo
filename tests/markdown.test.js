@@ -32,3 +32,9 @@ test('addresses: http(s) without spaces, relative ones without //, spaces, colon
   assert.equal(safeHref('a&b'), false);
   assert.equal(safeHref('C:\\x'), false);
 });
+
+test('**bold**, *italic* and ### are parsed, not shown as marks', () => {
+  const toks = tokens('a **b c** *d* 2 * 3').filter((t) => t.kind === 'word');
+  assert.deepEqual(toks.map((t) => [t.text, t.style]), [['a', undefined], ['b', 'b'], ['c', 'b'], ['d', 'i'], ['2', undefined], ['*', undefined], ['3', undefined]]);
+  assert.deepEqual(parse('### Sub\n').map((b) => [b.type, b.text]), [['h3', 'Sub']]);
+});
