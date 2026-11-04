@@ -450,6 +450,10 @@ export class Workspace {
     const ctrlShift = e.shiftKey && e.ctrlKey && !e.altKey && !e.metaKey;
     if (ctrlShift && ARROWS[k]) { this.moveDir(ARROWS[k]); return true; }
     if (shift && ARROWS[k]) { this.msg = ''; this.focusDir(ARROWS[k]); return true; }
+    if (shift && k === 'Digit0') {
+      const body = this.panes.get(this.focus)?.body;
+      if (body instanceof AppPane) { if (!e.repeat) body.restart(); return true; }
+    }
     if (shift && KEYS_MENU[k]) {
       if (e.repeat) return true;
       this.msg = '';
