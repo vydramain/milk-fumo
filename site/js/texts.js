@@ -48,6 +48,7 @@ export const T = {
   minWidth: (title, px) => `Minimum width of "${title}": ${px} px`,
   minHeight: (title, px) => `Minimum height of "${title}": ${px} px`,
   quickFooter: 'F3 on a file of this type opens it here · F3 or Esc — close',
+  noteType: 'MD',
   pmcUpDir: '.. · up one level',
 };
 
@@ -72,4 +73,15 @@ export const PLAYER_KEYS = {
   loop: { key: 'L', label: 'Loop' },
   seek: { key: 'Left/Right', label: 'Seek' },
   volume: { key: 'Up/Down', label: 'Volume' },
+};
+
+// The key bars of the picture and of the note.
+export const IMAGE_KEYS = {
+  prev: { key: 'Left/P', label: 'Prev' },
+  next: { key: 'Right/N', label: 'Next' },
+};
+export const NOTE_KEYS = {
+  scroll: { key: 'Up/Down', label: 'Scroll' },
+  page: { key: 'PgUp/PgDn', label: 'Page' },
+  edge: { key: 'Home/End', label: 'Top/Bottom' },
 };
