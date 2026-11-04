@@ -164,12 +164,18 @@ export function keyBar(p, hits, r, cells, held) {
     const cell = { x: r.x + i * (w + 2), y: r.y, w, h: r.h };
     const down = k.codes.some((c) => held.has(c));
     box(p, cell, !down, down ? C.inset : C.btn, 1);
-    const key = fitText(RV, k.key, w - 14);
+    // A name that does not fit whole is cut to its first two letters, and the key gives way to them, down to one letter.
+    let key = fitText(RV, k.key, w - 14);
+    let label = k.label;
+    if (textWidth(RV, label) > w - textWidth(RV, key) - 16) {
+      label = [...label].slice(0, 2).join('');
+      key = fitText(RV, k.key, Math.max(RV.advance, w - 16 - textWidth(RV, label)));
+    }
     const keyW = textWidth(RV, key);
     p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
     p.text(RV, cell.x + 7, cell.y + 3, key, C.bright);
     const nx = cell.x + 4 + keyW + 6 + 4;
-    p.text(RV, nx, cell.y + 3, fitText(RV, k.label, cell.x + w - nx - 2), C.text);
+    p.text(RV, nx, cell.y + 3, fitText(RV, label, cell.x + w - nx - 2), C.text);
     if (k.click) hits.add(cell, { click: k.click });
   });
 }

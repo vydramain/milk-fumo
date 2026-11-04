@@ -81,3 +81,19 @@ test('keyBar draws a held cell sunken', () => {
   assert.equal(b[0][3], false);
   assert.equal(b[1][3], true);
 });
+
+test('keyBar cuts a name that does not fit to two letters, and the key makes room for them', () => {
+  const { p, calls } = fake();
+  const cells = [{ key: 'Space', label: 'Play', codes: [] }, { key: 'Up/Down', label: 'Volume', codes: [] }, { key: 'N', label: 'Next', codes: [] }];
+  keyBar(p, new Hits(), { x: 0, y: 0, w: 3 * 64 + 4, h: 14 }, cells, new Set());
+  assert.ok(JSON.stringify(calls).includes('"Pl"'));
+  assert.ok(JSON.stringify(calls).includes('"Vo"'));
+  assert.ok(JSON.stringify(calls).includes('"Next"'));
+  assert.ok(!JSON.stringify(calls).includes('"Pla"'));
+});
+
+test('keyBar keeps at least one letter of the key in a narrow cell', () => {
+  const { p, calls } = fake();
+  keyBar(p, new Hits(), { x: 0, y: 0, w: 29, h: 14 }, [{ key: 'P', label: 'Prev', codes: [] }], new Set());
+  assert.ok(JSON.stringify(calls).includes('"P"'));
+});
