@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Prototypes</title>
+<link rel="stylesheet" href="loader.css">
+<style>
+/* All the prototypes on one page. Each section keeps its own rules nested under its class, so the same class names
+   (.well, .stat, .lrow, .now) do not meet; a section's state switcher sets data-state on its section only.
+   explorer.html stays apart: a full-screen prototype of the environment's behavior. */
+body { font-family: system-ui, sans-serif; background: #282E20; color: #D8DED3; padding: 16px 20px; }
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.toc { font: 13px system-ui, sans-serif; margin-bottom: 8px; }
+.toc a, .src a { color: #D8DED3; }
+section { margin-top: 28px; }
+section > h2 { font: 600 18px system-ui, sans-serif; margin: 0 0 8px; padding-top: 12px; border-top: 1px solid #4C5844; }
+.src { font: 12px system-ui, sans-serif; color: #758666; margin: 12px 0 6px; }
+.switch { display: flex; align-items: center; gap: 4px; height: 20px; margin-bottom: 8px; color: var(--text); }
+.switch span { margin-right: 4px; }
+.switch button { font: inherit; height: 14px; padding: 0 6px; color: var(--text); background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+.s-start {
+/* the start screen at 1280 x 720, scale 1: the readme note on the left (the author's text, then the instructions), pmc on
+   the right with the focus; under the tiles the message line and the environment's key bar, as on the site today.
+   The tiles are built from loader.css: the title bar with the application's name only, the foot panel with the load bar,
+   the key bar of clickable cells. */
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.src { font: 12px system-ui, sans-serif; color: #758666; margin: 12px 0 6px; }
+.src a { color: #D8DED3; }
+
+.screen { width: 1280px; height: 720px; padding: 4px; display: flex; flex-direction: column; gap: 4px; background: var(--dark); }
+.tiles { flex: 1; min-height: 0; display: flex; gap: 4px; }
+/* a tile here takes half of the row: (1280 - 8 - 4) / 2 = 634 px, the body 626 px; the focused one has a brass ring */
+.screen .i-tile { width: 634px; height: auto; }
+.screen .i-tile.focus { box-shadow: 0 0 0 2px var(--sel); }
+
+/* the readme: the note's well (note.js) with the scroll bar, the text in rv as on the site */
+.nwell { flex: 1; min-height: 0; display: flex; background: var(--inset); border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.md { flex: 1; min-width: 0; padding: 8px 10px; overflow: hidden; line-height: 12px; color: var(--text); }
+.md h1 { font: 16px/16px "rv", monospace; color: var(--bright); margin: 0 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--lo); box-shadow: 0 1px 0 var(--hi); font-weight: normal; }
+.md h2 { font: 8px/8px "rv", monospace; color: var(--bright); margin: 12px 0 4px; display: flex; align-items: center; gap: 6px; font-weight: normal; }
+.md h2::after { content: ""; flex: 1; height: 6px; background: conic-gradient(var(--lo) 25%, transparent 0 50%, var(--lo) 0 75%, transparent 0) 0 0 / 2px 2px; }
+.md p { margin: 0 0 7px; }
+.md blockquote { margin: 0 0 7px; padding: 0 0 0 8px; border-left: 2px solid var(--sel); }
+.md hr { border: 0; border-top: 1px solid var(--lo); border-bottom: 1px solid var(--hi); margin: 12px 0; }
+.md table { border-collapse: collapse; width: 100%; margin: 4px 0 8px; }
+.md th { text-align: left; font-weight: normal; color: var(--bright); background: var(--win); padding: 2px 4px 1px; }
+.md td { padding: 2px 4px 1px; border-bottom: 1px solid var(--lo); vertical-align: top; }
+.md td.ok { width: 10px; color: var(--sel); }
+.md kbd { font: 8px/8px "rv", monospace; color: var(--bright); background: var(--btn); padding: 0 2px; border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+/* pmc (the pmc section below), its panels share the tile; the path labels are centred */
+.pmc { --teal: #94e2d5; }
+/* panelFrame: a dark line on the top and left, a light line inside it and outside on the right and bottom; 5 px in */
+.pm { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid;
+  border-color: var(--lo) transparent transparent var(--lo); box-shadow: inset 1px 1px 0 var(--hi), 1px 1px 0 var(--hi); }
+
+/* centring with even rests only (offset = rest / 2): .tb 14 px in 16 (1); .field 8 px line in 10 (1); .switch 14 px in 20 (3),
+   8 px line in 20 (6). Text y matches pmc.js: field 3, view 3. The toolbar has no Up and Hm buttons: the path field and View only */
+.tb { display: flex; align-items: center; gap: 4px; height: 16px; flex: none; }
+.field { flex: 1; min-width: 0; height: 14px; display: flex; align-items: center; padding: 0 2px; white-space: nowrap; color: var(--bright);
+  background: var(--inset); border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+/* 'View' is 24 px in 32 px: the rest is 8, the offset 4 */
+.view { width: 36px; height: 14px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--btn);
+  border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+.areas { flex: 1; min-height: 0; display: flex; gap: 4px; }
+.pn { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.well { flex: 1; min-height: 0; display: flex; background: var(--inset); border: 2px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* the path label is centred in pmc.js as floor((451 - text) / 2) on the 451 px bar, the text 6 px a char: the rest is odd,
+   so the left is explicit. Left "/music/jazztime/" (96 px): 177; right "/" (6 px): 222 */
+.pbar { height: 13px; flex: none; display: flex; align-items: flex-start; padding-top: 3px; white-space: nowrap;
+  background: var(--win); border-bottom: 1px solid var(--lo); }
+.lp .pbar { padding-left: 177px; }
+.rp .pbar { padding-left: 222px; }
+.pbar.act { background: var(--sel); color: var(--dark); }
+/* the header: the cells are stretched over its 12 px, the text is 3 px down (pmc.js:284-288) */
+.phd { height: 13px; flex: none; display: flex; align-items: flex-start; line-height: 8px; background: var(--win); color: var(--bright);
+  border-bottom: 1px solid var(--lo); white-space: nowrap; }
+.phd > span { align-self: stretch; padding-top: 3px; }
+.pbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--inset); }
+.sb { width: 14px; flex: none; display: flex; flex-direction: column;
+  background: conic-gradient(var(--lo) 25%, var(--inset) 0 50%, var(--lo) 0 75%, var(--inset) 0) 0 0 / 2px 2px; }
+.sb b { position: relative; height: 14px; flex: none; background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sb b.dn { margin-top: auto; }
+.sb b::before { content: ""; position: absolute; left: 2px; top: 4px; border: solid transparent; border-width: 0 4px 4px;
+  border-bottom-color: var(--bright); }
+.sb b.dn::before { border-width: 4px 4px 0; border-bottom-color: transparent; border-top-color: var(--bright); }
+
+/* the status line (pmc.js statLine): the text, cut before the load bar; the bar 2 px from the right edge of the left
+   section (1 px border, 1 px padding), its top at the content top, the 11 px bar in the 12 px inside */
+.stat { height: 14px; flex: none; margin-top: 2px; display: flex; gap: 2px; }
+.stat > span { min-width: 0; overflow: hidden; white-space: nowrap; padding: 0 5px; line-height: 12px; border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.stat .sl { flex: 1; display: flex; align-items: flex-start; padding: 0 1px 0 5px; }
+.stat .tx { flex: 1; min-width: 0; overflow: hidden; margin-right: 4px; }
+.stat .sd { width: 72px; flex: none; }
+
+/* list row (pmc.js row): the text 2 px down, the cells stretched over the row (the size and date lines run the full
+   height, the 1 px row line below included); the 1 px margin of loader.css goes */
+.lrow > :not(.ld) { align-self: stretch; margin: 0 0 -1px; padding-top: 2px; }
+/* brass cursor: the file under the cursor in done; the parent row, the only row, in load and errr */
+.lrow.cur, &:not([data-state="done"]) .lp .lrow.up { background: var(--sel); }
+.lrow.cur > span, &:not([data-state="done"]) .lp .lrow.up > span { color: var(--dark); }
+.kc { width: 22px; flex: none; padding-left: 4px; }
+.nm { flex: 1; min-width: 0; padding-right: 4px; overflow: hidden; text-overflow: ellipsis; }
+.phd .nm { padding-left: 4px; }
+.sz { width: 56px; flex: none; border-left: 1px solid var(--lo); text-align: right; padding-right: 4px; }
+.phd .sz { text-align: left; padding: 3px 0 0 3px; }
+.dt { width: 70px; flex: none; border-left: 1px solid var(--lo); padding-left: 3px; }
+.lrow .dt { color: var(--dim); }
+.k-up { color: var(--cov); } .k-fd { color: var(--sel); } .k-sn { color: var(--teal); } .k-tx { color: var(--ct); }
+.n-dir { color: var(--bright); } .s-dim { color: var(--dim); }
+
+.pbar { justify-content: center; }
+.lrow.cur > span { color: var(--dark); }
+/* key bars: three cells of floor((626 - 4) / 3) = 207 px in the note; six of floor((616 - 10) / 6) = 101 px in pmc */
+.t-note .key { width: 207px; }
+.pmc .keys .key { width: 101px; }
+.i-body > .keys { margin-top: 4px; }
+.rp .ld, .lp .ld { --t: "done"; --w: 100%; }
+.foot .ld { --t: "done"; --w: 100%; }
+
+/* the message line and the environment's key bar (workspace.js), as on the site today */
+.msg { height: 14px; flex: none; background: var(--inset); border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.env { height: 16px; flex: none; display: flex; gap: 2px; }
+.env span { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0; padding: 0 3px; white-space: nowrap; overflow: hidden;
+  background: var(--win); color: var(--text); border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.env b { font-weight: normal; color: var(--sel); }
+}
+.s-player {
+/* player specifics: scenario switcher, now playing, position and volume rows, playlist, key bar.
+   The key bar works: a click on a cell or its key (the cell looks pressed while held) plays, pauses, steps, mutes */
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.say { font: 12px system-ui, sans-serif; color: #D8DED3; margin: 0 0 8px; min-height: 16px; }
+.switch { display: flex; align-items: center; gap: 4px; height: 20px; margin-bottom: 8px; color: var(--text); }
+.switch span { margin-right: 4px; }
+.switch button { font: inherit; height: 14px; padding: 0 6px; color: var(--text); background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.switch button.on { background: var(--sel); color: var(--dark); }
+
+.now { position: relative; height: 56px; flex: none; background: var(--cb); }
+.now-time { position: absolute; left: 10px; top: 12px; font: 32px/32px "PxVGA", monospace; color: var(--green); }
+.now-txt { position: absolute; left: 112px; top: 10px; right: 8px; }
+.now-name { display: block; font: 16px/16px "rv", monospace; color: var(--ct); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-art, .now-meta { display: block; color: var(--cs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-art { margin-top: 2px; }
+.now-meta { margin-top: 4px; }
+
+.seek { margin: 6px 2px 0; }
+.ruler { height: 8px; margin-top: 3px; background:
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 30px) 0 0 / 100% 8px no-repeat,
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 6px) 0 4px / 100% 4px no-repeat; }
+.cap { display: grid; grid-template-columns: 1fr auto 1fr; height: 8px; margin-top: 1px; color: var(--dim); }
+.cap span:last-child { justify-self: end; }
+
+.vol { display: flex; align-items: center; gap: 6px; flex: none; height: 14px; margin: 6px 4px 0; }
+.vol .ld { flex: 1; }
+.vlbl { width: 60px; flex: none; white-space: nowrap; }
+
+/* the playlist takes what the key bar leaves: the key bar and its 4 px gap come off its 86 px */
+.pl { flex: 1; min-height: 0; overflow: hidden; margin-top: 6px; background: var(--cb); color: var(--ct); }
+.pl-hd { height: 13px; margin-bottom: 1px; padding: 2px 14px 0 3px; display: flex; align-items: flex-start; background: var(--csurf);
+  color: var(--bright); white-space: nowrap; }
+.pl-hd .len { width: 30px; margin-left: auto; }
+.lrow { margin-right: 14px; padding-left: 3px; }
+.no { width: 11px; flex: none; color: var(--cov); }
+.lrow.cur .no { color: var(--green); }
+.nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lrow .ld { margin-right: 6px; }
+.slot { width: 33px; flex: none; }
+.tm { width: 30px; flex: none; color: var(--cs); }
+
+.keys { margin-top: 4px; }
+/* the key bar holds the former transport buttons, in their order (Prev Play Pause Stop Next Mute), then Seek and Volume:
+   eight cells of floor((952 - 14) / 8) = 117 px */
+.keys .key { width: 117px; }
+/* this tile only: 262 px, so the 86 px playlist shows its six rows whole (body 222 px) */
+.i-tile { height: 262px; }
+}
+.s-tiles {
+/* page specifics: the state switcher, the bodies of the image, app, video and note tiles, their states and key bars.
+   Every tile ends the same way: the foot panel (loader.css .foot: the file's line, the load bar, the keyboard field)
+   4 px over the key bar. The title bar has the application's name only, no path. */
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.src { font: 12px system-ui, sans-serif; color: #758666; margin: 12px 0 6px; }
+.switch { display: flex; align-items: center; gap: 4px; height: 20px; margin-bottom: 8px; color: var(--text); }
+.switch span { margin-right: 4px; }
+.switch button { font: inherit; height: 14px; padding: 0 6px; color: var(--text); background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+&[data-state="load"] [data-value="load"], &[data-state="done"] [data-value="done"], &[data-state="errr"] [data-value="errr"] { background: var(--sel); color: var(--dark); }
+
+/* tile heights: the tile body is the height less 40 (frame, head 16, tabs 16) */
+.i-tile.t-img { height: 258px; }
+.i-tile.t-vid { height: 380px; }
+.i-tile.t-note { height: 220px; }
+
+/* stand-ins (C.csurf): a picture at 16:9 in the image field, a video frame at its fitted size (media.js:256), the app window */
+.stub { display: none; flex: none; align-items: center; justify-content: center; background: var(--csurf); color: var(--ct); }
+.stub-img { width: 320px; height: 180px; }
+.stub-v { width: 291px; height: 164px; }
+.stub-app { flex: 1; }
+&[data-state="done"] .stub { display: flex; }
+
+/* image (image.js:39-58): the field over the foot panel; Prev and Next are in the key bar */
+.pic { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: var(--cb); }
+
+/* app (app.js:116-141): the well 1 px sunken with its status line 14; Restart is the key bar's Shift+0 */
+.well { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--cb);
+  border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.gstat { flex: none; height: 14px; display: flex; align-items: center; gap: 8px; padding: 0 6px; white-space: nowrap; color: var(--ct); }
+.g-dir { color: var(--cs); }
+.g-err { display: none; }
+&[data-state="errr"] .g-err { display: inline; color: var(--red); }
+&[data-state="errr"] .g-dir { display: none; }
+.t-app .kfield { color: var(--cov); }
+&[data-state="done"] .t-app .kfield { color: var(--sel); }
+.k-app { display: none; }
+&[data-state="done"] .k-app { display: inline; }
+&[data-state="done"] .k-none { display: none; }
+
+/* video (media.js:219-261): the transport buttons are in the key bar. The body is 340; the rows above and below the frame
+   take 176, so the frame is 164 */
+.now { position: relative; flex: none; height: 56px; background: var(--cb); }
+.now-time { position: absolute; left: 10px; top: 12px; font: 32px/32px "PxVGA", monospace; color: var(--green); }
+.now-txt { position: absolute; left: 112px; top: 10px; right: 8px; }
+.now-name { display: block; font: 16px/16px "rv", monospace; color: var(--ct); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-meta { display: block; margin-top: 4px; color: var(--cs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seek { flex: none; margin: 6px 2px 0; }
+.ruler { flex: none; height: 8px; margin-top: 3px; background:
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 30px) 0 0 / 100% 8px no-repeat,
+  repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 6px) 0 4px / 100% 4px no-repeat; }
+.cap { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; height: 8px; margin-top: 1px; color: var(--dim); }
+.cap span:last-child { justify-self: end; }
+.vol { display: flex; align-items: center; gap: 6px; flex: none; height: 14px; margin: 6px 4px 0; }
+.vol .ld { flex: 1; }
+.vlbl { width: 60px; flex: none; white-space: nowrap; }
+.views { display: flex; align-items: center; gap: 3px; flex: none; height: 16px; margin: 4px 4px 0; }
+.btn { width: 30px; height: 16px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--btn); color: var(--text);
+  border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.btn.on { background: var(--inset); color: var(--bright); border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.chk { width: 10px; height: 10px; flex: none; margin-left: 6px; background: var(--inset);
+  border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.loop { margin-left: 4px; }
+.frame { flex: 1; min-height: 0; margin: 6px 4px 0; display: flex; justify-content: center; align-items: flex-start; background: #11111b; color: var(--cov); }
+.v-txt { margin-top: 78px; }   /* (164 - 8) / 2 */
+/* the video plays while it loads: its frame shows in load and done; in errr the frame stays empty */
+&:not([data-state="errr"]) .stub-v { display: flex; }
+&:not([data-state="errr"]) .v-txt { display: none; }
+
+/* note (note.js:46-55): the well is C.inset in a 2 px sunken bevel, the text 10 px by 8 px in. The same body serves the
+   readme on the start screen and pmc's quick view, so they get the foot panel too */
+.nwell { flex: 1; min-height: 0; padding: 8px 10px; background: var(--inset); overflow: hidden;
+  border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.md { display: none; color: var(--text); line-height: 12px; }
+.md h1 { font: 16px/16px "rv", monospace; color: var(--bright); margin: 0 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--lo); box-shadow: 0 1px 0 var(--hi); }
+.md p { margin: 0 0 7px; }
+.n-err { display: none; color: var(--red); }
+&[data-state="done"] .md { display: block; }
+&[data-state="errr"] .n-err { display: block; }
+
+/* key bar: the last row of the body, 4 px under the foot panel; cells equal, 2 px apart, the width rounded down */
+.i-body > .keys { margin-top: 4px; }
+.t-img .key { width: 475px; }                 /* (952 - 2) / 2 */
+.t-app .key, .t-note .key { width: 316px; }   /* (952 - 4) / 3 */
+.t-vid .key { width: 104px; }                 /* (952 - 16) / 9 */
+
+/* states (body data-state): the word and the fill of each bar; errr is an empty bar with a bright word */
+&[data-state="load"] .foot .ld { --t: "load"; --w: 40%; }
+&[data-state="done"] .foot .ld { --t: "done"; --w: 100%; }
+&[data-state="errr"] .foot .ld { --t: "errr"; --w: 0%; }
+&[data-state="load"] .t-vid .foot .ld { --w: 30%; }
+}
+.s-pmc {
+/* pmc specifics: the pmc tile (its two panels, the load bar in each status line); the state switcher as in the player section */
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.switch { display: flex; align-items: center; gap: 4px; height: 20px; margin-bottom: 8px; color: var(--text); }
+.switch span { margin-right: 4px; }
+.switch button { font: inherit; height: 14px; padding: 0 6px; color: var(--text); background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+&[data-state="load"] [data-value="load"], &[data-state="done"] [data-value="done"], &[data-state="errr"] [data-value="errr"] { background: var(--sel); color: var(--dark); }
+
+/* 194 px: the body is 154 px, which holds the toolbar, two 106 px panels with five 12 px rows, and the keys */
+.pmc { height: 194px; --teal: #94e2d5; }
+/* panelFrame: a dark line on the top and left, a light line inside it and outside on the right and bottom; 5 px in */
+.pm { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid;
+  border-color: var(--lo) transparent transparent var(--lo); box-shadow: inset 1px 1px 0 var(--hi), 1px 1px 0 var(--hi); }
+
+/* centring with even rests only (offset = rest / 2): .tb 14 px in 16 (1); .field 8 px line in 10 (1); .switch 14 px in 20 (3),
+   8 px line in 20 (6). Text y matches pmc.js: field 3, view 3. The toolbar has no Up and Hm buttons: the path field and View only */
+.tb { display: flex; align-items: center; gap: 4px; height: 16px; flex: none; }
+.field { flex: 1; min-width: 0; height: 14px; display: flex; align-items: center; padding: 0 2px; white-space: nowrap; color: var(--bright);
+  background: var(--inset); border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+/* 'View' is 24 px in 32 px: the rest is 8, the offset 4 */
+.view { width: 36px; height: 14px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--btn);
+  border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+.areas { flex: 1; min-height: 0; display: flex; gap: 4px; }
+.pn { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.well { flex: 1; min-height: 0; display: flex; background: var(--inset); border: 2px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* the path label is centred in pmc.js as floor((451 - text) / 2) on the 451 px bar, the text 6 px a char: the rest is odd,
+   so the left is explicit. Left "/music/jazztime/" (96 px): 177; right "/" (6 px): 222 */
+.pbar { height: 13px; flex: none; display: flex; align-items: flex-start; padding-top: 3px; white-space: nowrap;
+  background: var(--win); border-bottom: 1px solid var(--lo); }
+.lp .pbar { padding-left: 177px; }
+.rp .pbar { padding-left: 222px; }
+.pbar.act { background: var(--sel); color: var(--dark); }
+/* the header: the cells are stretched over its 12 px, the text is 3 px down (pmc.js:284-288) */
+.phd { height: 13px; flex: none; display: flex; align-items: flex-start; line-height: 8px; background: var(--win); color: var(--bright);
+  border-bottom: 1px solid var(--lo); white-space: nowrap; }
+.phd > span { align-self: stretch; padding-top: 3px; }
+.pbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--inset); }
+.sb { width: 14px; flex: none; display: flex; flex-direction: column;
+  background: conic-gradient(var(--lo) 25%, var(--inset) 0 50%, var(--lo) 0 75%, var(--inset) 0) 0 0 / 2px 2px; }
+.sb b { position: relative; height: 14px; flex: none; background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.sb b.dn { margin-top: auto; }
+.sb b::before { content: ""; position: absolute; left: 2px; top: 4px; border: solid transparent; border-width: 0 4px 4px;
+  border-bottom-color: var(--bright); }
+.sb b.dn::before { border-width: 4px 4px 0; border-bottom-color: transparent; border-top-color: var(--bright); }
+
+/* the status line (pmc.js statLine): the text, cut before the load bar; the bar 2 px from the right edge of the left
+   section (1 px border, 1 px padding), its top at the content top, the 11 px bar in the 12 px inside */
+.stat { height: 14px; flex: none; margin-top: 2px; display: flex; gap: 2px; }
+.stat > span { min-width: 0; overflow: hidden; white-space: nowrap; padding: 0 5px; line-height: 12px; border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.stat .sl { flex: 1; display: flex; align-items: flex-start; padding: 0 1px 0 5px; }
+.stat .tx { flex: 1; min-width: 0; overflow: hidden; margin-right: 4px; }
+.stat .sd { width: 72px; flex: none; }
+
+/* list row (pmc.js row): the text 2 px down, the cells stretched over the row (the size and date lines run the full
+   height, the 1 px row line below included); the 1 px margin of loader.css goes */
+.lrow > :not(.ld) { align-self: stretch; margin: 0 0 -1px; padding-top: 2px; }
+/* brass cursor: the file under the cursor in done; the parent row, the only row, in load and errr */
+.lrow.cur, &:not([data-state="done"]) .lp .lrow.up { background: var(--sel); }
+.lrow.cur > span, &:not([data-state="done"]) .lp .lrow.up > span { color: var(--dark); }
+.kc { width: 22px; flex: none; padding-left: 4px; }
+.nm { flex: 1; min-width: 0; padding-right: 4px; overflow: hidden; text-overflow: ellipsis; }
+.phd .nm { padding-left: 4px; }
+.sz { width: 56px; flex: none; border-left: 1px solid var(--lo); text-align: right; padding-right: 4px; }
+.phd .sz { text-align: left; padding: 3px 0 0 3px; }
+.dt { width: 70px; flex: none; border-left: 1px solid var(--lo); padding-left: 3px; }
+.lrow .dt { color: var(--dim); }
+.k-up { color: var(--cov); } .k-fd { color: var(--sel); } .k-sn { color: var(--teal); } .k-tx { color: var(--ct); }
+.n-dir { color: var(--bright); } .s-dim { color: var(--dim); }
+
+/* the key bar (pmc.js keysBar): six cells of floor((942 - 10) / 6) = 155 px, 2 px apart; loader.css has 134 px */
+.keys .key { width: 155px; }
+
+/* the left panel follows the state: its bar, its rows and its status text. Without a listing (load, errr) only the
+   parent row stays, under the cursor, with its status text; with the listing (done) the files and the file's status */
+&[data-state="load"] .lp .ld { --t: "load"; --w: 0%; }
+&[data-state="done"] .lp .ld { --t: "done"; --w: 100%; }
+&[data-state="errr"] .lp .ld { --t: "errr"; --w: 0%; }
+&:not([data-state="done"]) .lp .lrow:not(.up) { display: none; }
+&:not([data-state="done"]) .lp .st-done, &[data-state="done"] .lp .st-up { display: none; }
+/* the right panel is read in full: its bar stays done */
+.rp .ld { --t: "done"; --w: 100%; }
+}
+.s-fav {
+/* the favicon and the browser tab: the icon is the title bar's M box (workspace.js iconBox, 12 px) grown to 16 px with
+   the text Mf; the tab shows only the title of the focused tile (workspace.js titleOf) */
+.note { font: 12px system-ui, sans-serif; color: #758666; margin-bottom: 8px; }
+.src { font: 12px system-ui, sans-serif; color: #758666; margin: 16px 0 6px; }
+.switch { display: flex; align-items: center; gap: 4px; height: 20px; margin-bottom: 8px; color: var(--text); }
+.switch span { margin-right: 4px; }
+.switch button { font: inherit; height: 14px; padding: 0 6px; color: var(--text); background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.switch button.on { background: var(--sel); color: var(--dark); }
+
+/* the icon at scale --s: 16 px box, 1 px raised frame (C.hi over C.lo) on C.win, Mf in rv C.bright.
+   The text sits 2 px in and 4 px down from the box's corner, as iconBox puts M 3 px in a 12 px box. */
+.fav { --s: 1; width: calc(16px * var(--s)); height: calc(16px * var(--s)); flex: none; overflow: hidden;
+  padding: calc(3px * var(--s)) 0 0 calc(1px * var(--s)); background: var(--win); color: var(--bright);
+  border: calc(1px * var(--s)) solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi);
+  font: calc(8px * var(--s)) / calc(8px * var(--s)) "rv", monospace; white-space: nowrap; }
+.x2 { --s: 2; } .x4 { --s: 4; }
+.m4 { --s: 4; width: 48px; height: 48px; padding: 8px 0 0 8px; }   /* the M box of the title bar, 12 px, at x4 */
+.row { display: flex; align-items: flex-end; gap: 16px; }
+.cap { font: 12px system-ui, sans-serif; color: #758666; margin-top: 4px; }
+
+/* a browser's tab strip, not the site's look: only the icon and the title are the site's */
+.strip { display: flex; gap: 1px; width: 600px; padding: 6px 6px 0; background: #1f1f1f; }
+.btab { display: flex; align-items: center; gap: 8px; width: 240px; height: 32px; padding: 0 10px; border-radius: 8px 8px 0 0;
+  background: #2b2b2b; color: #9a9a9a; font: 12px system-ui, sans-serif; }
+.btab.on { background: #3c3c3c; color: #e8e8e8; }
+.btab .t { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.other { width: 16px; height: 16px; flex: none; border-radius: 50%; background: #6a6a6a; }
+}
+/* video fullscreen: the frame fills the screen; the panel (position bar + Player key bar) shows on mouse move, hides after 3 s */
+.s-full .fv { position: relative; width: 960px; height: 300px; background: #11111b; color: var(--cov); display: flex; align-items: center; justify-content: center; cursor: default; }
+.s-full .fv .pnl { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px; background: var(--win); display: none; }
+.s-full .fv.on .pnl { display: block; }
+.s-full .fv.on { cursor: auto; }
+.s-full .fv .keys { margin-top: 4px; }
+.s-full .fv .key { width: 100px; }
+</style>
+</head>
+<body>
+
+<p class="note">Смотреть при масштабе браузера 100% и масштабе экрана 1: при дробном масштабе HTML размывается, сайт — нет</p>
+<p class="toc"><a href="#start">Стартовый экран</a> · <a href="#player">Плеер: загрузка, плейлист, полоса клавиш</a> · <a href="#tiles">Картинка, игра, видео, заметка</a> · <a href="#pmc">pmc</a> · <a href="#fullvideo">Видео на весь экран</a> · <a href="#fav">Вкладка и иконка</a> · <a href="explorer.html">explorer.html</a> (поведение окружения, отдельно)</p>
+
+<section class="s-start" id="start">
+<h2>Стартовый экран</h2>
+<p class="src">Стартовый экран (пункт 14): слева readme.md — сначала текст автора, потом инструкция; справа pmc, в фокусе.
+  Контактов нет. Отдельные плитки — в разделах ниже.</p>
+
+<div class="i screen">
+  <div class="tiles">
+    <div class="i-tile t-note">
+      <div class="i-head"><span class="bx">X</span><span class="ttl">Note</span><span class="grow"></span><span class="bx">M</span></div>
+      <div class="i-body">
+        <div class="nwell">
+          <div class="md">
+            <h1>Hello</h1>
+            <p>Hi. I don't know how you found this domain name or how you ended up here at all, but since you did, you must have been looking for something and found it.</p>
+            <h2>About this place</h2>
+            <p>Let me bring you up to speed. (Or not. Your call whether to read this.) I am a self-absorbed egotist, so I wanted to build my own exhibition of my creations somewhere on the internet, open to the general public. Otherwise I would have just kept everything on my disk. The general public at the moment is you. By the way, a voluntary test subject. (The defendant?) Thanks for coming.</p>
+            <p>I should add that I am not chasing the fashionable trend (yes, yes, it is more than 20 years old) where someone tries to become popular by riding a big platform. I would rather shove this site into the darknet. (Why?)</p>
+            <blockquote>I wanted a place that you found by accident, that caught your eye by its vibe (comfy), and where you decided to stay for a while.</blockquote>
+            <p>There is a lot here. It is the slop-filtered vomit that my mind spits out. Expect a large amount of trash, lowprice, printing (graphomania) and religion (questionable decisions) that ruined the product.</p>
+            <p>Anyway, I will leave you among my own propaganda of technocratic pragmatism and meritocratic cooperativism. (In the delirium of capitalist imperialism.)</p>
+            <hr>
+            <h1>How it works</h1>
+            <p>The whole screen is divided into rectangular areas — tiles. Tiles never overlap: a new tile takes part of its neighbor's space, and a closed tile gives its space back. Each tile holds one thing: the file explorer, a player, a picture, a text or a game. Several tiles can be stacked into one — then tabs appear at its bottom, like the tabs on folders in a card file.</p>
+            <h2>Mouse and keyboard</h2>
+            <p>Everything here can be done with the mouse and with the keyboard. Use either one, or mix them — whatever suits you.</p>
+            <table>
+              <tr><th></th><th>To do</th><th>Mouse</th><th>Keyboard</th></tr>
+              <tr><td class="ok">&gt;</td><td>Go to another tile</td><td>click it</td><td><kbd>Shift</kbd> + <kbd>arrows</kbd></td></tr>
+              <tr><td class="ok"></td><td>Open pmc</td><td>—</td><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td></tr>
+              <tr><td class="ok"></td><td>Move a tile</td><td>drag its title bar to the edge of another</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>arrows</kbd></td></tr>
+              <tr><td class="ok"></td><td>Stack into tabs</td><td>drop its title bar onto the tabs</td><td><kbd>Shift</kbd> + <kbd>W</kbd></td></tr>
+              <tr><td class="ok"></td><td>Resize</td><td>drag the border</td><td><kbd>Shift</kbd> + <kbd>R</kbd>, then arrows</td></tr>
+              <tr><td class="ok"></td><td>Fullscreen and back</td><td>M in the title bar</td><td><kbd>Shift</kbd> + <kbd>F</kbd></td></tr>
+              <tr><td class="ok"></td><td>Close a tile</td><td>X in the title bar</td><td><kbd>Shift</kbd> + <kbd>Q</kbd></td></tr>
+            </table>
+          </div>
+          <div class="sb"><b></b><b class="dn"></b></div>
+        </div>
+        <div class="foot"><span class="addr">readme.md · MD · 1.8K</span><span class="ld ld-mini"><i class="ld-fill"></i></span><span class="kfield">Keyboard: —</span></div>
+        <div class="keys">
+          <span class="key"><span class="kk">Up/Down</span><span class="kn">Scroll</span></span>
+          <span class="key"><span class="kk">PgUp/PgDn</span><span class="kn">Page</span></span>
+          <span class="key"><span class="kk">Home/End</span><span class="kn">Top/Bottom</span></span>
+        </div>
+      </div>
+      <div class="i-tabs"><span class="tab on"><span>Note</span></span></div>
+    </div>
+
+    <div class="i-tile pmc focus">
+      <div class="i-head"><span class="bx">X</span><span class="ttl">pmc</span><span class="grow"></span><span class="bx">M</span></div>
+      <div class="i-body">
+        <div class="pm">
+          <div class="tb"><span class="field">/</span><span class="view">View</span></div>
+          <div class="areas">
+            <div class="pn lp">
+              <div class="well"><div class="col">
+                <div class="pbar act"><span>/</span></div>
+                <div class="phd"><span class="nm">Name</span><span class="sz">Size</span><span class="dt">Modified</span></div>
+                <div class="pbody">
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">games/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-11-01</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">images/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">music/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">texts/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">video/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-tx">Tx</span><span class="nm">about.md</span><span class="sz">1K</span><span class="dt">2026-10-31</span></div>
+                  <div class="lrow cur"><span class="kc k-tx">Tx</span><span class="nm">readme.md</span><span class="sz">1.8K</span><span class="dt">2026-11-04</span></div>
+                </div>
+              </div>
+              <div class="sb"><b></b><b class="dn"></b></div></div>
+              <div class="stat"><span class="sl"><span class="tx">readme.md · 1 929 bytes · total 2.8K</span><span class="ld ld-mini"><i class="ld-fill"></i></span></span><span class="sd">2026-11-04</span></div>
+            </div>
+            <div class="pn rp">
+              <div class="well"><div class="col">
+                <div class="pbar"><span>/</span></div>
+                <div class="phd"><span class="nm">Name</span><span class="sz">Size</span><span class="dt">Modified</span></div>
+                <div class="pbody">
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">games/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-11-01</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">images/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">music/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">texts/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">video/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2026-10-29</span></div>
+                  <div class="lrow"><span class="kc k-tx">Tx</span><span class="nm">about.md</span><span class="sz">1K</span><span class="dt">2026-10-31</span></div>
+                  <div class="lrow"><span class="kc k-tx">Tx</span><span class="nm">readme.md</span><span class="sz">1.8K</span><span class="dt">2026-11-04</span></div>
+                </div>
+              </div>
+              <div class="sb"><b></b><b class="dn"></b></div></div>
+              <div class="stat"><span class="sl"><span class="tx">games/ · 3 items</span><span class="ld ld-mini"><i class="ld-fill"></i></span></span><span class="sd">2026-11-01</span></div>
+            </div>
+          </div>
+          <div class="keys">
+            <span class="key"><span class="kk">Enter</span><span class="kn">Open</span></span>
+            <span class="key"><span class="kk">F3</span><span class="kn">View</span></span>
+            <span class="key"><span class="kk">Tab</span><span class="kn">Panel</span></span>
+            <span class="key"><span class="kk">Esc</span><span class="kn">List</span></span>
+            <span class="key"><span class="kk">Ctrl+PgUp</span><span class="kn">Up</span></span>
+            <span class="key"><span class="kk">Letters</span><span class="kn">Search</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="i-tabs"><span class="tab on"><span>pmc</span></span></div>
+    </div>
+  </div>
+  <div class="msg"></div>
+  <div class="env">
+    <span><b>Shift+arrows</b>&nbsp;Focus</span><span><b>Shift+Enter</b>&nbsp;Open</span><span><b>Ctrl+Shift+arrows</b>&nbsp;Move</span><span><b>Shift+W</b>&nbsp;Tabs</span><span><b>Shift+R</b>&nbsp;Resize</span><span><b>Shift+F</b>&nbsp;Fullscreen</span><span><b>Shift+Q</b>&nbsp;Close</span><span><b>Shift+S</b>&nbsp;Scale</span>
+  </div>
+</div>
+</section>
+
+<section class="s-player" id="player">
+<h2>Плеер: загрузка, плейлист, полоса клавиш</h2>
+<div class="i switch" id="switch"><span>Сценарий</span></div>
+<div class="i switch" id="tags"><span>Теги</span></div>
+<p class="say" id="say"></p>
+
+<div class="i">
+<div class="i-tile">
+  <div class="i-head"><span class="bx">X</span><span class="ttl" id="ttl"></span><span class="grow"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="now">
+      <span class="now-time" id="time">00:00</span>
+      <div class="now-txt">
+        <span class="now-name" id="name"></span>
+        <span class="now-art" id="art"></span>
+        <span class="now-meta" id="meta"></span>
+      </div>
+    </div>
+    <div class="seek ld ld-track" id="seek" style="--w: 0%"><i class="ld-fill"></i><i class="ld-knob"></i></div>
+    <div class="ruler"></div>
+    <div class="cap"><span>00:00</span><span>Position</span><span id="len">--:--</span></div>
+    <div class="vol"><div class="ld ld-vol" id="vol" style="--w: 82%"><i class="ld-fill"></i></div><span class="vlbl" id="vlbl">Vol. 82%</span></div>
+    <div class="pl">
+      <div class="pl-hd"><span>Playlist: /music/jazztime/</span><span class="len">Len.</span></div>
+      <div id="rows"></div>
+    </div>
+    <div class="keys">
+      <span class="key" data-act="prev"><span class="kk">P</span><span class="kn">Prev</span></span>
+      <span class="key" data-act="play"><span class="kk">Space</span><span class="kn">Play</span></span>
+      <span class="key" data-act="pause"><span class="kk">Space</span><span class="kn">Pause</span></span>
+      <span class="key" data-act="stop"><span class="kk">S</span><span class="kn">Stop</span></span>
+      <span class="key" data-act="next"><span class="kk">N</span><span class="kn">Next</span></span>
+      <span class="key" data-act="mute"><span class="kk">M</span><span class="kn">Mute</span></span>
+      <span class="key" data-act="seek"><span class="kk">Left/Right</span><span class="kn">Seek</span></span>
+      <span class="key" data-act="vol"><span class="kk">Up/Down</span><span class="kn">Volume</span></span>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on">Player</span></div>
+</div>
+</div>
+</section>
+
+<section class="s-tiles" id="tiles" data-state="load">
+<h2>Картинка, игра, видео, заметка</h2>
+<div class="i switch">
+  <span>Состояние</span><button type="button" data-set="state" data-value="load">load</button><button type="button" data-set="state" data-value="done">done</button><button type="button" data-set="state" data-value="errr">errr</button>
+</div>
+
+<p class="src">Изображение: image.js:39-58. Поле над нижней панелью; Prev и Next — ячейки полосы клавиш (кликаются мышью и клавишами).
+  Пока картинка качается, поле пустое; показывается целиком на done. Следующая картинка каталога качается заранее.</p>
+<div class="i">
+<div class="i-tile t-img">
+  <div class="i-head"><span class="bx">X</span><span class="ttl">Image</span><span class="grow"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="pic"><i class="stub stub-img">1280×720</i></div>
+    <div class="foot"><span class="addr">sunset.png · PNG · 1280×720 · 412K · 2 of 5</span><span class="ld ld-mini"><i class="ld-fill"></i></span><span class="kfield">Keyboard: —</span></div>
+    <div class="keys">
+      <span class="key"><span class="kk">Left/P</span><span class="kn">Prev</span></span>
+      <span class="key"><span class="kk">Right/N</span><span class="kn">Next</span></span>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on"><span>Image</span></span></div>
+</div>
+</div>
+
+<p class="src">Игра: app.js:115-140. Колодец со строкой статуса, нижняя панель, полоса клавиш. Restart — Shift+0: сайт перехватывает его и внутри игры, как Shift+Q.
+  Полоска — байты index.html (игра собрана в один файл); на done index.html запускается в iframe.</p>
+<div class="i">
+<div class="i-tile t-app">
+  <div class="i-head"><span class="bx">X</span><span class="ttl">demo.exe</span><span class="grow"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="well">
+      <div class="gstat"><span class="g-title">milk-fumo demo</span><span class="g-dir">/games/demo.exe/</span><span class="g-err">This app has no index.html.</span></div>
+      <div class="stub stub-app">app</div>
+    </div>
+    <div class="foot"><span class="addr">index.html</span><span class="ld ld-mini"><i class="ld-fill"></i></span><span class="kfield"><span class="k-app">Keyboard: app</span><span class="k-none">Keyboard: —</span></span></div>
+    <div class="keys">
+      <span class="key"><span class="kk">Shift+0</span><span class="kn">Restart</span></span>
+      <span class="key"><span class="kk">Shift+Q</span><span class="kn">Close</span></span>
+      <span class="key"><span class="kk">Shift+F</span><span class="kn">Fullscreen</span></span>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on"><span>App</span></span></div>
+</div>
+</div>
+
+<p class="src">Видео: media.js:219-261. Кнопок транспорта нет — они в полосе клавиш, как в плеере. Кадр 164 px; позиция - 0%.
+  Видео играет, пока качается: кадр есть уже в load. Следующее видео каталога качается заранее.</p>
+<div class="i">
+<div class="i-tile t-vid">
+  <div class="i-head"><span class="bx">X</span><span class="ttl">Video</span><span class="grow"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="now"><span class="now-time">00:00</span><div class="now-txt"><span class="now-name">teaser.webm</span><span class="now-meta">WEBM · 01:12 · /video/ · 1 of 2 · 1280×720</span></div></div>
+    <div class="seek ld ld-track" style="--w: 0%"><i class="ld-fill"></i><i class="ld-knob"></i></div>
+    <div class="ruler"></div>
+    <div class="cap"><span>00:00</span><span>Position</span><span>01:12</span></div>
+    <div class="vol"><div class="ld ld-vol" style="--w: 82%"><i class="ld-fill"></i></div><span class="vlbl">Vol. 82%</span></div>
+    <div class="views"><span class="btn on">Fit</span><span class="btn">1x</span><span class="btn">2x</span><span class="chk"></span><span class="loop">Loop</span></div>
+    <div class="frame"><i class="stub stub-v"></i><span class="v-txt">video frame</span></div>
+    <div class="foot"><span class="addr">teaser.webm · 00:00 / 01:12</span><span class="ld ld-mini"><i class="ld-fill"></i></span><span class="kfield">Keyboard: —</span></div>
+    <div class="keys">
+      <span class="key"><span class="kk">P</span><span class="kn">Prev</span></span>
+      <span class="key"><span class="kk">Space</span><span class="kn">Play</span></span>
+      <span class="key"><span class="kk">Space</span><span class="kn">Pause</span></span>
+      <span class="key"><span class="kk">S</span><span class="kn">Stop</span></span>
+      <span class="key"><span class="kk">N</span><span class="kn">Next</span></span>
+      <span class="key"><span class="kk">M</span><span class="kn">Mute</span></span>
+      <span class="key"><span class="kk">L</span><span class="kn">Loop</span></span>
+      <span class="key"><span class="kk">Left/Right</span><span class="kn">Seek</span></span>
+      <span class="key"><span class="kk">Up/Down</span><span class="kn">Volume</span></span>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on"><span>Video</span></span></div>
+</div>
+</div>
+
+<p class="src">Заметка: note.js:46-55. Колодец, нижняя панель, полоса клавиш. Та же панель у readme на стартовом экране и в быстром просмотре pmc (F3).</p>
+<div class="i">
+<div class="i-tile t-note">
+  <div class="i-head"><span class="bx">X</span><span class="ttl">Note</span><span class="grow"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="nwell">
+      <div class="md">
+        <h1>Hello</h1>
+        <p>Hi. I don't know how you found this domain name or how you ended up here at all, but since you did, you must have been looking for something and found it.</p>
+        <p>Let me bring you up to speed. (Or not. Your call whether to read this.)</p>
+      </div>
+      <div class="n-err">Could not load home.md</div>
+    </div>
+    <div class="foot"><span class="addr">home.md · MD · 1388 bytes</span><span class="ld ld-mini"><i class="ld-fill"></i></span><span class="kfield">Keyboard: —</span></div>
+    <div class="keys">
+      <span class="key"><span class="kk">Up/Down</span><span class="kn">Scroll</span></span>
+      <span class="key"><span class="kk">PgUp/PgDn</span><span class="kn">Page</span></span>
+      <span class="key"><span class="kk">Home/End</span><span class="kn">Top/Bottom</span></span>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on"><span>Note</span></span></div>
+</div>
+</div>
+</section>
+
+<section class="s-pmc" id="pmc" data-state="load">
+<h2>pmc</h2>
+<div class="i switch">
+  <span>Состояние</span><button type="button" data-set="state" data-value="load">load</button><button type="button" data-set="state" data-value="done">done</button><button type="button" data-set="state" data-value="errr">errr</button>
+</div>
+
+<div class="i">
+<div class="i-tile pmc">
+  <div class="i-head"><span class="bx">X</span><span class="ttl">pmc</span><span class="grow"></span><span class="bx">M</span></div>
+  <div class="i-body">
+    <div class="pm">
+      <div class="tb"><span class="field">/music/jazztime/</span><span class="view">View</span></div>
+      <div class="areas">
+        <div class="pn lp">
+          <div class="well"><div class="col">
+            <div class="pbar act"><span>/music/jazztime/</span></div>
+            <div class="phd"><span class="nm">Name</span><span class="sz">Size</span><span class="dt">Modified</span></div>
+            <div class="pbody">
+              <div class="lrow up"><span class="kc k-up">Up</span><span class="nm n-dir">..</span><span class="sz s-dim">UP--DIR</span><span class="dt"></span></div>
+              <div class="lrow cur"><span class="kc k-sn">Sn</span><span class="nm">isntshelovely.mp3</span><span class="sz">3.3M</span><span class="dt">2019-05-12</span></div>
+              <div class="lrow"><span class="kc k-sn">Sn</span><span class="nm">thegirlfromipanema.mp3</span><span class="sz">4.5M</span><span class="dt">2019-05-12</span></div>
+              <div class="lrow"><span class="kc k-sn">Sn</span><span class="nm">vabank.mp3</span><span class="sz">2.5M</span><span class="dt">2021-11-03</span></div>
+              <div class="lrow"><span class="kc k-sn">Sn</span><span class="nm">watermelonman.mp3</span><span class="sz">3.0M</span><span class="dt">2021-11-03</span></div>
+            </div>
+          </div>
+          <div class="sb"><b></b><b class="dn"></b></div></div>
+          <div class="stat"><span class="sl"><span class="tx"><span class="st-done">isntshelovely.mp3 · 3 412 551 bytes · total 13.3M</span><span class="st-up">.. · up one level · total 0B</span></span><span class="ld ld-mini"><i class="ld-fill"></i></span></span><span class="sd"><span class="st-done">2019-05-12</span></span></div>
+        </div>
+        <div class="pn rp">
+          <div class="well"><div class="col">
+            <div class="pbar"><span>/</span></div>
+            <div class="phd"><span class="nm">Name</span><span class="sz">Size</span><span class="dt">Modified</span></div>
+            <div class="pbody">
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">games/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2024-02-10</span></div>
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">music/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2023-08-30</span></div>
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">pictures/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2024-06-01</span></div>
+              <div class="lrow"><span class="kc k-fd">Fd</span><span class="nm n-dir">video/</span><span class="sz s-dim">SUB-DIR</span><span class="dt">2022-12-19</span></div>
+              <div class="lrow"><span class="kc k-tx">Tx</span><span class="nm">readme.md</span><span class="sz">2K</span><span class="dt">2024-06-01</span></div>
+            </div>
+          </div>
+          <div class="sb"><b></b><b class="dn"></b></div></div>
+          <div class="stat"><span class="sl"><span class="tx">games/ · 3 items · total 2K</span><span class="ld ld-mini"><i class="ld-fill"></i></span></span><span class="sd">2024-02-10</span></div>
+        </div>
+      </div>
+      <div class="keys">
+        <span class="key"><span class="kk">Enter</span><span class="kn">Open</span></span>
+        <span class="key"><span class="kk">F3</span><span class="kn">View</span></span>
+        <span class="key"><span class="kk">Tab</span><span class="kn">Panel</span></span>
+        <span class="key"><span class="kk">Esc</span><span class="kn">List</span></span>
+        <span class="key"><span class="kk">Ctrl+PgUp</span><span class="kn">Up</span></span>
+        <span class="key"><span class="kk">Letters</span><span class="kn">Search</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="i-tabs"><span class="tab on"><span>pmc</span></span></div>
+</div>
+</div>
+</section>
+
+<section class="s-full" id="fullvideo">
+<h2>Видео на весь экран</h2>
+<p class="src">Shift+F, кнопка M в рамке или двойной щелчок по кадру. Двигайте мышью над кадром: появляется панель с полосой позиции и полосой клавиш плеера; через 3 с без движения она скрывается. Esc или те же действия возвращают плитку.</p>
+<div class="i">
+<div class="fv" id="fv"><span class="v-txt">video frame</span>
+  <div class="pnl">
+    <div class="seek ld ld-track" style="--w: 35%; margin: 0 2px"><i class="ld-fill"></i><i class="ld-knob"></i></div>
+    <div class="keys"><span class="key"><span class="kk">P</span><span class="kn">Prev</span></span><span class="key"><span class="kk">Space</span><span class="kn">Play</span></span><span class="key"><span class="kk">S</span><span class="kn">Stop</span></span><span class="key"><span class="kk">N</span><span class="kn">Next</span></span><span class="key"><span class="kk">M</span><span class="kn">Mute</span></span><span class="key"><span class="kk">L</span><span class="kn">Loop</span></span><span class="key"><span class="kk">Left/Right</span><span class="kn">Seek</span></span><span class="key"><span class="kk">Up/Down</span><span class="kn">Volume</span></span></div>
+  </div>
+</div>
+</div>
+</section>
+
+<section class="s-fav" id="fav">
+<h2>Вкладка и иконка</h2>
+<div class="i switch" id="f-switch"><span>Фокус</span></div>
+<div class="strip">
+  <div class="btab on"><span class="i fav"><span>Mf</span></span><span class="t" id="f-tab"></span></div>
+  <div class="btab"><span class="other"></span><span class="t">Другой сайт</span></div>
+</div>
+<p class="src">Вкладка: только заголовок плитки в фокусе — название приложения, как в её рамке. «milk-fumo» на вкладке нет никогда.
+  Меняется при смене фокуса. До загрузки JS — &lt;title&gt; из index.html: заголовок плитки, которая в фокусе на старте (pmc).</p>
+
+<p class="src">Иконка: статичный PNG 16×16 и 32×32 (×2 без сглаживания), подключена в index.html. Ниже ×1, ×2, ×4 и кнопка M рамки при ×4 для сравнения.</p>
+<div class="row">
+  <div><span class="i fav" style="display:block">Mf</span><div class="cap">×1</div></div>
+  <div><span class="i fav x2" style="display:block">Mf</span><div class="cap">×2</div></div>
+  <div><span class="i fav x4" style="display:block">Mf</span><div class="cap">×4</div></div>
+  <div><span class="i fav m4" style="display:block">M</span><div class="cap">кнопка M ×4</div></div>
+</div>
+</section>
+
+<script>
+(function () {
+var sec = document.getElementById('player');
+function onScreen() { var r = sec.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; }
+
+// The playlist and its tags (title, artist, album, year).
+// The tags each file has (ID3 in mp3, Vorbis comments in ogg); a file without tags has none of them.
+// Track 5 carries the tags of dev/content/music/music/Ghjkju_(fin).ogg as they are.
+var TRACKS = [
+  { file: 'isntshelovely.mp3', title: "Isn't She Lovely", artist: 'Stevie Wonder', album: 'Songs in the Key of Life', year: '1976', len: '03:28' },
+  { file: 'thegirlfromipanema.mp3', title: 'The Girl from Ipanema', artist: 'Stan Getz, Joao Gilberto', album: 'Getz/Gilberto', year: '1964', len: '05:24' },
+  { file: 'vabank.mp3', len: '02:41' },
+  { file: 'watermelonman.mp3', title: 'Watermelon Man', artist: 'Herbie Hancock', year: '1962', len: '07:09' },
+  { file: 'Ghjkju_(fin).ogg', title: 'Пролог?', artist: 'Vydra', album: 'Пролог?', year: '2026', len: '04:12' },
+  { file: 'sowhat.mp3', len: '09:22' }
+];
+
+// The header: with tags, the title large and "Artist — Album (Year)" under it, missing fields left out; without tags,
+// the file's name without its extension large, and no second line, so the format line moves up.
+function headerOf(tr) {
+  var art = ([tr.artist, tr.album].filter(Boolean).join(' — ') + (tr.year ? ' (' + tr.year + ')' : '')).trim();
+  return { name: tr.title || tr.file.replace(/\.[^.]+$/, ''), art: art };
+}
+// A playlist row: "Artist — Title" from the tags, the title alone without an artist, the file's name without tags.
+// Tags come from the file's first bytes, so a row whose load has not started (or failed) shows the file's name.
+function rowOf(tr) { return tr.title ? (tr.artist ? tr.artist + ' — ' : '') + tr.title : tr.file; }
+// The tags switcher puts the cursor on a track of that kind.
+var KINDS = [['полные', 0], ['без альбома', 3], ['кириллица', 4], ['нет тегов', 2]];
+
+// A scenario: the playing row and each row's load. A row without a load has no bar; load is a share, done is 1, errr is 'e'.
+// Every load that started runs to its end; the one after the playing row starts with it.
+var SCENES = [
+  { key: 'open', cur: 0, loads: { 0: 0.4, 1: 0.15 },
+    say: 'Открыли трек 1: он играет, пока качается; одновременно качается трек 2.' },
+  { key: 'jump', cur: 3, loads: { 0: 1, 1: 0.7, 3: 0.3, 4: 0.1 },
+    say: 'Щёлкнули трек 4, пока трек 2 был на 70%: трек 4 играет и качается, качается трек 5; трек 2 докачивается, трек 1 скачан.' },
+  { key: 'done', cur: 3, loads: { 0: 1, 1: 1, 3: 1, 4: 1 },
+    say: 'Всё начатое скачано: у этих треков done, к ним можно вернуться без новой загрузки. Треки 3 и 6 не трогали, полоски нет.' },
+  { key: 'errr', cur: 3, loads: { 0: 1, 1: 1, 3: 1, 4: 'e' },
+    say: 'Трек 5 скачать не удалось (404, обрыв, формат): errr.' },
+  { key: 'retry', cur: 4, loads: { 0: 1, 1: 1, 3: 1, 4: 0.05, 5: 0.02 },
+    say: 'Трек 5 выбрали снова (клик, N или автопереход): загрузка заново с нуля; качается и трек 6.' }
+];
+
+function bar(v) {
+  var t = v === 'e' ? 'errr' : v >= 1 ? 'done' : 'load';
+  var w = v === 'e' ? 0 : v * 100;
+  return '<span class="ld ld-mini" style="--t: \'' + t + '\'; --w: ' + w + '%"><i class="ld-fill"></i></span>';
+}
+
+// What plays: the scene's loads, the row under the cursor, the position in seconds, the volume.
+var st = { scene: null, cur: 0, playing: false, pos: 0, vol: 82, muted: false };
+
+function secs(len) { var p = len.split(':'); return +p[0] * 60 + +p[1]; }
+function mmss(s) { return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
+
+function render() {
+  var scene = st.scene, rows = '';
+  TRACKS.forEach(function (tr, i) {
+    var v = scene.loads[i];
+    var known = v !== undefined && v !== 'e';
+    rows += '<div class="lrow' + (i === st.cur ? ' cur' : '') + '"><span class="no">' + (i === st.cur ? '&gt;' : i + 1) + '</span>' +
+      '<span class="nm">' + (known ? rowOf(tr) : tr.file) + '</span>' + (v === undefined ? '<span class="slot"></span>' : bar(v)) +
+      '<span class="tm">' + (known ? tr.len : '--:--') + '</span></div>';
+  });
+  document.getElementById('rows').innerHTML = rows;
+  var tr = TRACKS[st.cur];
+  document.getElementById('ttl').textContent = 'Player';
+  var h = headerOf(tr), artEl = document.getElementById('art');
+  document.getElementById('name').textContent = h.name;
+  artEl.textContent = h.art;
+  artEl.style.display = h.art ? '' : 'none';
+  document.getElementById('meta').textContent = tr.file.split('.').pop().toUpperCase() + ' · ' + tr.len + ' · /music/jazztime/ · ' + (st.cur + 1) + ' of ' + TRACKS.length;
+  document.getElementById('len').textContent = tr.len;
+  document.getElementById('time').textContent = mmss(st.pos);
+  document.getElementById('seek').style.setProperty('--w', (st.pos / secs(tr.len) * 100) + '%');
+  document.getElementById('vol').style.setProperty('--w', (st.muted ? 0 : st.vol) + '%');
+  document.getElementById('vlbl').textContent = st.muted ? 'Muted' : 'Vol. ' + st.vol + '%';
+  document.getElementById('say').textContent = scene.say;
+  document.querySelectorAll('#switch button').forEach(function (b) { b.classList.toggle('on', b.textContent === scene.key); });
+}
+
+function show(scene) {
+  st.scene = scene; st.cur = scene.cur; st.pos = 0; st.playing = false;
+  render();
+}
+
+// The key bar's actions; a cell's click and its key do the same. Seek and Volume step forward and up on a click.
+var ACTS = {
+  prev: function () { st.cur = Math.max(0, st.cur - 1); st.pos = 0; },
+  next: function () { st.cur = Math.min(TRACKS.length - 1, st.cur + 1); st.pos = 0; },
+  play: function () { st.playing = true; },
+  pause: function () { st.playing = false; },
+  stop: function () { st.playing = false; st.pos = 0; },
+  mute: function () { st.muted = !st.muted; },
+  seek: function (d) { st.pos = Math.max(0, Math.min(secs(TRACKS[st.cur].len), st.pos + (d || 1) * 5)); },
+  vol: function (d) { st.vol = Math.max(0, Math.min(100, st.vol + (d || 1) * 2)); st.muted = false; }
+};
+function act(name, d) { ACTS[name](d); render(); }
+
+// Keys: the cell of the key looks pressed while the key is held. Space is Play or Pause, by the state.
+var KEYS = { KeyP: ['prev'], KeyS: ['stop'], KeyN: ['next'], KeyM: ['mute'],
+  ArrowLeft: ['seek', -1], ArrowRight: ['seek', 1], ArrowDown: ['vol', -1], ArrowUp: ['vol', 1] };
+function cell(name) { return document.querySelector('.key[data-act="' + name + '"]'); }
+var held = {};
+document.addEventListener('keydown', function (e) {
+  var k = e.code === 'Space' ? [st.playing ? 'pause' : 'play'] : KEYS[e.code];
+  if (!k || e.ctrlKey || e.altKey || e.metaKey || !onScreen()) return;
+  e.preventDefault();
+  if (held[e.code] && e.code === 'Space') return;
+  held[e.code] = k[0];
+  cell(k[0]).classList.add('down');
+  act(k[0], k[1]);
+});
+document.addEventListener('keyup', function (e) {
+  if (!held[e.code]) return;
+  cell(held[e.code]).classList.remove('down');
+  delete held[e.code];
+});
+document.querySelectorAll('.key[data-act]').forEach(function (c) {
+  c.addEventListener('click', function () { act(c.dataset.act); });
+});
+
+setInterval(function () {
+  if (!st.playing) return;
+  st.pos += 1;
+  if (st.pos >= secs(TRACKS[st.cur].len)) ACTS.next();
+  render();
+}, 1000);
+
+SCENES.forEach(function (scene) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = scene.key;
+  b.addEventListener('click', function () { show(scene); b.blur(); });
+  document.getElementById('switch').appendChild(b);
+});
+KINDS.forEach(function (kind) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = kind[0];
+  b.addEventListener('click', function () { st.cur = kind[1]; st.pos = 0; render(); b.blur(); });
+  document.getElementById('tags').appendChild(b);
+});
+show(SCENES[0]);
+})();
+
+(function () {
+var sec = document.getElementById('tiles');
+sec.querySelectorAll('[data-set]').forEach(function (b) {
+  b.addEventListener('click', function () { sec.dataset[b.dataset.set] = b.dataset.value; });
+});
+})();
+
+(function () {
+var sec = document.getElementById('pmc');
+sec.querySelectorAll('[data-set]').forEach(function (b) {
+  b.addEventListener('click', function () { sec.dataset[b.dataset.set] = b.dataset.value; });
+});
+})();
+
+(function () {
+var fv = document.getElementById('fv'), t;
+fv.addEventListener('mousemove', function () {
+  fv.classList.add('on');
+  clearTimeout(t);
+  t = setTimeout(function () { fv.classList.remove('on'); }, 3000);
+});
+})();
+
+(function () {
+var sec = document.getElementById('fav');
+// The focused tile's title: the application's name, no path. pmc is focused on the start screen, so it is also index.html's <title>.
+var TITLES = ['pmc', 'Player', 'Note', 'Image', 'Video', 'squid-maid.exe'];
+function show(t) {
+  document.getElementById('f-tab').textContent = t;
+  document.querySelectorAll('#f-switch button').forEach(function (b) { b.classList.toggle('on', b.textContent === t); });
+}
+TITLES.forEach(function (t) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = t;
+  b.addEventListener('click', function () { show(t); });
+  document.getElementById('f-switch').appendChild(b);
+});
+show(TITLES[0]);
+})();
+</script>
+</body>
+</html>
