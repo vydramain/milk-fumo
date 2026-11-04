@@ -1,8 +1,6 @@
 // All interface texts. The keys are shown as their names in the environment bar and in the tutorial.
 export const ENV_CELLS = [
   { key: 'Shift+arrows', label: 'Focus', command: 'focus' },
-  { key: 'Shift+H', label: 'Beside', command: 'split-right' },
-  { key: 'Shift+V', label: 'Below', command: 'split-down' },
   { key: 'Shift+Enter', label: 'Open', command: 'open-pmc' },
   { key: 'Ctrl+Shift+arrows', label: 'Move', command: 'move' },
   { key: 'Shift+W', label: 'Tabs', command: 'stack' },
@@ -16,8 +14,7 @@ export const ENV_CELLS = [
 // In the mouse and keyboard texts, [name] is a keycap.
 export const TUTORIAL_ACTIONS = [
   { done: 'focus', todo: 'Go to another tile', mouse: 'click it', keys: '[Shift] + [arrows]' },
-  { done: 'split', todo: 'Split a tile', mouse: 'the │ ─ buttons in the title bar', keys: '[Shift] + [H] beside, [Shift] + [V] below' },
-  { done: 'open', todo: 'Open pmc', mouse: '"pmc" in an empty tile', keys: '[Shift] + [Enter]' },
+  { done: 'open', todo: 'Open pmc', mouse: 'the Open cell in the bottom bar', keys: '[Shift] + [Enter]' },
   { done: 'move', todo: 'Move a tile', mouse: 'drag its title bar to the edge of another', keys: '[Ctrl] + [Shift] + [arrows]' },
   { done: 'stack', todo: 'Stack into tabs', mouse: 'drop its title bar onto the tabs', keys: '[Shift] + [W]' },
   { done: 'resize', todo: 'Resize', mouse: 'drag the border', keys: '[Shift] + [R], then arrows; [Enter] or [Esc] — done' },
@@ -31,10 +28,7 @@ export const T = {
   tooSmallNow: 'This screen',
   tooSmallHint: 'Open the site on a larger screen.',
   mobile: "Sorry, we don't support mobile devices yet.",
-  emptyTitle: 'Empty',
   loading: 'Loading…',
-  emptyOpen: 'pmc',
-  emptyHint: 'or Shift+Enter',
   noViewer: 'There is no viewer for this file type.',
   appNoIndex: 'This app has no index.html.',
   appLoading: 'Loading the app…',

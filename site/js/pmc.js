@@ -47,8 +47,7 @@ export class PmcPane {
   get minimum() { return PANE_MIN.pmc; }
 
   title() {
-    const dir = this.panels[this.act].dir;
-    return `pmc: /${dir}${dir ? '/' : ''}`;
+    return 'pmc';
   }
 
   // The items of a panel: the parent entry first, when there is one, then the listing.
