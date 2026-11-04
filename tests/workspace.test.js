@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { Workspace } from '../site/js/workspace.js';
 import { NoteBody } from '../site/js/note.js';
 import { Player } from '../site/js/media.js';
-import { ENV_CELLS, TUTORIAL_ACTIONS } from '../site/js/texts.js';
+import { view } from '../site/js/view.js';
+import { ENV_CELLS, TUTORIAL_ACTIONS, T } from '../site/js/texts.js';
 import { list } from '../site/js/catalog.js';
 
 const ENTRIES = [
@@ -223,4 +224,39 @@ test('fullscreen video: Shift+R and other Shift combinations are swallowed, Spac
   }
   assert.equal(ws.key({ code: 'KeyF', shiftKey: true }), true);
   assert.equal(ws.fullVideo, null);
+});
+
+const window_ = (w, h) => { globalThis.innerWidth = w; globalThis.innerHeight = h; view.dpr = 1; };
+
+// The start layout's minimum is the viewport's 960x540, so 2x needs 1920x1080 and 1.5x needs 1440x810: 1700x1000 holds 1.5x only.
+test('at 1700x1000 largestScale is 1.5', () => {
+  window_(1700, 1000);
+  assert.equal(new Workspace(() => {}).largestScale(), 1.5);
+});
+
+test('cycleScale goes 1 -> 1.5 -> 2 -> 1 in a 2000x1200 window', () => {
+  window_(2000, 1200);
+  const ws = new Workspace(() => {});
+  view.ui = 1;
+  const seen = [];
+  for (let i = 0; i < 3; i++) { ws.cycleScale(); seen.push(view.ui); }
+  assert.deepEqual(seen, [1.5, 2, 1]);
+});
+
+test('in 1700x1000, cycleScale from 1.5 skips 2 with its message and size, then goes to 1', () => {
+  window_(1700, 1000);
+  const ws = new Workspace(() => {});
+  view.ui = 1.5;
+  ws.cycleScale();
+  const m = ws.minimum();
+  assert.equal(view.ui, 1);
+  assert.equal(ws.msg, `${T.scaleNeeds(2)} ${Math.ceil(m.w * 2)}×${Math.ceil(m.h * 2)}`);
+});
+
+test('a window shrunk under 1.5 falls to largestScale, not to 1 when 1.5 still fits', () => {
+  window_(1700, 1000);
+  const ws = new Workspace(() => {});
+  view.ui = 2;
+  assert.equal(ws.fitsScale(2), false);
+  assert.equal(ws.largestScale(), 1.5);
 });

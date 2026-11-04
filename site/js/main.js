@@ -15,8 +15,9 @@ let ws = null;
 let queued = false;
 let started = false;
 
-// The layout's unit is a UI pixel: view.ui device pixels, 1 or 2 by Shift+S. The canvas buffer is the window in
-// device pixels, so a font pixel is always a whole number of device pixels and nothing is smoothed.
+// The layout's unit is a UI pixel: view.ui device pixels, 1, 1.5 or 2 by Shift+S. The canvas buffer is the window in
+// device pixels and nothing is smoothed: a font pixel is a whole number of device pixels at 1x and 2x, and 1 or 2 at
+// 1.5x, so letters there are uneven.
 function dpr() { return window.devicePixelRatio || 1; }
 
 function screenTooSmall() {
@@ -29,8 +30,8 @@ function canvasSize() {
   const d = dpr();
   const min = ws.minimum();
   return {
-    w: Math.max(Math.round(innerWidth * d), Math.round(VIEWPORT_MIN.w * d), min.w * view.ui),
-    h: Math.max(Math.round(innerHeight * d), Math.round(VIEWPORT_MIN.h * d), min.h * view.ui),
+    w: Math.max(Math.round(innerWidth * d), Math.round(VIEWPORT_MIN.w * d), Math.ceil(min.w * view.ui)),
+    h: Math.max(Math.round(innerHeight * d), Math.round(VIEWPORT_MIN.h * d), Math.ceil(min.h * view.ui)),
   };
 }
 
@@ -39,10 +40,9 @@ function draw() {
   queued = false;
   const d = dpr();
   view.dpr = d;
-  // The site opens at the largest scale the window holds: 2x when it fits, else 1x.
-  if (!started) { started = true; if (ws.fitsScale(2)) view.ui = 2; }
-  // A window that shrank below the 2x layout goes back to 1x, the only scale every window holds.
-  if (view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = 1;
+  // The site opens at the largest scale the window holds; a window that shrank below the current scale drops to the largest that fits.
+  if (!started) { started = true; view.ui = ws.largestScale(); }
+  if (view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = ws.largestScale();
   const mobile = MOBILE.matches;
   const small = !mobile && screenTooSmall();
   // The fullscreen video is drawn at the window's size, so its panel is always on screen.

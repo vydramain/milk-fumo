@@ -15,6 +15,8 @@ import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 
+// The UI scales Shift+S cycles through.
+export const SCALES = [1, 1.5, 2];
 const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
@@ -407,16 +409,24 @@ export class Workspace {
     this.area = { x: MARGIN, y: MARGIN, w: w - 2 * MARGIN, h: h - 2 * MARGIN - MSG_H - ENV_H - 2 * MARGIN };
   }
 
-  // Shift+S: the UI scale goes between 1x and 2x. 2x is refused, with its size, when the window cannot hold the layout.
+  // Shift+S: the UI scale goes 1x, 1.5x, 2x and back. A scale the window cannot hold is skipped, with its size in the
+  // message; the cycle goes on to the next one (1x always fits).
   cycleScale() {
-    const next = view.ui === 1 ? 2 : 1;
-    if (!this.fitsScale(next)) {
+    let skipped = '';
+    let next = view.ui;
+    do {
+      next = SCALES[(SCALES.indexOf(next) + 1) % SCALES.length];
+      if (this.fitsScale(next)) break;
       const m = this.minimum();
-      this.msg = `${T.scaleNeeds} ${Math.ceil(m.w * next / view.dpr)}×${Math.ceil(m.h * next / view.dpr)}`;
-      return;
-    }
+      skipped = `${T.scaleNeeds(next)} ${Math.ceil(m.w * next / view.dpr)}×${Math.ceil(m.h * next / view.dpr)}`;
+    } while (next !== 1);
     view.ui = next;
-    this.msg = `${T.scaleNow} ${next}x`;
+    this.msg = skipped || `${T.scaleNow} ${next}x`;
+  }
+
+  // The largest scale of SCALES the window holds, else 1.
+  largestScale() {
+    return [...SCALES].reverse().find((s) => this.fitsScale(s)) ?? 1;
   }
 
   // Whether the layout fits the window at a UI scale: the window in layout pixels is at least the minimum.

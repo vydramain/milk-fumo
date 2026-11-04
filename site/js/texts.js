@@ -39,7 +39,7 @@ export const T = {
   onlyOneTile: 'The last tile cannot be closed.',
   maximized: 'The tile is maximized — Shift+F restores the layout',
   resizeHint: 'Resize: the arrows move a border; Enter or Esc — done',
-  scaleNeeds: 'UI scale 2x needs a window of at least',
+  scaleNeeds: (s) => `UI scale ${s}x needs a window of at least`,
   scaleNow: 'UI scale',
   moveHint: 'Move: the arrows move the tile; Enter or Esc — done',
   noTileThere: 'No tile in that direction.',
