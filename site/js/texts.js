@@ -60,3 +60,16 @@ export const PMC_KEYS = [
   { key: 'Ctrl+PgUp', label: 'Up' },
   { key: 'Letters', label: 'Search' },
 ];
+
+// The key bar of the player: the key as shown and the name after it. Loop is the video's only.
+export const PLAYER_KEYS = {
+  prev: { key: 'P', label: 'Prev' },
+  play: { key: 'Space', label: 'Play' },
+  pause: { key: 'Space', label: 'Pause' },
+  stop: { key: 'S', label: 'Stop' },
+  next: { key: 'N', label: 'Next' },
+  mute: { key: 'M', label: 'Mute' },
+  loop: { key: 'L', label: 'Loop' },
+  seek: { key: 'Left/Right', label: 'Seek' },
+  volume: { key: 'Up/Down', label: 'Volume' },
+};

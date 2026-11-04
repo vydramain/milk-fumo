@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readTags } from '../site/js/tags.js';
-import { headerOf, rowOf } from '../site/js/media.js';
+import { headerOf, rowOf, Player } from '../site/js/media.js';
 
 const enc = new TextEncoder();
 const cat = (...a) => Uint8Array.from(a.flat(Infinity));
@@ -113,4 +113,62 @@ test('rowOf', () => {
   assert.equal(rowOf('x.mp3', { title: 'Watermelon Man', artist: 'Herbie Hancock' }), 'Herbie Hancock — Watermelon Man');
   assert.equal(rowOf('vabank.mp3', null), 'vabank.mp3');
   assert.equal(rowOf('x.mp3', { title: 'Solo' }), 'Solo');
+});
+
+// The player in node: a stub element, and a fetch that answers with the bytes of `files` (or never, when missing).
+class FakeAudio {
+  paused = true; ended = false; volume = 1; muted = false; currentTime = 0; duration = NaN; src = '';
+  addEventListener() {}
+  removeAttribute() {}
+  load() {}
+  play() { this.paused = false; return Promise.resolve(); }
+  pause() { this.paused = true; }
+}
+function player(files = {}) {
+  const calls = [];
+  globalThis.Audio = FakeAudio;
+  globalThis.fetch = (url) => {
+    calls.push(decodeURIComponent(url));
+    const name = Object.keys(files).find((n) => url.endsWith(encodeURIComponent(n)));
+    return name ? Promise.resolve(new Response(files[name])) : new Promise(() => {});
+  };
+  const ws = { requestDraw() {}, held: new Set() };
+  const set = ['a.mp3', 'b.mp3', 'c.mp3'].map((name) => ({ name }));
+  return { pl: new Player(ws, 'audio', 'music', set, 0), calls };
+}
+const tick = () => new Promise((r) => setTimeout(r, 5));
+
+test('player: Space sinks Play while paused, Pause while playing', () => {
+  const { pl } = player();
+  const space = () => pl.cells().filter((c) => c.codes.includes('Space')).map((c) => c.label);
+  assert.deepEqual(space(), ['Play']);
+  pl.play();
+  assert.deepEqual(space(), ['Pause']);
+  assert.deepEqual(pl.cells().map((c) => c.key), ['P', 'Space', 'Space', 'S', 'N', 'M', 'Left/Right', 'Up/Down']);
+  pl.dispose();
+});
+
+test('player: load wants the current and the next file, each once', () => {
+  const { pl, calls } = player();
+  const a = pl.downloads.peek('music/a.mp3');
+  assert.ok(a && pl.downloads.peek('music/b.mp3'));
+  assert.equal(pl.downloads.peek('music/c.mp3'), undefined);
+  pl.key({ code: 'KeyN' });
+  pl.key({ code: 'KeyN' });
+  pl.key({ code: 'KeyN' });  // wraps to a.mp3: its download is the same one
+  assert.equal(pl.downloads.peek('music/a.mp3'), a);
+  assert.deepEqual(calls.filter((u) => u.includes('a.mp3')).length, 1);
+  assert.equal(calls.length, 3);
+  pl.dispose();
+  assert.equal(pl.downloads.peek('music/a.mp3'), undefined);
+});
+
+test('player: tags come from the downloaded bytes and name the row', async () => {
+  const tagged = id3(3, [['TIT2', [0, ...latin1('Song')]], ['TPE1', [0, ...latin1('Band')]]]);
+  const { pl } = player({ 'a.mp3': tagged, 'b.mp3': new Uint8Array(20) });
+  await tick();
+  assert.deepEqual(pl.tags.get('music/a.mp3'), { title: 'Song', artist: 'Band' });
+  assert.deepEqual(pl.tags.get('music/b.mp3'), {});
+  assert.equal(pl.downloads.peek('music/a.mp3').state, 'done');
+  pl.dispose();
 });

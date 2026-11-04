@@ -1,19 +1,24 @@
 // The media player: an audio or video element created by the script and never put in the page.
 // Video frames are drawn into the canvas. The same player serves the audio and video tiles and the quick view.
-// Both layouts share the top: now playing, the position, the six buttons and the volume. Then the playlist (audio)
-// or the frame with its view buttons (video).
+// Both layouts share the top: now playing, the position and the volume. Then the playlist (audio) or the frame with
+// its view buttons (video), and the key bar at the bottom.
+// Files are downloaded with a byte counter (download.js): the current one and the next; every started download runs to
+// its end. The element streams the file meanwhile, or plays the Blob once it is done.
 import { C } from './theme.js';
 import { PANE_MIN } from './metrics.js';
 import { RV, VGA, textWidth, fitText } from './font.js';
 import { urlOf } from './catalog.js';
-import { box, button } from './widgets.js';
+import { box, button, keyBar, loadBar, LOAD_W } from './widgets.js';
+import { Downloads } from './download.js';
+import { readTags } from './tags.js';
+import { PLAYER_KEYS as K } from './texts.js';
 
-const CONTROL_COLOR = { Pv: C.blue, Pl: C.green, Ps: C.yellow, Sp: C.red, Nx: C.blue, Mt: C.mauve };
 const SPEEDS = ['fit', '1x', '2x'];
-const BUTTON = 40, GAP = 4, PAD = 4;
+const PAD = 4;
 const NOW_H = 56;
-const ROW = NOW_H + 48;           // the buttons: below the position and its caption
 const VOLUME_H = 14;
+const KEYS_H = 14;
+const TAG_LIMIT = 1 << 20;        // tags are looked for in the first 1 MiB only
 
 function timeText(sec) {
   if (!Number.isFinite(sec) || sec < 0) return '--:--';
@@ -30,14 +35,17 @@ export class Player {
     this.set = set;
     this.index = index;
     this.element = kind === 'video' ? document.createElement('video') : new Audio();
-    this.element.preload = 'metadata';
+    this.element.preload = 'auto';
     this.element.playsInline = true;
     this.element.volume = 0.82;
     this.speed = 'fit';
     this.loop = false;
-    this.durations = new Map();
+    this.tags = new Map();        // path -> tags ({} when there are none)
+    this.durations = new Map();   // path -> seconds
+    this.wanted = new Set();      // the paths whose downloads were started
+    this.downloads = new Downloads(() => this.changed());
     this.element.addEventListener('loadedmetadata', () => {
-      this.durations.set(this.index, this.element.duration);
+      this.durations.set(this.path(this.index), this.element.duration);
       this.ws.requestDraw();
     });
     this.element.addEventListener('timeupdate', () => this.ws.requestDraw());
@@ -46,22 +54,67 @@ export class Player {
     this.load(index, false);
   }
 
-  // The smallest tile a player fits in: its six buttons across, and for a video the frame under the controls.
+  // The smallest tile a player fits in: its key bar across, and for a video the frame under the controls.
   get minimum() { return this.kind === 'video' ? PANE_MIN.video : PANE_MIN.player; }
 
   get entry() { return this.set[this.index]; }
 
   get playing() { return !this.element.paused && !this.element.ended; }
 
+  path(i) { return (this.dir ? this.dir + '/' : '') + this.set[i].name; }
+
   // A playing video needs a frame at every animation frame; a playing audio only needs its clock redrawn.
   animated() { return this.playing && this.kind === 'video'; }
 
+  // Another file of the same kind, from pmc or the workspace: the downloads stay, they are kept by path.
+  open(dir, set, index) {
+    this.dir = dir;
+    this.set = set;
+    this.load(index, true);
+  }
+
+  // Starts (or, after errr, restarts) the download of the file and of the next one; a done file plays from its Blob.
   load(index, play) {
     this.index = (index + this.set.length) % this.set.length;
-    this.element.src = urlOf((this.dir ? this.dir + '/' : '') + this.entry.name);
+    const path = this.path(this.index);
+    const d = this.want(path);
+    if (this.index + 1 < this.set.length) this.want(this.path(this.index + 1));
+    this.element.src = d.state === 'done' ? d.href : urlOf(path);
     this.element.load();
     if (play) this.play();
+    this.changed();
+  }
+
+  want(path) {
+    this.wanted.add(path);
+    return this.downloads.want(path);
+  }
+
+  // A download moved: tags from the bytes so far (given up after 1 MiB), the duration of a finished file.
+  changed() {
+    for (const path of this.wanted) {
+      const d = this.downloads.peek(path);
+      if (!d) continue;
+      if (!this.tags.has(path) && d.got) {
+        const t = readTags(d.prefix());
+        if (t) this.tags.set(path, t);
+        else if (d.got >= TAG_LIMIT || d.state === 'done') this.tags.set(path, {});
+      }
+      if (d.state === 'done' && !this.durations.has(path)) this.probe(path, d.href);
+    }
     this.ws.requestDraw();
+  }
+
+  probe(path, href) {
+    this.durations.set(path, NaN);  // asked; --:-- until the metadata comes
+    const a = new Audio();
+    a.preload = 'metadata';
+    a.addEventListener('loadedmetadata', () => {
+      this.durations.set(path, a.duration);
+      a.removeAttribute('src');
+      this.ws.requestDraw();
+    });
+    a.src = href;
   }
 
   play() {
@@ -87,6 +140,12 @@ export class Player {
     this.ws.requestDraw();
   }
 
+  seekBy(sec) {
+    const t = this.element.currentTime + sec;
+    this.element.currentTime = Math.max(0, Math.min(this.duration() || 0, t));
+    this.ws.requestDraw();
+  }
+
   setVolume(level) {
     this.element.volume = Math.max(0, Math.min(1, level));
     this.element.muted = false;
@@ -97,16 +156,20 @@ export class Player {
 
   toggleMute() { this.element.muted = !this.element.muted; this.ws.requestDraw(); }
 
+  toggleLoop() { this.loop = !this.loop; this.ws.requestDraw(); }
+
   duration() {
-    const known = this.durations.get(this.index);
-    if (known !== undefined) return known;
+    const known = this.durations.get(this.path(this.index));
+    if (Number.isFinite(known)) return known;
     return Number.isFinite(this.element.duration) ? this.element.duration : NaN;
   }
 
+  // Closing the tile stops the element and aborts and frees its downloads.
   dispose() {
     this.element.pause();
     this.element.removeAttribute('src');
     this.element.load();
+    this.downloads.dispose();
   }
 
   // Keys of a focused player: Space plays or pauses, S stops, arrows seek and change the volume,
@@ -118,9 +181,9 @@ export class Player {
     else if (k === 'KeyN') this.load(this.index + 1, this.playing);
     else if (k === 'KeyP') this.load(this.index - 1, this.playing);
     else if (k === 'KeyM') this.toggleMute();
-    else if (k === 'KeyL' && this.kind === 'video') this.loop = !this.loop;
-    else if (k === 'ArrowRight') this.element.currentTime = Math.min(this.duration() || 0, this.element.currentTime + 5);
-    else if (k === 'ArrowLeft') this.element.currentTime = Math.max(0, this.element.currentTime - 5);
+    else if (k === 'KeyL' && this.kind === 'video') this.toggleLoop();
+    else if (k === 'ArrowRight') this.seekBy(5);
+    else if (k === 'ArrowLeft') this.seekBy(-5);
     else if (k === 'ArrowUp') this.volumeBy(0.05);
     else if (k === 'ArrowDown') this.volumeBy(-0.05);
     else return false;
@@ -128,7 +191,24 @@ export class Player {
     return true;
   }
 
-  // The top of both layouts, from y = r.y: a now-playing well, the position, the six buttons and the volume.
+  // The key bar of spec 4: Space sinks Play while paused and Pause while playing; a click on Seek or Volume steps
+  // forward or up, as Right and Up do. A video has Loop before Seek.
+  cells() {
+    const on = this.playing;
+    return [
+      { ...K.prev, codes: ['KeyP'], click: () => this.load(this.index - 1, this.playing) },
+      { ...K.play, codes: on ? [] : ['Space'], click: () => this.play() },
+      { ...K.pause, codes: on ? ['Space'] : [], click: () => this.pause() },
+      { ...K.stop, codes: ['KeyS'], click: () => this.stop() },
+      { ...K.next, codes: ['KeyN'], click: () => this.load(this.index + 1, this.playing) },
+      { ...K.mute, codes: ['KeyM'], click: () => this.toggleMute() },
+      ...(this.kind === 'video' ? [{ ...K.loop, codes: ['KeyL'], click: () => this.toggleLoop() }] : []),
+      { ...K.seek, codes: ['ArrowRight', 'ArrowLeft'], click: () => this.seekBy(5) },
+      { ...K.volume, codes: ['ArrowUp', 'ArrowDown'], click: () => this.volumeBy(0.05) },
+    ];
+  }
+
+  // The top of both layouts, from y = r.y: a now-playing well, the position and the volume.
   // Returns the y under the volume.
   transport(p, hits, r) {
     const e = this.element;
@@ -138,11 +218,14 @@ export class Player {
     p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
     const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
     const tw = now.x + now.w - 8 - tx;
-    p.text(RV, tx, now.y + 10, fitText(RV, this.entry.name, tw, 2), C.ct, 2);
+    // The header (spec 5): the name large, the art line under it, the meta line moving up when there is no art.
+    const head = headerOf(this.entry.name, this.tags.get(this.path(this.index)));
+    p.text(RV, tx, now.y + 10, fitText(RV, head.name, tw, 2), C.ct, 2);
+    if (head.art) p.text(RV, tx, now.y + 28, fitText(RV, head.art, tw), C.cs);
     const folder = this.dir ? '/' + this.dir + '/' : '/';
     const size = this.kind === 'video' ? ` · ${this.videoSize()}` : '';
     const meta = `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}${size}`;
-    p.text(RV, tx, now.y + 40, fitText(RV, meta, tw), C.cs);
+    p.text(RV, tx, now.y + (head.art ? 40 : 30), fitText(RV, meta, tw), C.cs);
 
     // The position: a sunken slider, a scale of ticks under it, and the caption with the times.
     const seek = { x: r.x + 2, y: r.y + 62, w: r.w - 4, h: 10 };
@@ -160,9 +243,7 @@ export class Player {
     const dur = timeText(this.duration());
     p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.dim);
 
-    const row = r.y + ROW;
-    this.controls(p, hits, r.x + Math.floor((r.w - 6 * BUTTON - 5 * GAP) / 2), row);
-    const vol = { x: r.x + PAD, y: row + BUTTON + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
+    const vol = { x: r.x + PAD, y: caption.y + caption.h + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
     p.dither(vol, C.inset, C.lo);
     p.bevel(vol, 1, false);
     const level = Math.round((vol.w - 4) * (e.muted ? 0 : e.volume));
@@ -172,52 +253,46 @@ export class Player {
     return vol.y + vol.h;
   }
 
-  // The six transport buttons in one row: previous, play, pause, stop, next, mute.
-  controls(p, hits, x, y) {
-    const items = [
-      { code: 'Pv', label: 'Prev', click: () => this.load(this.index - 1, this.playing) },
-      { code: 'Pl', label: 'Play', click: () => this.play(), on: this.playing },
-      { code: 'Ps', label: 'Pause', click: () => this.pause() },
-      { code: 'Sp', label: 'Stop', click: () => this.stop() },
-      { code: 'Nx', label: 'Next', click: () => this.load(this.index + 1, this.playing) },
-      { code: 'Mt', label: 'Mute', click: () => this.toggleMute(), on: this.element.muted },
-    ];
-    items.forEach((it, i) => this.controlButton(p, hits, { x: x + i * (BUTTON + GAP), y, w: BUTTON, h: BUTTON }, it));
+  // The key bar: the last 14 px of the body. Returns the y 4 px above it, where the layout above ends.
+  keys(p, hits, r) {
+    const bar = { x: r.x, y: r.y + r.h - KEYS_H, w: r.w, h: KEYS_H };
+    keyBar(p, hits, bar, this.cells(), this.ws.held);
+    return bar.y - 4;
   }
 
-  controlButton(p, hits, r, { code, label, click, on = false }) {
-    box(p, r, !on, on ? C.inset : C.btn);
-    p.text(VGA, r.x + Math.floor((r.w - 18) / 2), r.y + 6, code, CONTROL_COLOR[code]);
-    p.text(RV, r.x + Math.floor((r.w - textWidth(RV, label)) / 2), r.y + 27, label, C.text);
-    hits.add(r, { click });
-  }
-
-  // Audio layout: the transport, then the playlist of the folder.
+  // Audio layout: the transport, then the playlist of the folder, then the key bar.
   drawAudio(p, r, hits) {
+    const bottom = this.keys(p, hits, r);
     const end = this.transport(p, hits, r);
-    this.playlist(p, hits, { x: r.x, y: end + 6, w: r.w, h: Math.max(0, r.y + r.h - (end + 6)) });
+    this.playlist(p, hits, { x: r.x, y: end + 6, w: r.w, h: Math.max(0, bottom - (end + 6)) });
   }
 
+  // A row: its number, `Artist — Title` once its download is under way, its load bar, its length.
   playlist(p, hits, r) {
     p.fill(r.x, r.y, r.w, r.h, C.cb);
     const lenX = r.x + r.w - 40;
+    const barX = lenX - 6 - LOAD_W;
     p.fill(r.x, r.y, r.w, 13, C.csurf);
     p.text(RV, r.x + 3, r.y + 3, `Playlist: /${this.dir ? this.dir + '/' : ''}`, C.bright);
     p.text(RV, lenX, r.y + 3, 'Len.', C.bright);
     this.set.forEach((entry, i) => {
       const row = { x: r.x, y: r.y + 14 + i * 12, w: r.w - 14, h: 12 };
       if (row.y + row.h > r.y + r.h) return;
+      const path = this.path(i);
+      const d = this.downloads.peek(path);
       if (i === this.index) p.fill(row.x, row.y, row.w, row.h, C.cur);
       p.text(RV, r.x + 3, row.y + 2, i === this.index ? '>' : String(i + 1), i === this.index ? C.green : C.cov);
-      p.text(RV, r.x + 14, row.y + 2, entry.name, C.ct);
-      const d = this.durations.get(i);
-      p.text(RV, lenX, row.y + 2, d ? timeText(d) : '--:--', C.cs);
+      const name = d && d.state !== 'errr' ? rowOf(entry.name, this.tags.get(path)) : entry.name;
+      p.text(RV, r.x + 14, row.y + 2, fitText(RV, name, barX - 4 - (r.x + 14)), C.ct);
+      loadBar(p, barX, row.y, d || null);
+      p.text(RV, lenX, row.y + 2, timeText(this.durations.get(path)), C.cs);
       hits.add(row, { click: () => this.load(i, this.playing) });
     });
   }
 
-  // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame and its caption.
+  // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame and its caption, the key bar.
   drawVideo(p, r, hits) {
+    const bottom = this.keys(p, hits, r);
     const end = this.transport(p, hits, r);
     const y = end + 4;
     let x = r.x + PAD;
@@ -231,13 +306,13 @@ export class Player {
     box(p, cb, false, C.inset);
     if (this.loop) p.fill(cb.x + 3, cb.y + 3, 4, 4, C.sel);
     p.text(RV, cb.x + 14, y + 4, 'Loop', C.text);
-    hits.add({ x: cb.x, y, w: 60, h: 16 }, { click: () => { this.loop = !this.loop; this.ws.requestDraw(); } });
+    hits.add({ x: cb.x, y, w: 60, h: 16 }, { click: () => this.toggleLoop() });
 
-    const frame = { x: r.x + PAD, y: y + 22, w: r.w - 2 * PAD, h: Math.max(0, r.y + r.h - 12 - (y + 22)) };
+    const frame = { x: r.x + PAD, y: y + 22, w: r.w - 2 * PAD, h: Math.max(0, bottom - 12 - (y + 22)) };
     p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
     this.drawFrame(p, frame);
     const caption = `${this.entry.name} · ${timeText(this.element.currentTime)} / ${timeText(this.duration())}`;
-    p.text(RV, r.x + PAD, r.y + r.h - 9, fitText(RV, caption, r.w - 2 * PAD), C.dim);
+    p.text(RV, r.x + PAD, bottom - 9, fitText(RV, caption, r.w - 2 * PAD), C.dim);
   }
 
   videoSize() {
