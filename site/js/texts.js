@@ -47,7 +47,7 @@ export const T = {
   dragHint: 'Drop the tile on another tile: at its edge to split, in its middle to stack.',
   minWidth: (title, px) => `Minimum width of "${title}": ${px} px`,
   minHeight: (title, px) => `Minimum height of "${title}": ${px} px`,
-  quickFooter: 'Follows the cursor of the other panel · F3 or Esc — list',
+  quickFooter: 'F3 on a file of this type opens it here · F3 or Esc — close',
   pmcUpDir: '.. · up one level',
 };
 

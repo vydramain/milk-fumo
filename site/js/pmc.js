@@ -9,12 +9,13 @@ import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
 import { T, PMC_KEYS } from './texts.js';
-import { box, scrollbar, panelFrame, wellFrame, keyBar } from './widgets.js';
-import { AppPane } from './app.js';
+import { box, scrollbar, panelFrame, wellFrame, keyBar, loadBar, LOAD_W } from './widgets.js';
 
 const COL_SIZE = 56;
 const COL_DATE = 70;
 const DOUBLE_MS = 400;
+// The kinds with a viewer that Enter can open a file in.
+const VIEWED = ['audio', 'video', 'image', 'note'];
 // What a key-bar cell does and which keys sink it; the labels are in texts.js.
 const MC_KEYS = [
   { action: 'enter', codes: ['Enter'] },
@@ -35,11 +36,9 @@ export class PmcPane {
     this.id = null;
     this.act = 0;
     this.panels = [newPanel(START_DIR), newPanel(START_DIR)];
-    // The quick view (F3) is shown on panel quickIdx and follows the cursor of the other panel.
-    this.quickOn = false;
+    // The quick view (F3) is shown on panel quickIdx. It changes only by F3 or Enter, never by the cursor.
+    this.quick = null; // { kind, path, view }
     this.quickIdx = 1;
-    this.view = null;
-    this.viewKey = '';
     this.panels.forEach((_, i) => this.reload(i));
     this.lastClick = { panel: -1, row: -1, at: 0 };
   }
@@ -103,7 +102,8 @@ export class PmcPane {
     this.ws.requestDraw();
   }
 
-  // Enter: a folder is entered, an app is launched, a file opens in a new tile on the right.
+  // Enter: a folder is entered, an app is launched; a file of the quick view's kind opens in the quick view, any other
+  // file in the tile of its type.
   enter(idx) {
     const panel = this.panels[idx];
     const item = this.cursorItem(idx);
@@ -111,6 +111,7 @@ export class PmcPane {
     if (item.up) { this.up(idx); return; }
     if (kindOf(item) === 'app') { this.ws.openApp(this, panel.dir, item.name); return; }
     if (item.dir) { this.changeDir(idx, (panel.dir ? panel.dir + '/' : '') + item.name); return; }
+    if (this.quick && VIEWED.includes(kindOf(item)) && this.quick.kind === kindOf(item)) { this.showQuick(idx, item); return; }
     this.ws.openFile(this, panel.dir, item);
   }
 
@@ -122,17 +123,41 @@ export class PmcPane {
     if (i >= 0) { panel.search = q; panel.cursor = i; }
   }
 
-  toggleQuick() {
-    if (this.quickOn) this.closeQuick();
-    else { this.quickOn = true; this.quickIdx = 1 - this.act; }
+  // F3: closes the quick view when the focus is on it or the cursor is on the file it shows; otherwise shows the
+  // cursor's item in it. Up-dir rows are ignored.
+  f3() {
+    const item = this.cursorItem(this.act);
+    if (this.quick && (this.act === this.quickIdx || (item && this.quick.path === this.pathOf(this.act, item)))) this.closeQuick();
+    else if (item && !item.up && this.panels[this.act].entries) this.showQuick(this.act, item);
     this.ws.requestDraw();
   }
 
+  pathOf(idx, item) {
+    const dir = this.panels[idx].dir;
+    return (dir ? dir + '/' : '') + item.name;
+  }
+
+  // Shows `item` of panel `idx` in the quick view: the same viewer opens it when the kind is the same, else the viewer
+  // is replaced. The view goes to the other panel.
+  showQuick(idx, item) {
+    const source = this.panels[idx];
+    const kind = item.dir ? 'folder' : kindOf(item);
+    const path = this.pathOf(idx, item);
+    const q = this.quick;
+    if (q && q.kind === kind && q.view && q.view.open) {
+      const set = setOf(source.entries, kind);
+      q.view.open(source.dir, set, Math.max(0, set.indexOf(item)));
+      q.path = path;
+      return;
+    }
+    if (q && q.view && q.view.dispose) q.view.dispose();
+    if (!q) this.quickIdx = 1 - idx;
+    this.quick = { kind, path, view: this.makeView(item, source) };
+  }
+
   closeQuick() {
-    this.quickOn = false;
-    if (this.view && this.view.dispose) this.view.dispose();
-    this.view = null;
-    this.viewKey = '';
+    if (this.quick && this.quick.view && this.quick.view.dispose) this.quick.view.dispose();
+    this.quick = null;
     if (this.act === this.quickIdx) this.act = 1 - this.quickIdx;
   }
 
@@ -147,16 +172,16 @@ export class PmcPane {
   // Keys. When the active panel shows a quick view, its player, picture or note takes the keys first.
   key(e) {
     const k = e.code;
-    const onView = this.quickOn && this.act === this.quickIdx;
-    if (onView && this.view && this.view.key && this.view.key(e, this.panels[this.quickIdx].rect || { h: 0 })) return true;
+    const onView = this.quick && this.act === this.quickIdx;
+    if (onView && this.quick.view && this.quick.view.key && this.quick.view.key(e, this.panels[this.quickIdx].rect || { h: 0 })) return true;
     if (e.ctrlKey && k === 'PageUp' && !onView) this.up(this.act);
     else if (e.ctrlKey || e.altKey || e.metaKey) return false;
     else if (k === 'Tab') this.switchPanel();
-    else if (k === 'F3') this.toggleQuick();
+    else if (k === 'F3') this.f3();
     else if (k === 'Escape') {
       const panel = this.panels[this.act];
       if (panel.search) panel.search = '';
-      else if (this.quickOn) this.closeQuick();
+      else if (this.quick) this.closeQuick();
       else return false;
     } else if (onView) return false;
     else {
@@ -176,22 +201,13 @@ export class PmcPane {
     return true;
   }
 
-  // The quick view of the cursor of the panel the other one is not showing: it follows the cursor.
   quickView() {
-    const source = this.panels[this.listIdx];
-    const item = this.cursorItem(this.listIdx);
-    const key = item ? source.dir + '/' + item.name : '';
-    if (this.viewKey === key) return this.view;
-    if (this.view && this.view.dispose) this.view.dispose();
-    this.viewKey = key;
-    this.view = item && source.entries ? this.makeView(item, source) : null;
-    return this.view;
+    return this.quick ? this.quick.view : null;
   }
 
   makeView(item, source) {
     const kind = kindOf(item);
     const path = (source.dir ? source.dir + '/' : '') + item.name;
-    if (kind === 'app') return new AppPane(this.ws, source.dir, item.name);
     if (kind === 'audio' || kind === 'video') {
       const set = setOf(source.entries, kind);
       return new Player(this.ws, kind, source.dir, set, Math.max(0, set.indexOf(item)));
@@ -201,7 +217,7 @@ export class PmcPane {
       return new ImageView(this.ws, source.dir, set, Math.max(0, set.indexOf(item)));
     }
     if (kind === 'note') return new NoteBody(this.ws, path);
-    if (kind === 'folder') return new FolderInfo(this.ws, path, item);
+    if (kind === 'folder' || kind === 'app') return new FolderInfo(this.ws, path, item);
     return new Message(kind, item);
   }
 
@@ -225,37 +241,32 @@ export class PmcPane {
 
   toolbar(p, hits, bar) {
     const panel = this.panels[this.act];
-    const up = { x: bar.x, y: bar.y, w: 18, h: 16 };
-    const home = { x: bar.x + 22, y: bar.y, w: 18, h: 16 };
-    box(p, up, true, C.btn, 2);
-    p.text(RV, up.x + 3, up.y + 4, 'Up', C.cov);
-    box(p, home, true, C.btn, 2);
-    p.text(RV, home.x + 3, home.y + 4, 'Hm', C.blue);
-    hits.add(up, { click: () => this.up(this.act) });
-    hits.add(home, { click: () => this.changeDir(this.act, START_DIR) });
-    const quick = this.quickOn;
+    const quick = !!this.quick;
     const view = { x: bar.x + bar.w - 36, y: bar.y + 1, w: 36, h: 14 };
-    const field = { x: home.x + 22, y: bar.y + 1, w: view.x - (home.x + 22) - 4, h: 14 };
+    const field = { x: bar.x, y: bar.y + 1, w: view.x - bar.x - 4, h: 14 };
     box(p, field, false, C.inset, 2);
     p.text(RV, field.x + 4, field.y + 3, '/' + panel.dir + (panel.dir ? '/' : ''), C.bright);
     box(p, view, !quick, quick ? C.inset : C.btn, 2);
     p.text(RV, view.x + 6, view.y + 3, 'View', quick ? C.bright : C.text);
-    hits.add(view, { click: () => { this.toggleQuick(); this.ws.requestDraw(); } });
+    hits.add(view, { click: () => this.f3() });
   }
 
   panel(p, hits, idx, r, focused) {
     const panel = this.panels[idx];
     const active = idx === this.act;
-    const quick = this.quickOn && idx === this.quickIdx;
+    const quick = !!this.quick && idx === this.quickIdx;
     const stat = { x: r.x, y: r.y + r.h - 14, w: r.w, h: 14 };
+    // The bar shows the panel's listing: loading, failed, or done.
+    const load = panel.error ? { state: 'errr', share: 0 } : panel.entries === null ? { state: 'load', share: 0 } : { state: 'done', share: 1 };
     const well = wellFrame(p, { x: r.x, y: r.y, w: r.w, h: r.h - 16 });
     const sb = { x: well.x + well.w - 14, y: well.y, w: 14, h: well.h };
     const col = { x: well.x, y: well.y, w: well.w - 14, h: well.h };
     const pathBar = { x: col.x, y: col.y, w: col.w, h: 13 };
     p.fill(pathBar.x, pathBar.y, pathBar.w, pathBar.h, active ? C.sel : C.win);
     p.fill(pathBar.x, pathBar.y + 12, pathBar.w, 1, C.lo);
-    const label = quick ? 'View: ' + this.cursorName(this.listIdx) : '/' + panel.dir + (panel.dir ? '/' : '');
-    p.text(RV, pathBar.x + Math.floor((pathBar.w - textWidth(RV, label)) / 2), pathBar.y + 3, label, active ? C.dark : C.text);
+    const label = quick ? 'View: ' + this.quick.path.split('/').pop() : '/' + panel.dir + (panel.dir ? '/' : '');
+    const shown = fitText(RV, label, pathBar.w - 8);
+    p.text(RV, pathBar.x + Math.floor((pathBar.w - textWidth(RV, shown)) / 2), pathBar.y + 3, shown, active ? C.dark : C.text);
     hits.add(pathBar, { click: () => this.activate(idx) });
     const body = { x: col.x, y: col.y + 26, w: col.w, h: col.h - 26 };
     panel.rect = body;
@@ -265,7 +276,7 @@ export class PmcPane {
       const view = this.quickView();
       if (view) view.draw(p, body, hits, focused);
       else p.text(RV, body.x + 4, body.y + 4, T.noViewer, C.cov);
-      this.statLine(p, stat, T.quickFooter, '');
+      this.statLine(p, stat, T.quickFooter, '', load);
       return;
     }
 
@@ -310,7 +321,7 @@ export class PmcPane {
     const cur = items[panel.cursor];
     const total = (panel.entries || []).reduce((sum, e) => sum + (e.dir ? 0 : e.size), 0);
     const info = panel.search ? `Search: ${panel.search}_` : cur ? `${this.describe(cur, panel)} · total ${formatSize(total)}` : '';
-    this.statLine(p, stat, info, cur && !cur.up ? cur.date : '');
+    this.statLine(p, stat, info, cur && !cur.up ? cur.date : '', load);
   }
 
   // One row: the kind code and the name, the size right-aligned in its column, and the date. The cursor is brass
@@ -368,13 +379,14 @@ export class PmcPane {
     return `${item.name} · ${formatBytes(item.size)} bytes`;
   }
 
-  // The status line: what the cursor is on, and its date in a box on the right.
-  // The status line under a panel: what the cursor is on, and its date in a sunken box on the right.
-  statLine(p, r, text, date) {
+  // The status line under a panel: what the cursor is on and the load bar at the end of that box, and the date in a
+  // sunken box on the right.
+  statLine(p, r, text, date, load) {
     const dateW = textWidth(RV, date) + 12;
     const left = { x: r.x, y: r.y, w: r.w - dateW - 2, h: r.h };
     p.bevel(left, 1, false);
-    p.text(RV, left.x + 6, left.y + 3, fitText(RV, text, left.w - 12), C.text);
+    p.text(RV, left.x + 6, left.y + 3, fitText(RV, text, left.w - 12 - LOAD_W - 2), C.text);
+    loadBar(p, left.x + left.w - LOAD_W - 2, left.y + 1, load);
     const right = { x: r.x + r.w - dateW, y: r.y, w: dateW, h: r.h };
     p.bevel(right, 1, false);
     p.text(RV, right.x + 6, right.y + 3, date, C.text);
@@ -391,7 +403,7 @@ export class PmcPane {
 
   mcKey(action) {
     if (action === 'enter') this.enter(this.act);
-    else if (action === 'quick') this.toggleQuick();
+    else if (action === 'quick') this.f3();
     else if (action === 'tab') this.switchPanel();
     else if (action === 'back') this.closeQuick();
     else if (action === 'up') this.up(this.act);
@@ -399,7 +411,7 @@ export class PmcPane {
   }
 
   dispose() {
-    if (this.view && this.view.dispose) this.view.dispose();
+    if (this.quick && this.quick.view && this.quick.view.dispose) this.quick.view.dispose();
   }
 }
 
@@ -412,13 +424,13 @@ class FolderInfo {
     this.count = null;
     list(path)
       .then((entries) => { this.count = entries.length; })
-      .catch(() => { this.count = 0; })
+      .catch(() => { this.count = null; this.failed = true; })
       .finally(() => ws.requestDraw());
   }
 
   draw(p, r) {
     p.fill(r.x, r.y, r.w, r.h, C.win);
-    const rows = [['Path', '/' + this.path + '/'], ['Type', 'folder'], ['Items', this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
+    const rows = [['Path', '/' + this.path + '/'], ['Type', 'folder'], ['Items', this.failed ? '—' : this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
     rows.forEach(([k, v], i) => {
       p.text(RV, r.x + 8, r.y + 8 + i * 12, k, C.dim);
       p.text(RV, r.x + 70, r.y + 8 + i * 12, v, C.bright);

@@ -332,7 +332,7 @@ export class Workspace {
   animated() {
     for (const t of this.panes.values()) {
       if (t.body.animated && t.body.animated()) return true;
-      if (t.body instanceof PmcPane && t.body.quickOn && t.body.view && t.body.view.animated && t.body.view.animated()) return true;
+      if (t.body instanceof PmcPane && t.body.quick && t.body.quick.view.animated && t.body.quick.view.animated()) return true;
     }
     return false;
   }
@@ -342,7 +342,6 @@ export class Workspace {
     const list = [];
     for (const t of this.panes.values()) {
       if (t.body instanceof AppPane) list.push(t.body);
-      if (t.body instanceof PmcPane && t.body.view instanceof AppPane) list.push(t.body.view);
     }
     return list;
   }
