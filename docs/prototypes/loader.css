@@ -41,16 +41,6 @@
     1px 12px, 1px 10px, 2px 10px, 2px 8px, 3px 8px, 3px 6px, 4px 6px, 4px 4px, 5px 4px, 5px 2px, 6px 2px); }
 .tab.on { background: var(--sel); color: var(--dark); }
 
-/* transport button (media.js controls): 40 x 40, code at y+6, label at y+27; on is pressed.
-   Centred labels: the inner width is 38, every label width is 6 n or 18, so the offset is a whole px */
-.big { width: 40px; height: 40px; flex: none; display: flex; flex-direction: column; align-items: center; padding-top: 5px; gap: 5px;
-  background: var(--btn); border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
-.big.on { background: var(--inset); border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
-.big .gg { font: 16px/16px "PxVGA", monospace; }
-.big .ll { font-size: 8px; line-height: 8px; color: var(--text); }
-.c-pl { color: var(--green); } .c-ps { color: var(--yellow); } .c-sp { color: var(--red); }
-.c-nv { color: var(--blue); } .c-mt { color: var(--mauve); }
-
 /* the bar: a sunken 1 px well over the inset; the fill is a 1 px checker of C.sel and C.inset (dither, the only variant).
    --w is the share of the inner width, the fill width is that rounded down to whole px. --t is the word: bright over
    the empty part, dark where the fill covers it (a copy clipped to the fill). The word sits 6 px in, 1 px down. */
@@ -72,15 +62,19 @@
   background: var(--btn); border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
 .key .kk { flex: none; height: 10px; padding: 1px 3px 0; line-height: 8px; background: var(--dark); color: var(--bright); white-space: nowrap; }
 .key .kn { flex: none; margin-top: 1px; line-height: 8px; color: var(--text); white-space: nowrap; }
+/* the cell is a button: the mouse presses it, and so does its key (.down while the key is held); pressed is sunken */
+.key { cursor: default; user-select: none; }
+.key:active, .key.down { background: var(--inset); border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
 
-/* states (body data-state) for the current and the next row of the playlist; --t is the word, --w the fill.
-   errr: the fill is empty and the word is bright. */
-body[data-state="load"] .cur .ld { --t: "load"; --w: 40%; }
-body[data-state="load"] .nxt .ld { --t: "load"; --w: 15%; }
-body[data-state="done"] .cur .ld { --t: "done"; --w: 100%; }
-body[data-state="done"] .nxt .ld { --t: "load"; --w: 55%; }
-body[data-state="errr"] .cur .ld { --t: "done"; --w: 100%; }
-body[data-state="errr"] .nxt .ld { --t: "errr"; --w: 0%; }
+/* foot panel, the line over the key bar in every tile (app.js footer): a sunken field with the file's line, the load bar
+   right-aligned after it, then the keyboard field. 14 px high, 4 px under the body; the 11 px bar 1 px down */
+.foot { flex: none; height: 14px; margin-top: 4px; display: flex; gap: 2px; }
+.addr, .kfield { height: 14px; padding: 0 4px; line-height: 12px; background: var(--inset); white-space: nowrap; overflow: hidden;
+  border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.addr { flex: 1; min-width: 0; padding-left: 3px; color: var(--bright); }
+.foot .ld { margin-top: 1px; }
+.kfield { width: 90px; flex: none; padding-left: 5px; color: var(--cov); }
+.kfield.on { color: var(--sel); }
 
 /* list row: 12 px with a 1 px line (C.cur) under it, so 11 px inside: text is 1 px down (8 px line), a bar fills the 11 px;
    the cursor row keeps the C.cur fill */
