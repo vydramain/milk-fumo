@@ -266,3 +266,16 @@ export class Player {
     else this.drawAudio(p, r, hits);
   }
 }
+
+// The header: with tags, the title large and "Artist — Album (Year)" under it, missing parts left out; without tags,
+// the file name without its extension large and no second line.
+export function headerOf(fileName, tags) {
+  const t = tags || {};
+  const art = ([t.artist, t.album].filter(Boolean).join(' — ') + (t.year ? ' (' + t.year + ')' : '')).trim();
+  return { name: t.title || fileName.replace(/\.[^.]+$/, ''), art };
+}
+
+// A playlist row: "Artist — Title", the title alone without an artist, the file name without tags.
+export function rowOf(fileName, tags) {
+  return tags && tags.title ? (tags.artist ? tags.artist + ' — ' : '') + tags.title : fileName;
+}
