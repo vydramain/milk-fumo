@@ -606,10 +606,10 @@ export class Workspace {
     this.screen = { w: W, h: H };
     if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
     else this.renderTiles(p, W, H);
+    if (!this.fullVideo) this.drawBars(p, W, H);
     // Every clickable thing looks pressed the same way while the pointer is down on it.
     const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
     if (held) p.bevel(held.r, 2, false);
-    if (!this.fullVideo) this.drawBars(p, W, H);
     // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
     for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
     // The browser tab shows the focused tile's title; it follows focus changes and closing.
@@ -739,11 +739,13 @@ export class Workspace {
     p.bevel(msg, 1, false);
     if (this.msg) p.text(RV, msg.x + 6, msg.y + 3, this.msg, C.bright);
     const cells = ENV_CELLS;
+    const has = (...codes) => codes.some((c) => this.held.has(c));
     const gap = 2;
     const w = Math.floor((W - 2 * MARGIN - gap * (cells.length - 1)) / cells.length);
     cells.forEach((c, i) => {
       const r = { x: MARGIN + i * (w + gap), y: envY, w, h: ENV_H };
-      const on = (c.command === 'resize' && this.mode === 'resize') || (c.command === 'move' && this.mode === 'move') || (c.command === 'maximize' && this.L.max);
+      const down = has('ShiftLeft', 'ShiftRight') && has(...c.codes) && has('ControlLeft', 'ControlRight') === !!c.ctrl;
+      const on = down || (c.command === 'resize' && this.mode === 'resize') || (c.command === 'move' && this.mode === 'move');
       p.fill(r.x, r.y, r.w, r.h, on ? C.inset : C.win);
       p.bevel(r, 1, !on);
       // The key and the label are cut to the cell, so a narrow window (or UI scale 2x) never runs one into the next.

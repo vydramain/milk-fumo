@@ -280,3 +280,19 @@ test('a note pages by the text window of its last draw', () => {
   assert.equal(note.top, 100 - 12);
   note.dispose();
 });
+
+test('the environment bar has no Shift+F cell, and a cell sinks while its Shift key is held', () => {
+  assert.ok(!ENV_CELLS.some((c) => c.key === 'Shift+F'));
+  const ws = new Workspace(() => {});
+  const sunk = () => {
+    const out = [];
+    const p = new Proxy({}, { get: (_, name) => (...a) => { if (name === 'fill' && a[3] === 16 && a[1] === 800 - 4 - 16 && a[4] === '#3E4637') out.push(a[0]); } });
+    ws.render(p, 1200, 800);
+    return out.length;
+  };
+  assert.equal(sunk(), 0);
+  ws.held.add('ShiftLeft'); ws.held.add('KeyR');
+  assert.equal(sunk(), 1);
+  ws.held.clear(); ws.held.add('ShiftLeft'); ws.held.add('ControlLeft'); ws.held.add('ArrowUp');
+  assert.equal(sunk(), 1);  // Move, not Focus
+});

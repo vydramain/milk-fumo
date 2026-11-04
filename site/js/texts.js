@@ -1,13 +1,14 @@
 // All interface texts. The keys are shown as their names in the environment bar and in the tutorial.
+const ARROW_CODES = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+// `codes` are the keys held with Shift (and with Ctrl when `ctrl`) that draw the cell sunken.
 export const ENV_CELLS = [
-  { key: 'Shift+arrows', label: 'Focus', command: 'focus' },
-  { key: 'Shift+Enter', label: 'Open', command: 'open-pmc' },
-  { key: 'Ctrl+Shift+arrows', label: 'Move', command: 'move' },
-  { key: 'Shift+W', label: 'Tabs', command: 'stack' },
-  { key: 'Shift+R', label: 'Resize', command: 'resize' },
-  { key: 'Shift+F', label: 'Fullscreen', command: 'maximize' },
-  { key: 'Shift+Q', label: 'Close', command: 'close' },
-  { key: 'Shift+S', label: 'Scale', command: 'scale' },
+  { key: 'Shift+arrows', label: 'Focus', command: 'focus', codes: ARROW_CODES },
+  { key: 'Shift+Enter', label: 'Open', command: 'open-pmc', codes: ['Enter', 'NumpadEnter'] },
+  { key: 'Ctrl+Shift+arrows', label: 'Move', command: 'move', codes: ARROW_CODES, ctrl: true },
+  { key: 'Shift+W', label: 'Tabs', command: 'stack', codes: ['KeyW'] },
+  { key: 'Shift+R', label: 'Resize', command: 'resize', codes: ['KeyR'] },
+  { key: 'Shift+Q', label: 'Close', command: 'close', codes: ['KeyQ'] },
+  { key: 'Shift+S', label: 'Scale', command: 'scale', codes: ['KeyS'] },
 ];
 
 // The actions of the tutorial, in the order they are learned. `done` is the progress key.
