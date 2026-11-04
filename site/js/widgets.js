@@ -160,9 +160,13 @@ export const NO_KEYS = Object.freeze(new Set());
 
 export function keyBar(p, hits, r, cells, held) {
   const w = Math.floor((r.w - 2 * (cells.length - 1)) / cells.length);
+  // A cell sinks only with its own modifiers: a Shift cell with Shift held, any other without Shift; a plain code
+  // without Ctrl (a Ctrl key is held as 'Ctrl+' + code). So the environment's Shift combinations sink no tile cell.
+  const shift = held.has('ShiftLeft') || held.has('ShiftRight');
+  const ctrl = held.has('ControlLeft') || held.has('ControlRight');
   cells.forEach((k, i) => {
     const cell = { x: r.x + i * (w + 2), y: r.y, w, h: r.h };
-    const down = k.codes.some((c) => held.has(c));
+    const down = shift === k.key.startsWith('Shift+') && k.codes.some((c) => held.has(c) && (c.startsWith('Ctrl+') || !ctrl));
     box(p, cell, !down, down ? C.inset : C.btn, 1);
     // A name that does not fit whole is cut to its first two letters, and the key gives way to them, down to one letter.
     let key = fitText(RV, k.key, w - 14);

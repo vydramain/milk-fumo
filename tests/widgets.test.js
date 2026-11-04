@@ -97,3 +97,20 @@ test('keyBar keeps at least one letter of the key in a narrow cell', () => {
   keyBar(p, new Hits(), { x: 0, y: 0, w: 29, h: 14 }, [{ key: 'P', label: 'Prev', codes: [] }], new Set());
   assert.ok(JSON.stringify(calls).includes('"P"'));
 });
+
+test('keyBar sinks a cell only with its own modifiers', () => {
+  const sunk = (cell, held) => {
+    const { p, calls } = fake();
+    keyBar(p, new Hits(), { x: 0, y: 0, w: 200, h: 14 }, [cell], new Set(held));
+    return calls.some((c) => c[0] === 'bevel' && c[3] === false);
+  };
+  const stop = { key: 'S', label: 'Stop', codes: ['KeyS'] };
+  const close = { key: 'Shift+Q', label: 'Close', codes: ['KeyQ'] };
+  const up = { key: 'Ctrl+PgUp', label: 'Up', codes: ['Ctrl+PageUp'] };
+  assert.equal(sunk(stop, ['KeyS']), true);
+  assert.equal(sunk(stop, ['ShiftLeft', 'KeyS']), false);
+  assert.equal(sunk(stop, ['ControlLeft', 'KeyS', 'Ctrl+KeyS']), false);
+  assert.equal(sunk(close, ['ShiftRight', 'KeyQ']), true);
+  assert.equal(sunk(close, ['KeyQ']), false);
+  assert.equal(sunk(up, ['ControlLeft', 'PageUp', 'Ctrl+PageUp']), true);
+});
