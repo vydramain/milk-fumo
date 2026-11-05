@@ -226,3 +226,54 @@ PxPlus IBM VGA 9×16 (VileR) and the Cyrillic of `rv_font`, which is redrawn fro
 - Keys are drawn as raised keycaps, written `[Shift]`.
 - A line `{{actions}}` is replaced by the tutorial's action table (in `readme.md`); the app draws the done and next marks.
 - In a tile narrower than the table, each action is followed by its mouse and keyboard ways in lines under it.
+
+## Architecture
+
+The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
+
+| Module | Role |
+|---|---|
+| `metrics.js` | the scale and all sizes, as named constants |
+| `layout.js` | the tile tree, modelled on `rv_editor_tile`: splits (axis, ratio) and leaves (tabs, active tab), plus a maximized leaf; insert, remove, move, activate, set_ratio, toggle_maximize; `min_size` and `place` are pure |
+| `workspace.js` | focus, resize mode, dragging, the message line and one command table; keys, environment-bar cells and title-bar buttons all lead into it |
+| `main.js` | the canvas, events and the `keydown` router: Shift combinations by `KeyboardEvent.code` go to environment commands; other keys go to the focused tile |
+| `pmc.js`, `note.js`, `media.js`, `image.js`, `app.js` | the tile types |
+| `catalog.js` | reading only: the folder listing (nginx JSON) and file URLs; pmc and the viewers use nothing else |
+| `download.js` | byte-counted downloads (fetch and stream reader), kept as Blobs while the tile is open |
+| `tags.js` | audio tags from the first bytes of a file: ID3v2 in mp3, Vorbis comments in Ogg |
+| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap text (`font_data.js` holds the generated glyph tables), drawing primitives, widgets, palette, view |
+| `texts.js`, `config.js` | all interface texts; the content root (`/content/`), the start folder, the home note `readme.md` and the app suffix `.exe` |
+
+### Why iframes stay put
+
+- Moving an `<iframe>` in the DOM reloads it, and a removed `<audio>` or `<video>` pauses. So tiles are rectangles in the canvas, and rearranging only moves rectangles.
+- An iframe is created once and positioned over its tile's rectangle; it is moved or hidden, never re-inserted elsewhere in the DOM.
+- Audio and video elements are created by the script outside the page.
+- `Element.moveBefore()` keeps state when an element moves, but not every browser supports it, so the design does not rely on it.
+
+### Rejected options
+
+- **TypeScript with Vite, React** — a build step and heavy tooling, which the owner does not want; React would also re-create components when their parent changes, which breaks the rule above.
+- **S3 or other object storage** — MinIO is archived (February 2026); Garage does not give an anonymous folder listing; SeaweedFS is heavy; RustFS is beta with CVE-2026-73290. One nginx container is simpler.
+- **A manifest file instead of the folder listing** — nothing has to run after an upload with the listing.
+- **WebGL, WebGPU, PixiJS, Konva, imgui-js** — heavy for a 2D interface; Canvas 2D is enough.
+- **`fillText`** — text smoothing differs between browsers, so text would not be pixel-perfect.
+- **Node or Python in the project** — not needed: there is no build step, no tools and no tests.
+- **Apps packed as zip** — a browser cannot run a page from an archive without its own unpacker and a Service Worker.
+- **Games from a subdomain or without site access** — the site could not catch `Shift+Q` inside a game.
+- **PDF** — not needed; the formats are Markdown, images, audio, video and web apps.
+
+## Open questions
+
+- **Text-size switch.** The editor's code-size switch has no place on the site yet, because the site has no menu bar. `Shift+S` changes the whole UI.
+- **Modifier.** Whether the modifier can be changed, like `$mod` in an i3 config, is undecided. Shift is the default.
+- **Bandwidth for other services.** Limiting the site's traffic with nginx `limit_rate` or `limit_conn` is under consideration.
+- **Ports.** 80 and 443 are probably free on the server; the owner checks.
+- **Direct links.** Links to a specific game or track, or state in the URL, are not designed. Search engines do not index content that appears only after JavaScript, and the site draws everything in a canvas.
+- **Probes to run.** Whether Chromium and Firefox support `devicePixelContentBoxSize`; whether an iframe shifts off the pixel grid at fractional screen scales.
+
+## Source links
+
+- bird-fumo: [handler registry](https://github.com/vydramain/bird-fumo/blob/master/front/lib/fp4/handler.ts), [launching and opening files](https://github.com/vydramain/bird-fumo/blob/master/front/Shell.tsx), [AppHost](https://github.com/vydramain/bird-fumo/blob/master/front/core/AppHost.tsx), [S3 operations](https://github.com/vydramain/bird-fumo/blob/master/back/src/fs.ts).
+- 3dmppc-editor: [theme](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp), [theme application](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme_imgui.cpp), [fonts](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/font/rv_editor_font.cpp), [tile model](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.hpp), [workspace](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [moves and drop zones](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace_drag.cpp), [widget catalog](https://github.com/vydramain/3dmppc-polymer/tree/master/editor/src/catalog).
+- vgui2-deck: [fonts and licenses](https://github.com/vydramain/vgui2-deck/tree/main/fonts).
