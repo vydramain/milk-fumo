@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+html, body { margin: 0; background: #11111b; color: #fab387; font: 16px monospace; overflow: hidden; }
+#t { position: absolute; left: 8px; top: 8px; color: #cdd6f4; }
+</style>
+</head>
+<body>
+<div id="t">frames: 0</div>
+<script>
+// A test app: it reports APP_READY and counts its frames, so a visitor (or a test) can see
+// whether the app kept its state while its tile was moved.
+var n = 0;
+function tick() { n++; document.getElementById('t').textContent = 'frames: ' + n; requestAnimationFrame(tick); }
+requestAnimationFrame(tick);
+window.parent.postMessage({ type: 'TITLE', text: 'plug-run' }, location.origin);
+window.parent.postMessage({ type: 'APP_READY' }, location.origin);
+</script>
+<h1 style="position:absolute;left:0;right:0;top:70px;text-align:center;margin:0;">PLUG RUN</h1>
+<p style="position:absolute;left:0;right:0;top:110px;text-align:center;margin:0;">PRESS START</p>
+</body>
+</html>
