@@ -128,3 +128,101 @@ Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 
 3. Opens a game and places it.
 4. Moves the player under pmc or stacks them into tabs.
 5. Maximizes the game and restores the layout.
+
+## Minimum sizes
+
+- The layout is designed for a **960×540 viewport**. A smaller viewport, or one smaller than the current layout's minimum, scrolls instead of squeezing the tiles.
+- A **screen** smaller than 960×540 (`screen.width × screen.height`) gets a "too small" notice with the required and current size.
+- A **mobile device** gets a notice that says "Sorry, we don't support mobile devices yet." A device counts as mobile when its primary input is touch: `(hover: none) and (pointer: coarse)`.
+
+3dmppc-editor needs a 1280×720 display and sets 1280×720 as its minimum window size ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`main.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/main.cpp)). A browser viewport is smaller than its window, so the site sets its own minimums.
+
+Measured on 2026-10-28 in maximized Chromium 156 and Firefox 158 under xfwm4 on virtual screens, with clean profiles and no OS panel:
+
+| Screen | Chromium viewport | Firefox viewport |
+|---|---|---|
+| 1280×720 | 1280×609 | 1280×611 |
+| 1366×768 | 1366×657 | 1366×663 |
+| 1920×1080 | 1920×973 | 1920×971 |
+| 1920×1080 at 125% (1536×864 CSS) | 1536×762 | 1536×763 |
+
+The width is the full screen width; the height loses 101–111 px to the window title, tabs and address bar. An OS taskbar takes more: 48 px on Windows 11 at 100% ([Tom's Hardware](https://www.tomshardware.com/uk/how-to/change-taskbar-icon-size-windows-11)); for Windows 10 sources give 40–42 px ([windowsnews.ai](https://windowsnews.ai/article/windows-11-taskbar-size-setting-compact-or-larger-without-registry-hacks.431307), [wintips](https://www.wintips.org/?p=49356)). Chrome on Windows and macOS were not measured. Estimated, not measured: a 1280×720 screen under Windows 11 gives a viewport of about 1280×560–590.
+
+A 1920×1080 laptop at 150% is 1280×720 CSS pixels, so 1280×720 is not only an old monitor. The owner chose 960×540.
+
+Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_shell_minimums.cpp), [`rv_editor_workspace.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_workspace.cpp), [`rv_editor_tile.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/layout/rv_editor_tile.cpp)):
+
+- a tile's content needs 20 em (the width of "M") × 4 rows, unless it has its own minimum;
+- a tile's minimum is the largest minimum of its tabs plus its frame;
+- a split's minimum is the sum of the minimums along its axis plus the splitter, and the largest across it;
+- a border cannot move past a minimum, with the mouse or with `Shift+R`.
+
+**UI scale.** `Shift+S` cycles 1x → 1.5x → 2x → 1x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large. A scale the window cannot hold is skipped, with the size it needs; at start and when the window shrinks the largest scale that fits is taken. 1.5x is drawn without smoothing, so a font pixel falls on a whole device pixel or none and letters come out uneven.
+
+Metrics at 1x, in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 px with 2 px padding, title bar 14 px, tab strip 14 px, splitter 4 px. A tile's frame takes 8 px across and 40 px down.
+
+## UI
+
+The look is IRIX through 3dmppc-editor:
+
+- rectangles without rounding, a raised tile frame, a sunken content area;
+- **a brass frame around the focused tile**;
+- a dithered title bar: `X` on the left, `M` on the right;
+- tabs are slanted folder tabs **at the bottom** of the tile; the active one is brass;
+- pmc and notes sit on olive; players, apps and code sit in navy wells (Catppuccin Mocha);
+- file icons are two-letter codes instead of pictures.
+
+### Palette
+
+The main palette is the editor's token table in [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp), with vgui2-deck's state colors:
+
+| Role | Color |
+|---|---|
+| Main surface | `#4C5844` |
+| Sunken areas and fields | `#3E4637` |
+| Buttons | `#4E5744` |
+| Selection and focus (brass) | `#958831` |
+| Light frame bevel | `#7E8776` |
+| Dark frame bevel | `#32392C` |
+| Darkest surface | `#282E20` |
+| Main text | `#D8DED3` |
+| Bright text | `#F1F2F0` |
+| Inactive text | `#758666` |
+
+Wells use Catppuccin Mocha: background `#1e1e2e`, darkest `#11111b`, text `#cdd6f4`, muted `#a6adc8`, accents green `#a6e3a1`, teal `#94e2d5`, peach `#fab387`, blue `#89b4fa`, mauve `#cba6f7`, yellow `#f9e2af`, red `#f38ba8`.
+
+### Icons
+
+From the editor's [`rv_editor_glyphs.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/ui/rv_editor_glyphs.hpp):
+
+| Code | Meaning | Color |
+|---|---|---|
+| `Fd` | folder | brass |
+| `Sn` | sound | teal |
+| `Im` | image | green |
+| `Tx` | text | text |
+| `Fi` | other file | muted |
+| `Vi` | video | mauve |
+| `Ap` | app | peach |
+| `Up` | the `..` row, up one level | — |
+
+### Fonts
+
+| Font | Where |
+|---|---|
+| `rv_font` 5×7 (pdklib) | interface: title bars, tabs, keys, lists; note headings and body text |
+| PxPlus IBM VGA 9×16 | the playback time in the navy wells of Players and Videos, at 2× (the same font drawn twice as big); code in notes, at its native size |
+
+The fonts are copied from 3dmppc-polymer. The font tables were generated from the pdklib headers and the PxPlus TTF; they reach the site as one JavaScript file, [`site/js/font_data.js`](site/js/font_data.js). The file is committed, and the generator is not kept in the repository. The site does not depend on how the browser draws fonts. Pixel fonts are used only at their native size or a whole multiple of it.
+
+PxPlus IBM VGA 9×16 (VileR) and the Cyrillic of `rv_font`, which is redrawn from PxPlus, are CC BY-SA 4.0. The full license text is in [third_party/pxplus-ibm-vga/LICENSE](third_party/pxplus-ibm-vga/LICENSE); the origin of both fonts is described in [third_party/pxplus-ibm-vga/](third_party/pxplus-ibm-vga/ORIGIN.md) and [third_party/rv_font/](third_party/rv_font/ORIGIN.md).
+
+### Markdown in notes
+
+- A first-level heading is `rv_font` at 16 px with a groove under it; a second-level heading is `rv_font` at 8 px with a dithered rule.
+- Body text is `rv_font`; code is PxPlus IBM VGA 9×16 on navy.
+- Box and rule characters (`·` `│` `─` `—`) are drawn as pixel glyphs of the same cell.
+- Notes support lists, quotes, horizontal rules and links. A link `[text](address)` opens in a new browser tab. An address is kept only if it is http, https, or a relative address without `//`, spaces, colons, ampersands or backslashes.
+- Keys are drawn as raised keycaps, written `[Shift]`.
+- A line `{{actions}}` is replaced by the tutorial's action table (in `readme.md`); the app draws the done and next marks.
+- In a tile narrower than the table, each action is followed by its mouse and keyboard ways in lines under it.
