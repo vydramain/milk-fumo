@@ -90,7 +90,7 @@ export const NOTE_KEYS = {
 
 // The key bar of the app.
 export const APP_KEYS = {
-  restart: { key: 'Shift+0', label: 'Restart' },
   close: { key: 'Shift+Q', label: 'Close' },
+  restart: { key: 'Shift+0', label: 'Restart' },
   full: { key: 'Shift+F', label: 'Fullscreen' },
 };

@@ -114,7 +114,7 @@ Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 
 | Player | P Prev · Space Play · Space Pause · S Stop · N Next · M Mute · L/R Seek · U/D Volume |
 | Video | the Player's cells plus L Loop before Seek |
 | Image | Left/P Prev · Right/N Next |
-| App | Shift+0 Restart · Shift+Q Close · Shift+F Fullscreen |
+| App | Shift+Q Close · Shift+0 Restart · Shift+F Fullscreen |
 | Note | U/D Scroll · Home/End Top/Bottom (`PgUp` and `PgDn` scroll too, without a cell) |
 
 **Loading.** The bar shows `load`, `done` or `errr` in the Player's rows, in the foot panels (Video, Image, Note, App) and in pmc's status line. Files are downloaded counting bytes and kept while the tile is open; the next file of the folder is preloaded; an `errr` file is retried when it is selected again. An app counts progress only by its `index.html`.

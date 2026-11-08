@@ -124,8 +124,8 @@ export class AppPane {
 
   cells() {
     return [
-      { ...K.restart, codes: ['Digit0'], click: () => this.restart() },
       { ...K.close, codes: ['KeyQ'], click: () => this.ws.closeApp(this) },
+      { ...K.restart, codes: ['Digit0'], click: () => this.restart() },
       { ...K.full, codes: ['KeyF'], click: () => this.fullscreen() },
     ];
   }

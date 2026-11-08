@@ -381,7 +381,7 @@ const BARS_OF = {
   Note: [
     { ...NOTE_KEYS.scroll, codes: ['ArrowUp', 'ArrowDown'] }, { ...NOTE_KEYS.edge, codes: ['Home', 'End'] },
   ],
-  App: [{ ...APP_KEYS.restart, codes: ['Digit0'] }, { ...APP_KEYS.close, codes: ['KeyQ'] }, { ...APP_KEYS.full, codes: ['KeyF'] }],
+  App: [{ ...APP_KEYS.close, codes: ['KeyQ'] }, { ...APP_KEYS.restart, codes: ['Digit0'] }, { ...APP_KEYS.full, codes: ['KeyF'] }],
 };
 
 const glyphs = (font) => Object.keys(font).map(Number).filter((c) => c > 0).sort((a, b) => a - b);
