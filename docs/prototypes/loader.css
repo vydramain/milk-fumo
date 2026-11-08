@@ -1,0 +1,87 @@
+/* Shared by the prototype tiles: fonts, palette of theme.js, the tile frame, buttons, the bar component, the key bar, list rows.
+   Pixel-perfect: whole px only, no blur. Look at it at browser zoom 100% and screen scale 1. */
+@font-face { font-family: "rv"; src: url("fonts/rvfont5x7.otf"); }
+@font-face { font-family: "PxVGA"; src: url("fonts/PxPlus_IBM_VGA_9x16.ttf"); }
+
+/* palette: the C.* tokens of theme.js (--cb, --cur, --dark ... are the same values) */
+.i {
+  --win: #4C5844; --inset: #3E4637; --btn: #4E5744; --sel: #958831;
+  --hi: #7E8776; --lo: #32392C; --dark: #282E20;
+  --text: #D8DED3; --bright: #F1F2F0; --dim: #758666;
+  --cb: #1e1e2e; --ct: #cdd6f4; --cs: #a6adc8; --csurf: #585b70; --cov: #6c7086; --cur: #313244;
+  --green: #a6e3a1; --yellow: #f9e2af; --red: #f38ba8; --blue: #89b4fa; --mauve: #cba6f7;
+  --dither: conic-gradient(var(--lo) 25%, var(--win) 0 50%, var(--lo) 0 75%, var(--win) 0) 0 0 / 2px 2px;
+  font-family: "rv", monospace; font-size: 8px; line-height: 8px; color: var(--text);
+  -webkit-font-smoothing: none; text-rendering: optimizeSpeed;
+}
+.i * { box-sizing: border-box; }
+
+/* tile (metrics.js): raised 2 px frame, 2 px padding; title bar 14 px and 2 px below it;
+   body, tabs 2 px below it, 14 px high; 2 px padding and frame at the bottom. Content starts 20 px in.
+   960 x 272 with body 232 is this prototype's size, not a value from metrics.js (the site sizes the tile by layout). */
+.i-tile { width: 960px; height: 272px; display: flex; flex-direction: column; background: var(--win); padding: 2px;
+  border: 2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.i-head { display: flex; align-items: center; height: 14px; flex: none; background: var(--dither); margin-bottom: 2px; }
+.i-head .bx { width: 12px; height: 12px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: var(--win); color: var(--bright); border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+/* icons on the 10 px inside: the 1 px bar at x 4 (the centre would be 4.5), the 6 px bar at x 2, y 2; the 6 px bar at y 4 */
+.i-head .bx.sv { background: linear-gradient(var(--bright), var(--bright)) 4px 2px / 1px 6px no-repeat, var(--win); }
+.i-head .bx.sh { background: linear-gradient(var(--bright), var(--bright)) 2px 4px / 6px 1px no-repeat, var(--win); }
+.i-head .ttl { background: var(--win); color: var(--bright); padding: 3px 6px 0; height: 14px; line-height: 8px; white-space: nowrap; }
+.i-head .grow { flex: 1; }
+.i-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.i-tabs { display: flex; height: 14px; flex: none; margin-top: 2px; padding-left: 6px; }
+/* slanted tab, as paint.js slant: 6 px over 14 rows, row r shifted by round(6 * (13 - r) / 13), so the shifts are
+   6 6 5 5 4 4 3 3 2 2 1 1 0 0 and the edge is a staircase of 2-row steps. The box is 6 px wider than the
+   text tab (text + 18); the text starts at x 9, y 3. */
+.tab { flex: none; height: 14px; padding: 3px 15px 0 9px; margin-right: 4px; line-height: 8px; background: var(--win); color: var(--text);
+  clip-path: polygon(6px 0, 100% 0, 100% 2px, calc(100% - 1px) 2px, calc(100% - 1px) 4px, calc(100% - 2px) 4px,
+    calc(100% - 2px) 6px, calc(100% - 3px) 6px, calc(100% - 3px) 8px, calc(100% - 4px) 8px, calc(100% - 4px) 10px,
+    calc(100% - 5px) 10px, calc(100% - 5px) 12px, calc(100% - 6px) 12px, calc(100% - 6px) 14px, 0 14px, 0 12px,
+    1px 12px, 1px 10px, 2px 10px, 2px 8px, 3px 8px, 3px 6px, 4px 6px, 4px 4px, 5px 4px, 5px 2px, 6px 2px); }
+.tab.on { background: var(--sel); color: var(--dark); }
+
+/* the bar: a sunken 1 px well over the inset; the fill is a 1 px checker of C.sel and C.inset (dither, the only variant).
+   --w is the share of the inner width, the fill width is that rounded down to whole px. --t is the word: bright over
+   the empty part, dark where the fill covers it (a copy clipped to the fill). The word sits 6 px in, 1 px down. */
+.ld { --t: ""; --w: 0%; position: relative; flex: none; background: var(--inset);
+  border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.ld-mini { width: 37px; height: 11px; }   /* load bar: 35 x 9 inside = 6 px, the 23 px word, 6 px; 1 px above and below */
+.ld-track { height: 10px; }               /* position: media.js seek, 8 px inside */
+.ld-vol { height: 14px; }                 /* volume: media.js vol, 12 px inside */
+.ld-fill { position: absolute; left: 0; top: 0; bottom: 0; width: round(down, var(--w), 1px); overflow: hidden;
+  background: conic-gradient(var(--sel) 25%, var(--inset) 0 50%, var(--sel) 0 75%, var(--inset) 0) 0 0 / 2px 2px; }
+.ld::before, .ld-fill::after { content: var(--t); position: absolute; left: 6px; top: 1px; font: 8px/8px "rv", monospace; white-space: nowrap; }
+.ld::before { color: var(--bright); }
+.ld-fill::after { color: var(--dark); }
+
+/* key bar (pmc.js keysBar): cells of equal width, 2 px apart, 14 px high. A raised cell; the key in a dark box at
+   x 4, y 2; the name 4 px after the box, at y 3. The cell is inside .i (its font and box-sizing). */
+.keys { display: flex; gap: 2px; height: 14px; flex: none; }
+.key { flex: none; width: 134px; height: 14px; display: flex; align-items: flex-start; gap: 4px; padding: 1px 0 0 3px;
+  background: var(--btn); border: 1px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.key .kk { flex: none; height: 10px; padding: 1px 3px 0; line-height: 8px; background: var(--dark); color: var(--bright); white-space: nowrap; }
+.key .kn { flex: none; margin-top: 1px; line-height: 8px; color: var(--text); white-space: nowrap; }
+/* the cell is a button: the mouse presses it, and so does its key (.down while the key is held); pressed is sunken */
+.key { cursor: default; user-select: none; }
+.key:active, .key.down { background: var(--inset); border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+
+/* foot panel, the line over the key bar in every tile (app.js footer): a sunken field with the file's line, the load bar
+   right-aligned after it, then the keyboard field. 14 px high, 4 px under the body; the 11 px bar 1 px down */
+.foot { flex: none; height: 14px; margin-top: 4px; display: flex; gap: 2px; }
+.addr, .kfield { height: 14px; padding: 0 4px; line-height: 12px; background: var(--inset); white-space: nowrap; overflow: hidden;
+  border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.addr { flex: 1; min-width: 0; padding-left: 3px; color: var(--bright); }
+.foot .ld { margin-top: 1px; }
+.kfield { width: 90px; flex: none; padding-left: 5px; color: var(--cov); }
+.kfield.on { color: var(--sel); }
+
+/* list row: 12 px with a 1 px line (C.cur) under it, so 11 px inside: text is 1 px down (8 px line), a bar fills the 11 px;
+   the cursor row keeps the C.cur fill */
+.lrow { height: 12px; display: flex; align-items: flex-start; line-height: 8px; white-space: nowrap; border-bottom: 1px solid var(--cur); }
+.lrow > :not(.ld) { margin-top: 1px; }
+.lrow.cur { background: var(--cur); }
+
+/* slider knob (media.js:153), 4 x 14, over the fill end: 3 px before, 1 px after; 2 px out above and below the 10 px bar */
+.ld-knob { position: absolute; left: calc(round(down, var(--w), 1px) - 3px); top: -3px; width: 4px; height: 14px; background: var(--btn); border: 1px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
