@@ -56,14 +56,18 @@ export class PmcPane {
     return this.items(panel)[panel.cursor];
   }
 
-  // Loads the listing of a panel's folder. The promise resolves when the panel has its entries.
+  // Loads the listing of a panel's folder. Only the latest load of a panel is applied: a listing that arrives after
+  // the panel has moved to another folder is dropped. The promise resolves to true when this load was applied.
   reload(idx) {
     const panel = this.panels[idx];
+    const load = list(panel.dir);
+    panel.load = load;
     panel.error = false;
-    return list(panel.dir)
-      .then((entries) => { panel.entries = entries; })
-      .catch(() => { panel.error = true; panel.entries = []; })
-      .finally(() => this.ws.requestDraw());
+    const latest = () => panel.load === load;
+    return load
+      .then((entries) => { if (latest()) panel.entries = entries; })
+      .catch(() => { if (latest()) { panel.error = true; panel.entries = []; } })
+      .then(() => { this.ws.requestDraw(); return latest(); });
   }
 
   changeDir(idx, dir, cursorName) {
@@ -73,8 +77,8 @@ export class PmcPane {
     panel.cursor = 0;
     panel.top = 0;
     panel.search = '';
-    this.reload(idx).then(() => {
-      if (cursorName === undefined) return;
+    this.reload(idx).then((applied) => {
+      if (!applied || cursorName === undefined) return;
       const i = this.items(panel).findIndex((e) => e.name === cursorName);
       panel.cursor = Math.max(0, i);
       this.ws.requestDraw();

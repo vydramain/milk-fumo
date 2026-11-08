@@ -17,7 +17,7 @@ import { AppPane } from '../../site/js/app.js';
 import { KIND, list, setOf, urlOf } from '../../site/js/catalog.js';
 import { view } from '../../site/js/view.js';
 import { T, PMC_KEYS, PLAYER_KEYS, IMAGE_KEYS, NOTE_KEYS, APP_KEYS } from '../../site/js/texts.js';
-import { CONTENT_ROOT, START_DIR } from './config.js';
+import { CONTENT_ROOT } from './config.js';
 
 // ---- the network ---------------------------------------------------------------------------------------------------
 
@@ -353,9 +353,7 @@ function label(p, x, y, s, color = C.dim) { p.text(RV, x, y, s, color); }
 async function setIn(dir, kind) { return setOf(await list(dir), kind); }
 
 // Opens a folder in a pmc panel and puts the cursor on a name.
-// The panels' first listings are awaited first: a later one would overwrite the folder opened here.
 async function cd(pmc, i, dir, name) {
-  await list(START_DIR).catch(() => {});
   const panel = pmc.panels[i];
   panel.dir = dir;
   await pmc.reload(i);
