@@ -379,8 +379,7 @@ const BARS_OF = {
   ],
   Image: [{ ...IMAGE_KEYS.prev, codes: ['ArrowLeft', 'KeyP'] }, { ...IMAGE_KEYS.next, codes: ['ArrowRight', 'KeyN'] }],
   Note: [
-    { ...NOTE_KEYS.scroll, codes: ['ArrowUp', 'ArrowDown'] }, { ...NOTE_KEYS.page, codes: ['PageUp', 'PageDown'] },
-    { ...NOTE_KEYS.edge, codes: ['Home', 'End'] },
+    { ...NOTE_KEYS.scroll, codes: ['ArrowUp', 'ArrowDown'] }, { ...NOTE_KEYS.edge, codes: ['Home', 'End'] },
   ],
   App: [{ ...APP_KEYS.restart, codes: ['Digit0'] }, { ...APP_KEYS.close, codes: ['KeyQ'] }, { ...APP_KEYS.full, codes: ['KeyF'] }],
 };

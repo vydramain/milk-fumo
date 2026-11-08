@@ -85,7 +85,6 @@ export const IMAGE_KEYS = {
 };
 export const NOTE_KEYS = {
   scroll: { key: 'U/D', label: 'Scroll' },
-  page: { key: 'PgUp/PgDn', label: 'Page' },
   edge: { key: 'Home/End', label: 'Top/Bottom' },
 };
 

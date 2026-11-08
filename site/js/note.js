@@ -32,12 +32,11 @@ export class NoteBody {
     this.ws.requestDraw();
   }
 
-  // The key bar: a click presses the key.
+  // The key bar: a click presses the key. A note has no pages, so Page Up and Page Down have no cell; they still scroll.
   cells() {
     const press = (code) => () => this.key({ code });
     return [
       { ...K.scroll, codes: ['ArrowUp', 'ArrowDown'], click: press('ArrowDown') },
-      { ...K.page, codes: ['PageUp', 'PageDown'], click: press('PageDown') },
       { ...K.edge, codes: ['Home', 'End'], click: press('End') },
     ];
   }
