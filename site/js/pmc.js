@@ -16,12 +16,12 @@ const COL_DATE = 70;
 const DOUBLE_MS = 400;
 // The kinds with a viewer that Enter can open a file in.
 const VIEWED = ['audio', 'video', 'image', 'note'];
-// What a key-bar cell does and which keys sink it; the labels are in texts.js.
+// What a key-bar cell does and which keys sink it; the labels are in texts.js. Esc has no cell: it still clears the
+// search and closes the quick view (key), but the bar keeps the room for the keys that need telling.
 const MC_KEYS = [
   { action: 'enter', codes: ['Enter'] },
   { action: 'quick', codes: ['F3'] },
   { action: 'tab', codes: ['Tab'] },
-  { action: 'back', codes: ['Escape'] },
   { action: 'up', codes: ['Ctrl+PageUp'] },
   { action: null, codes: [] },
 ];
@@ -56,14 +56,18 @@ export class PmcPane {
     return this.items(panel)[panel.cursor];
   }
 
-  // Loads the listing of a panel's folder. The promise resolves when the panel has its entries.
+  // Loads the listing of a panel's folder. Only the latest load of a panel is applied: a listing that arrives after
+  // the panel has moved to another folder is dropped. The promise resolves to true when this load was applied.
   reload(idx) {
     const panel = this.panels[idx];
+    const load = list(panel.dir);
+    panel.load = load;
     panel.error = false;
-    return list(panel.dir)
-      .then((entries) => { panel.entries = entries; })
-      .catch(() => { panel.error = true; panel.entries = []; })
-      .finally(() => this.ws.requestDraw());
+    const latest = () => panel.load === load;
+    return load
+      .then((entries) => { if (latest()) panel.entries = entries; })
+      .catch(() => { if (latest()) { panel.error = true; panel.entries = []; } })
+      .then(() => { this.ws.requestDraw(); return latest(); });
   }
 
   changeDir(idx, dir, cursorName) {
@@ -73,8 +77,8 @@ export class PmcPane {
     panel.cursor = 0;
     panel.top = 0;
     panel.search = '';
-    this.reload(idx).then(() => {
-      if (cursorName === undefined) return;
+    this.reload(idx).then((applied) => {
+      if (!applied || cursorName === undefined) return;
       const i = this.items(panel).findIndex((e) => e.name === cursorName);
       panel.cursor = Math.max(0, i);
       this.ws.requestDraw();
@@ -217,7 +221,7 @@ export class PmcPane {
     return new Message();
   }
 
-  // The layout of the prototype's explorer: the .i-panel frame; the toolbar; two panels, each a sunken well with
+  // The layout: the panel frame; the toolbar; two panels, each a sunken well with
   // the path, the header and the rows, a scroll bar, and a status line under it; the key bar.
   draw(p, r, hits, focused) {
     const inner = panelFrame(p, r);
@@ -312,7 +316,8 @@ export class PmcPane {
     p.unclip();
     p.fill(body.x + nameW, body.y, 1, body.h, C.lo);
     p.fill(body.x + nameW + COL_SIZE, body.y, 1, body.h, C.lo);
-    if (panel.error) p.text(RV, body.x + 4, body.y + 4, T.folderError, C.red);
+    // The error stands in the row after the items, under "..".
+    if (panel.error) p.text(RV, body.x + 4, body.y + (n - panel.top) * ROW + 2, T.folderError, C.red);
     scrollbar(p, hits, sb, {
       top: panel.top, view: panel.vis, total: n,
       onTop: (t) => { panel.top = t; this.ws.requestDraw(); },
@@ -400,7 +405,6 @@ export class PmcPane {
     if (action === 'enter') this.enter(this.act);
     else if (action === 'quick') this.f3();
     else if (action === 'tab') this.switchPanel();
-    else if (action === 'back') this.closeQuick();
     else if (action === 'up') this.up(this.act);
     this.ws.requestDraw();
   }

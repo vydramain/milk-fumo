@@ -24,7 +24,7 @@ Within the first minute a visitor should:
 | SGI IRIX | the look: raised frames, brass, dense utility type |
 | Midnight Commander, Volkov Commander | the pmc UX: two panels, cursor, function keys |
 
-Stitch, a generated draft, contributed the player queue (its split buttons were removed in v3). Its own palette, fonts, icons and telemetry decorations were dropped.
+Stitch, a generated draft, contributed the player queue (its split buttons were removed later). Its own palette, fonts, icons and telemetry decorations were dropped.
 
 ## How the site works
 
@@ -87,11 +87,11 @@ pmc (PSEUDO Midnight Commander) is the file panel. The UI is that of the editor'
   - an app — a new tile for a different app; the tile of the same app is focused if it is open;
   - a file — if a tile of its type exists, it is focused and the file opens there; otherwise a new tile opens beside pmc. With the quick view showing a file of the same type, `Enter` opens it in the quick view.
 - `Ctrl+PgUp` — one level up.
-- **`F3` — quick view.** The other panel shows what the cursor is on: a folder's information, a track's player with its set, an image, a `.md` note, or an app's screen. `F3` on a file of another type replaces the viewer; on a file of the same type the same viewer opens that file. `F3` closes the quick view when the focus is on it or the cursor is on the file it shows; `Esc` brings the list back. `F3` on an app shows the folder's information. The quick view does not follow the cursor: it changes only by `F3` or `Enter`. (`F3` replaces MC's `Ctrl+Q`, which quits Firefox.)
+- **`F3` — quick view.** The other panel shows what the cursor is on: a folder's information, the player of a track or a video with its set, an image, or a `.md` note; a file of another type says that it has no viewer. `F3` on a file of another type replaces the viewer; on a file of the same type the same viewer opens that file. `F3` closes the quick view when the focus is on it or the cursor is on the file it shows; `Esc` brings the list back. `F3` on an app shows the folder's information. The quick view does not follow the cursor: it changes only by `F3` or `Enter`. (`F3` replaces MC's `Ctrl+Q`, which quits Firefox.)
 - **Letters** — quick search by the start of a name; `Backspace` erases; `Esc` clears.
 - **Columns** — Name, Size, Modified. Folders come first and show `SUB-DIR` instead of a size; `..` shows `UP--DIR`. A status line under the list describes the file under the cursor and the folder's total.
 - There is no copy, move or delete: the site is read-only.
-- The tile's bottom line is pmc's key bar: Enter Open, F3 View, Tab Panel, Esc List, Ctrl+PgUp Up, Letters Search. Every key in it can be clicked.
+- The tile's bottom line is pmc's key bar: Enter Open, F3 View, Tab Panel, Ctrl+PgUp Up, Letters Search. Every key in it can be clicked. `Esc` has no cell; it works as described above.
 - The status line under each list shows the loading bar (`load`, `done`, `errr`).
 
 ## Tile types
@@ -105,6 +105,8 @@ pmc (PSEUDO Midnight Commander) is the file panel. The UI is that of the editor'
 | App | A folder whose name ends in `.exe` and contains `index.html`: a web game in an iframe that fills the tile; `Shift+0` restarts it; a foot panel and a key bar below |
 | Image | The selected image and switching through the folder's set |
 
+Each tile, in its states, is in the Tiles section of the [design system](#design-system).
+
 Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 s, `Volume` +5%). Tiles other than pmc and Player also have a foot panel: the file's line, the loading bar and a `Keyboard:` field.
 
 | Tile | Key bar |
@@ -112,8 +114,8 @@ Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 
 | Player | P Prev · Space Play · Space Pause · S Stop · N Next · M Mute · L/R Seek · U/D Volume |
 | Video | the Player's cells plus L Loop before Seek |
 | Image | Left/P Prev · Right/N Next |
-| App | Shift+0 Restart · Shift+Q Close · Shift+F Fullscreen |
-| Note | U/D Scroll · PgUp/PgDn Page · Home/End Top/Bottom |
+| App | Shift+Q Close · Shift+0 Restart · Shift+F Fullscreen |
+| Note | U/D Scroll · Home/End Top/Bottom (`PgUp` and `PgDn` scroll too, without a cell) |
 
 **Loading.** The bar shows `load`, `done` or `errr` in the Player's rows, in the foot panels (Video, Image, Note, App) and in pmc's status line. Files are downloaded counting bytes and kept while the tile is open; the next file of the folder is preloaded; an `errr` file is retried when it is selected again. An app counts progress only by its `index.html`.
 
@@ -156,6 +158,8 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 - a tile's minimum is the largest minimum of its tabs plus its frame;
 - a split's minimum is the sum of the minimums along its axis plus the splitter, and the largest across it;
 - a border cannot move past a minimum, with the mouse or with `Shift+R`.
+
+A key bar cell is never narrower than 34 px: one letter of its key and two of its name. So the Player is at least 286 px wide (8 cells), a video 322 px (9 cells, Loop added), and pmc 694 px, so that a panel's quick view holds a video's key bar.
 
 **UI scale.** `Shift+S` cycles 1x → 1.5x → 2x → 1x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large. A scale the window cannot hold is skipped, with the size it needs; at start and when the window shrinks the largest scale that fits is taken. 1.5x is drawn without smoothing, so a font pixel falls on a whole device pixel or none and letters come out uneven.
 
@@ -241,7 +245,7 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 | `catalog.js` | reading only: the folder listing (nginx JSON) and file URLs; pmc and the viewers use nothing else |
 | `download.js` | byte-counted downloads (fetch and stream reader), kept as Blobs while the tile is open |
 | `tags.js` | audio tags from the first bytes of a file: ID3v2 in mp3, Vorbis comments in Ogg |
-| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap text (`font_data.js` holds the generated glyph tables), drawing primitives, widgets, palette, view |
+| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap text (`font_data.js` holds the generated glyph tables), drawing primitives, widgets (including the too-small and mobile screens), palette, view |
 | `texts.js`, `config.js` | all interface texts; the content root (`/content/`), the start folder, the home note `readme.md` and the app suffix `.exe` |
 
 ### Why iframes stay put
@@ -262,6 +266,29 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 - **Apps packed as zip** — a browser cannot run a page from an archive without its own unpacker and a Service Worker.
 - **Games from a subdomain or without site access** — the site could not catch `Shift+Q` inside a game.
 - **PDF** — not needed; the formats are Markdown, images, audio, video and web apps.
+
+## Design system
+
+[`docs/design-system/`](docs/design-system/) is one page with every component the site draws, each on its own canvas and drawn by the modules in `site/js/`. It has no drawing code of its own, so it cannot drift from the site. It replaces the HTML and CSS prototypes the design was first made on.
+
+| Section | What it shows |
+|---|---|
+| Foundations | the palette, both bitmap fonts with every glyph, the kind codes, the metrics (read from `metrics.js`), the UI scales 1x, 1.5x and 2x |
+| Primitives | bevels and frames, dithers, slanted tabs, pictures without smoothing |
+| Widgets | buttons, scroll bars, load bars, key bars (with held keys and cut names), foot panels, the too-small and mobile screens |
+| Workspace | tiles, title bars and tabs, a maximized tile, drop previews, the message line and environment bar in their states, the favicon |
+| Tiles | pmc with its quick views and errors, notes with every Markdown block and the tutorial table, the player, the video and its fullscreen panel, images, apps, the loading and message bodies |
+| Motion | everything that moves, its trigger and timing, and where to watch it |
+| Environment | the whole site as `main.js` runs it |
+
+| File | Role |
+|---|---|
+| `index.html` | the sections and their texts; an import map sends the site's `config.js` to the one here |
+| `config.js` | the site's config with the content root moved to `content/` |
+| `ds.js` | the stages: a canvas, the pointer and keys for each component; a network over the fixtures that lists folders as nginx does and can be Fast, Slow, Stalled or Offline |
+| `content/` | the fixtures: tagged and untagged tracks, a video, a large and a small picture, notes, a demo app; names that are listed but missing give `errr`, and `locked/` gives a folder error |
+
+The page has controls for the scale and the network. Clicking a stage gives it the keys, as a focused tile has them. How to open it: [README](README.md#opening-the-design-system).
 
 ## Open questions
 

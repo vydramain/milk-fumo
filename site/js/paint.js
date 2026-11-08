@@ -79,7 +79,7 @@ export class Paint {
     return cx;
   }
 
-  // A slanted tab, as the prototype's skewed tab: each row is shifted by whole pixels, so its edges are steps,
+  // A slanted tab: each row is shifted by whole pixels, so its edges are steps,
   // never anti-aliased. The top row is shifted right by `skew` pixels, the bottom row not at all.
   // Returns the x of each row's left edge, for the caller's borders.
   slant(x, y, w, h, skew, color) {

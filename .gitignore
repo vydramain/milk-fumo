@@ -1,1 +1,4 @@
-.env.prod
+# Local dev content, served with CONTENT_DIR=./dev/content; not part of the repository.
+/dev/
+# The prod env file, made on the host from .env.prod.example.
+/.env.prod

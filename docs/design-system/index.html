@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MILK-FUMO design system</title>
+<link rel="icon" sizes="16x16" href="../../site/favicon-16.png">
+<!-- The site modules read their content root from ./config.js; inside site/js/ that import comes here instead. -->
+<script type="importmap">
+{ "scopes": { "../../site/js/": { "../../site/js/config.js": "./config.js" } } }
+</script>
+<style>
+:root {
+  --win: #4C5844; --inset: #3E4637; --sel: #958831; --hi: #7E8776; --lo: #32392C; --dark: #282E20;
+  --text: #D8DED3; --bright: #F1F2F0; --dim: #758666;
+}
+html { background: var(--dark); color: var(--text); }
+body { margin: 0 auto; max-width: 1000px; padding: 16px; font: 14px/1.5 ui-monospace, monospace; }
+h1, h2, h3 { color: var(--bright); font-weight: normal; }
+h1 { margin: 0 0 4px; }
+h2 { margin: 40px 0 8px; padding-bottom: 4px; border-bottom: 2px groove var(--hi); }
+h3 { margin: 24px 0 4px; font-size: 14px; color: var(--sel); }
+p { margin: 4px 0 8px; max-width: 80ch; }
+a { color: var(--bright); text-decoration-color: var(--sel); }
+code { color: var(--bright); }
+nav { margin: 8px 0 16px; }
+nav a { margin-right: 12px; }
+.controls { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center;
+  padding: 6px 8px; background: var(--win); border: 2px outset var(--hi); }
+.controls span { color: var(--bright); }
+button { font: inherit; color: var(--text); background: var(--win); border: 2px outset var(--hi); padding: 0 8px; cursor: pointer; }
+button[aria-pressed="true"] { border-style: inset; background: var(--inset); color: var(--bright); }
+.scroll { overflow: auto; max-width: 100%; margin: 4px 0 4px; }
+.stage { position: relative; display: inline-block; line-height: 0; vertical-align: top; }
+.stage canvas { display: block; outline: none; }
+.stage canvas:focus { box-shadow: 0 0 0 2px var(--sel); }
+.row { display: flex; flex-wrap: wrap; gap: 12px; }
+.row > div { min-width: 0; }
+.cap { color: var(--dim); margin: 0 0 4px; }
+table { border-collapse: collapse; margin: 8px 0; }
+td, th { border: 1px solid var(--lo); padding: 2px 8px; text-align: left; vertical-align: top; }
+th { color: var(--bright); font-weight: normal; background: var(--win); }
+</style>
+</head>
+<body>
+<h1>MILK-FUMO design system</h1>
+<p>Every component the site draws, drawn by the site's own modules in <a href="../../site/js/"><code>site/js/</code></a>. A stage is a canvas with one component in it. The content of the tiles is the fixture folder <a href="content/"><code>content/</code></a>, read through a network you can slow down. A stage you click takes the keys, as a tile does.</p>
+<p class="cap">Open the page from a static server started in the repository root, for example <code>python3 -m http.server 8000</code>, then go to <code>localhost:8000/docs/design-system/</code>. ES modules do not load from <code>file://</code>.</p>
+
+<div class="controls">
+  <span>Scale</span>
+  <button data-ui="1">1x</button><button data-ui="1.5">1.5x</button><button data-ui="2">2x</button><button data-ui="3">3x</button>
+  <span>Network</span>
+  <button data-net="fast">Fast</button><button data-net="slow">Slow</button><button data-net="stalled">Stalled</button><button data-net="offline">Offline</button>
+  <button data-restart>Restart</button>
+</div>
+<p class="cap">Scale is device pixels per layout pixel, the site's UI scale. Slow gives files at 32 KB/s, Stalled holds every file at 40 % until the network changes, Offline fails every request. A change of network affects new and running downloads; Restart opens every stage again with the current settings.</p>
+
+<nav>
+  <a href="#foundations">Foundations</a><a href="#primitives">Primitives</a><a href="#widgets">Widgets</a>
+  <a href="#workspace">Workspace</a><a href="#tiles">Tiles</a><a href="#motion">Motion</a><a href="#environment">Environment</a>
+</nav>
+
+<h2 id="foundations">Foundations</h2>
+
+<h3>Palette</h3>
+<p>The editor's tokens with vgui2-deck's state colors for the olive surfaces, and Catppuccin Mocha for the navy wells: players, apps, code. <code>theme.js</code>.</p>
+<div class="scroll"><div class="stage" data-demo="palette"></div></div>
+
+<h3>Type</h3>
+<p>All text is drawn from bitmap tables, never by the browser. <code>rv_font</code> is the interface and the note text; PxPlus IBM VGA is the text in the navy wells, at its native size or exactly twice it. Bold widens every run by one font pixel, italic shifts the upper half one pixel right. <code>font.js</code>, <code>font_data.js</code>, <code>Paint.text</code>.</p>
+<div class="scroll"><div class="stage" data-demo="type-rv"></div></div>
+<div class="scroll"><div class="stage" data-demo="type-vga"></div></div>
+
+<h3>Kind codes</h3>
+<p>File icons are two-letter codes in a color per kind. <code>catalog.js: KIND</code>.</p>
+<div class="scroll"><div class="stage" data-demo="kinds"></div></div>
+
+<h3>Metrics</h3>
+<p>The sizes in layout pixels, read from <code>metrics.js</code> itself.</p>
+<table data-metrics></table>
+
+<h3>UI scale</h3>
+<p>The same bar at 1x, 1.5x and 2x, whatever the page's scale. At 1.5x a font pixel is one or two device pixels, so letters come out uneven; that is the known cost of 1.5x.</p>
+<div class="scroll"><div class="stage" data-demo="scale-1"></div></div>
+<div class="scroll"><div class="stage" data-demo="scale-15"></div></div>
+<div class="scroll"><div class="stage" data-demo="scale-2"></div></div>
+
+<h2 id="primitives">Primitives</h2>
+<p><code>paint.js</code>: every rectangle is snapped to whole device pixels and nothing is smoothed.</p>
+
+<h3>Bevels and frames</h3>
+<p><code>Paint.bevel</code>: light on the top and left, dark on the bottom and right, swapped when sunken. <code>widgets.js: box, panelFrame, wellFrame</code> are built from it.</p>
+<div class="scroll"><div class="stage" data-demo="frames"></div></div>
+
+<h3>Dithers</h3>
+<p><code>Paint.dither</code>: a one-pixel checkerboard of two colors, and where each pair is used.</p>
+<div class="scroll"><div class="stage" data-demo="dithers"></div></div>
+
+<h3>Slant</h3>
+<div class="scroll"><div class="stage" data-demo="slant"></div></div>
+
+<h3>Pictures</h3>
+<div class="scroll"><div class="stage" data-demo="pixels"></div></div>
+
+<h2 id="widgets">Widgets</h2>
+<p><code>widgets.js</code>: immediate-mode widgets. A widget draws itself and adds its rectangle to the frame's hit list in the same call.</p>
+
+<h3>Buttons</h3>
+<div class="scroll"><div class="stage" data-demo="buttons"></div></div>
+
+<h3>Scroll bar</h3>
+<p>Arrows at both ends, a dithered track, a thumb no shorter than 8 px. A click on an arrow moves one item; a press on the track jumps and drags.</p>
+<div class="scroll"><div class="stage" data-demo="scrollbars"></div></div>
+
+<h3>Load bar</h3>
+<p>A 37 x 11 sunken well with a dithered brass fill of <code>floor(share × 35)</code> px. The word is bright over the empty part and dark over the fill. <code>done</code> is full, <code>errr</code> empty.</p>
+<div class="scroll"><div class="stage" data-demo="loadbars"></div></div>
+
+<h3>Key bar</h3>
+<p>Cells of equal width, the key in a dark box and its name. A cell sinks while one of its keys is held, but only with its own modifiers: a Shift cell with Shift, any other without. Click the stage and hold keys to see the first six bars sink. A name that does not fit is cut to two letters. The cells here are a copy of the ones the tiles build; each tile's own bar is on its stage under Tiles.</p>
+<div class="scroll"><div class="stage" data-demo="keybars"></div></div>
+
+<h3>Foot panel</h3>
+<p>The file's line, the load bar, and the keyboard field: <code>Keyboard: app</code> in brass while an app has the keys.</p>
+<div class="scroll"><div class="stage" data-demo="footbars"></div></div>
+
+<h3>Screens</h3>
+<p>What replaces the workspace on a screen under 960 x 540, and on a touch-first device. <code>widgets.js: messageScreen</code>, chosen by <code>main.js</code>.</p>
+<div class="row">
+  <div class="scroll"><div class="stage" data-demo="screen-small"></div></div>
+  <div class="scroll"><div class="stage" data-demo="screen-mobile"></div></div>
+</div>
+
+<h2 id="workspace">Workspace</h2>
+<p><code>workspace.js</code> on a layout tree from <code>layout.js</code>. These stages are real workspaces: click to focus, drag a title bar or a border, press X or M.</p>
+
+<h3>Tiles, title bars and tabs</h3>
+<p>A raised frame, the brass ring around the focused tile, the dithered title bar with X on the left and M on the right, the title cut to the bar. Tabs are slanted folder tabs at the bottom; the front one is brass.</p>
+<div class="scroll"><div class="stage" data-demo="tiles"></div></div>
+
+<h3>Maximized</h3>
+<div class="scroll"><div class="stage" data-demo="maximized"></div></div>
+
+<h3>Drop preview</h3>
+<p>While a title bar is dragged, the place it would land is dithered brass: half of a tile near its edge, the whole tile in its middle or on its tabs.</p>
+<div class="row">
+  <div class="scroll"><div class="stage" data-demo="drop-edge"></div></div>
+  <div class="scroll"><div class="stage" data-demo="drop-stack"></div></div>
+</div>
+
+<h3>Message line and environment bar</h3>
+<p>Always at the bottom. Every cell is a button. A cell sinks while Shift and its key are held, with Ctrl only for Move. Resize and Move stay sunk while their mode is on. The four bars: a message; Shift+R held; Ctrl+Shift+Left held; the resize mode.</p>
+<div class="scroll"><div class="stage" data-demo="bars-message"></div></div>
+<div class="scroll"><div class="stage" data-demo="bars-shift"></div></div>
+<div class="scroll"><div class="stage" data-demo="bars-move"></div></div>
+<div class="scroll"><div class="stage" data-demo="bars-resize"></div></div>
+
+<h3>Browser tab</h3>
+<p>The favicon <code>Mf</code> is the M button of the title bar, made by <code>tools/favicon.js</code>. The tab's title follows the focused tile: its app name.</p>
+<div class="scroll"><div class="stage" data-demo="favicon"></div></div>
+
+<h2 id="tiles">Tiles</h2>
+<p>Each tile body alone, as the workspace draws it inside a tile.</p>
+
+<h3>pmc</h3>
+<p><code>pmc.js</code>. Two panels, the path in each panel's top frame, brass on the active one. The cursor is brass in the focused tile's active panel. Click the stage, then use the arrows, Tab, letters, F3, Enter, Esc and Ctrl+PgUp. Opening a file in its own tile needs a workspace: try that in <a href="#environment">Environment</a>.</p>
+<div class="scroll"><div class="stage" data-demo="pmc"></div></div>
+<p class="cap">F3 quick views: an image; a track with its player; a video; a note; a file without a viewer; a folder's information (an app's folder shows the same).</p>
+<div class="scroll"><div class="stage" data-demo="pmc-image"></div></div>
+<div class="scroll"><div class="stage" data-demo="pmc-audio"></div></div>
+<div class="scroll"><div class="stage" data-demo="pmc-video"></div></div>
+<div class="scroll"><div class="stage" data-demo="pmc-note"></div></div>
+<div class="scroll"><div class="stage" data-demo="pmc-other"></div></div>
+<div class="scroll"><div class="stage" data-demo="pmc-folder"></div></div>
+<p class="cap">A folder that cannot be read (left) and a search by letters (right, <code>mu</code>); then a tile that is not focused, with an empty folder.</p>
+<div class="scroll"><div class="stage" data-demo="pmc-states"></div></div>
+<div class="scroll"><div class="stage" data-demo="pmc-unfocused"></div></div>
+
+<h3>Note</h3>
+<p><code>note.js</code>, <code>markdown.js</code>. Every block a note supports, and the tutorial's table: the first two actions are done, the third is the next. A narrow tile lists each action's ways under it and gets a scroll bar. A note that cannot be loaded says so.</p>
+<div class="scroll"><div class="stage" data-demo="note"></div></div>
+<div class="row">
+  <div class="scroll"><div class="stage" data-demo="note-narrow"></div></div>
+  <div class="scroll"><div class="stage" data-demo="note-error"></div></div>
+</div>
+
+<h3>Player</h3>
+<p><code>media.js</code>, <code>tags.js</code>. The clock, the header from ID3v2 or Vorbis tags (the third track has none), the position, the volume, and the playlist with a load bar per row. <code>missing.mp3</code> ends in <code>errr</code> once you select it.</p>
+<div class="scroll"><div class="stage" data-demo="player"></div></div>
+
+<h3>Video</h3>
+<p>The player's top, Fit / 1x / 2x, Loop, the frame and the foot panel. Then the fullscreen: only the frame, and a panel with the position and the key bar that shows on a pointer move or a key and hides 3 s later with the cursor. Shift+F or a double click returns to the tile; here the stage stands in for the screen.</p>
+<div class="scroll"><div class="stage" data-demo="video"></div></div>
+<div class="scroll"><div class="stage" data-demo="video-full"></div></div>
+
+<h3>Image</h3>
+<p><code>image.js</code>. A picture is shown at its own size or smaller, never enlarged. Left and Right go through the folder.</p>
+<div class="scroll"><div class="stage" data-demo="image"></div></div>
+<div class="scroll"><div class="stage" data-demo="image-small"></div></div>
+<div class="scroll"><div class="stage" data-demo="image-error"></div></div>
+
+<h3>App</h3>
+<p><code>app.js</code>. An iframe over the navy well, with a status line. The foot panel says <code>Keyboard: app</code> while the app runs in the focused tile; this stage draws its tile as focused. Click into the app to give it the keys (arrows push the square); Shift+0 inside it restarts it. A folder without <code>index.html</code> is an error.</p>
+<div class="scroll"><div class="stage" data-demo="app"></div></div>
+<div class="scroll"><div class="stage" data-demo="app-error"></div></div>
+
+<h3>Loading and messages</h3>
+<p><code>workspace.js: LoadingBody, MessageBody</code>: a tile whose file is still coming, a file of a type without a viewer, a file that could not be loaded.</p>
+<div class="scroll"><div class="stage" data-demo="body-loading"></div></div>
+<div class="scroll"><div class="stage" data-demo="body-noviewer"></div></div>
+<div class="scroll"><div class="stage" data-demo="body-error"></div></div>
+
+<h2 id="motion">Motion</h2>
+<p>The site draws on events, not on a timer: a frame is drawn when something changes. Only a playing video asks for every animation frame. This is everything on the site that moves.</p>
+<table>
+  <tr><th>Motion</th><th>Trigger and timing</th><th>Code</th><th>Where to see it</th></tr>
+  <tr><td>Load bar fills</td><td>every chunk of a byte-counted download; <code>done</code> when whole, <code>errr</code> on failure; the next file of a folder is preloaded</td><td><code>download.js</code>, <code>widgets.js: loadBar</code></td><td>below, and any tile on the Slow network</td></tr>
+  <tr><td>Key bar cell sinks</td><td>while its key is held, in the focused tile only</td><td><code>widgets.js: keyBar</code></td><td><a href="#widgets">Key bar</a></td></tr>
+  <tr><td>Environment cell sinks</td><td>while Shift and its key are held; Resize and Move while the mode is on</td><td><code>Workspace.drawBars</code></td><td><a href="#workspace">Message line and environment bar</a></td></tr>
+  <tr><td>Pressed button</td><td>a clicked rectangle stays sunk until the pointer is up</td><td><code>Workspace.render</code></td><td>any button</td></tr>
+  <tr><td>Drop preview</td><td>follows the pointer once a title bar has moved 4 px; Esc cancels</td><td><code>Workspace.tileDrag</code>, <code>layout.js: dropTarget</code></td><td><a href="#workspace">Tiles</a></td></tr>
+  <tr><td>Border drag</td><td>follows the pointer, stops at a minimum and says why on the message line</td><td><code>Workspace.borderDrag</code></td><td><a href="#workspace">Tiles</a></td></tr>
+  <tr><td>Clock and position</td><td>each <code>timeupdate</code> of a playing track</td><td><code>Player.transport</code></td><td><a href="#tiles">Player</a></td></tr>
+  <tr><td>Video frames</td><td>every animation frame while a video plays</td><td><code>Player.animated</code></td><td><a href="#tiles">Video</a></td></tr>
+  <tr><td>Fullscreen panel and cursor</td><td>shown on a pointer move or a player key, hidden 3 s later; kept while the pointer is over it</td><td><code>Workspace.showPanel</code></td><td><a href="#tiles">Video</a></td></tr>
+  <tr><td>Tutorial marks</td><td>✓ beside an action once it is done, › beside the next one</td><td><code>Workspace.progressOf</code>, <code>markdown.js</code></td><td><a href="#environment">Environment</a></td></tr>
+</table>
+<p class="cap">A load bar on a loop: 2 s from empty to full, then 1 s of <code>done</code>. It is drawn with the state the downloads give it.</p>
+<div class="scroll"><div class="stage" data-demo="loadbar-motion"></div></div>
+
+<h2 id="environment">Environment</h2>
+<p>The whole site, run as <code>main.js</code> runs it, on the fixtures: <code>readme.md</code> on the left and pmc on the right. Click it to give it the keys. Shift+S changes the scale of the whole page.</p>
+<div class="scroll"><div class="stage" data-demo="environment"></div></div>
+
+<script type="module" src="ds.js"></script>
+</body>
+</html>

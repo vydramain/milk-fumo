@@ -61,7 +61,6 @@ export const PMC_KEYS = [
   { key: 'Enter', label: 'Open' },
   { key: 'F3', label: 'View' },
   { key: 'Tab', label: 'Panel' },
-  { key: 'Esc', label: 'List' },
   { key: 'Ctrl+PgUp', label: 'Up' },
   { key: 'Letters', label: 'Search' },
 ];
@@ -86,13 +85,12 @@ export const IMAGE_KEYS = {
 };
 export const NOTE_KEYS = {
   scroll: { key: 'U/D', label: 'Scroll' },
-  page: { key: 'PgUp/PgDn', label: 'Page' },
   edge: { key: 'Home/End', label: 'Top/Bottom' },
 };
 
 // The key bar of the app.
 export const APP_KEYS = {
-  restart: { key: 'Shift+0', label: 'Restart' },
   close: { key: 'Shift+Q', label: 'Close' },
+  restart: { key: 'Shift+0', label: 'Restart' },
   full: { key: 'Shift+F', label: 'Fullscreen' },
 };

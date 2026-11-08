@@ -2,10 +2,9 @@
 // when the screen is too small or the device is a touch-first one.
 import { Workspace } from './workspace.js';
 import { Paint } from './paint.js';
-import { RV, textWidth } from './font.js';
-import { C } from './theme.js';
+import { messageScreen } from './widgets.js';
 import { T } from './texts.js';
-import { SCREEN_MIN, VIEWPORT_MIN, TITLE_H } from './metrics.js';
+import { SCREEN_MIN, VIEWPORT_MIN } from './metrics.js';
 import { view } from './view.js';
 
 const MOBILE = matchMedia('(hover: none) and (pointer: coarse)');
@@ -52,33 +51,12 @@ function draw() {
   canvas.style.width = size.w / d + 'px';
   canvas.style.height = size.h / d + 'px';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (mobile) drawMessage(new Paint(ctx, 1), size, null, T.mobile);
-  else if (small) drawMessage(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
+  if (mobile) messageScreen(new Paint(ctx, 1), size, null, T.mobile);
+  else if (small) messageScreen(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
   else ws.render(new Paint(ctx, view.ui), Math.floor(size.w / view.ui), Math.floor(size.h / view.ui));
   if (!mobile && !small && ws.animated()) requestDraw();
   const cursor = ws.cursorHidden() ? 'none' : '';
   if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
-}
-
-// The screens that replace the workspace: a tile with a title and lines of text, or the text alone.
-function drawMessage(p, size, title, lines) {
-  p.fill(0, 0, size.w, size.h, C.dark);
-  const lineList = Array.isArray(lines) ? lines : [lines];
-  const head = title ? TITLE_H + 6 : 0;
-  const w = 360;
-  const h = 7 + head + 8 + lineList.length * 12 + 8 + 7;
-  const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
-  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
-  p.bevel(frame, 2, true);
-  if (title) {
-    const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
-    p.dither(tr, C.win, C.lo);
-    p.fill(tr.x + 14, tr.y, textWidth(RV, title) + 12, tr.h, C.win);
-    p.text(RV, tr.x + 20, tr.y + 3, title, C.bright);
-  }
-  const body = { x: frame.x + 7, y: frame.y + 7 + head, w: frame.w - 14, h: h - 14 - head };
-  p.fill(body.x, body.y, body.w, body.h, C.inset);
-  lineList.forEach((s, i) => p.text(RV, body.x + 8, body.y + 8 + i * 12, s, C.text));
 }
 
 function requestDraw() {

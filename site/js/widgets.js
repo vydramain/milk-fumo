@@ -3,6 +3,7 @@
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
 import { T } from './texts.js';
+import { TITLE_H } from './metrics.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
 export class Hits {
@@ -44,13 +45,13 @@ export class Hits {
   }
 }
 
-// A raised or sunken box, as the prototype's classes: `raised` and `sunken` are 2 px, `raised1` and `sunken1` 1 px.
+// A raised or sunken box with a bevel `width` px wide: 1 px for small boxes, 2 px for buttons and fields.
 export function box(p, r, raised, color = C.btn, width = 1) {
   p.fill(r.x, r.y, r.w, r.h, color);
   p.bevel(r, width, raised);
 }
 
-// The panel of the prototype's .i-panel: a 1 px dark line on the top and left, a light line inside it, and a light
+// The panel frame: a 1 px dark line on the top and left, a light line inside it, and a light
 // shadow outside on the right and bottom. Returns the inside, which is 1 px border and 4 px padding in.
 export function panelFrame(p, r) {
   p.fill(r.x, r.y, r.w, 1, C.lo);
@@ -62,7 +63,7 @@ export function panelFrame(p, r) {
   return { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 };
 }
 
-// A sunken well: the 2 px frame of the prototype's .sunken. Returns the inside.
+// A sunken well with a 2 px frame. Returns the inside.
 export function wellFrame(p, r, color = C.inset) {
   p.fill(r.x, r.y, r.w, r.h, color);
   p.bevel(r, 2, false);
@@ -135,7 +136,7 @@ export function bitmap(p, x, y, rows, cols, color, scale = 1) {
 
 export const LOAD_W = 37, LOAD_H = 11;
 
-// The load bar of the prototype's .ld.ld-mini: a 1 px sunken well, a 1 px checker fill of floor(share * 35) px, and the
+// The load bar: a 1 px sunken well, a 1 px checker fill of floor(share * 35) px, and the
 // word `load`, `done` or `errr` 6 px in: bright over the empty part, dark over the fill. `load` is
 // { state, share } or null, which draws nothing.
 export function loadBar(p, x, y, load) {
@@ -182,6 +183,28 @@ export function keyBar(p, hits, r, cells, held) {
     p.text(RV, nx, cell.y + 3, fitText(RV, label, cell.x + w - nx - 2), C.text);
     if (k.click) hits.add(cell, { click: k.click });
   });
+}
+
+// The screens that replace the workspace when the screen is too small or the device is a touch-first one: a tile with
+// a title and lines of text, or the text alone, centered on the darkest surface.
+export function messageScreen(p, size, title, lines) {
+  p.fill(0, 0, size.w, size.h, C.dark);
+  const lineList = Array.isArray(lines) ? lines : [lines];
+  const head = title ? TITLE_H + 6 : 0;
+  const w = 360;
+  const h = 7 + head + 8 + lineList.length * 12 + 8 + 7;
+  const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
+  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
+  p.bevel(frame, 2, true);
+  if (title) {
+    const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
+    p.dither(tr, C.win, C.lo);
+    p.fill(tr.x + 14, tr.y, textWidth(RV, title) + 12, tr.h, C.win);
+    p.text(RV, tr.x + 20, tr.y + 3, title, C.bright);
+  }
+  const body = { x: frame.x + 7, y: frame.y + 7 + head, w: frame.w - 14, h: h - 14 - head };
+  p.fill(body.x, body.y, body.w, body.h, C.inset);
+  lineList.forEach((s, i) => p.text(RV, body.x + 8, body.y + 8 + i * 12, s, C.text));
 }
 
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),
