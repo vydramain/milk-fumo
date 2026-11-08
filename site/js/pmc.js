@@ -316,7 +316,8 @@ export class PmcPane {
     p.unclip();
     p.fill(body.x + nameW, body.y, 1, body.h, C.lo);
     p.fill(body.x + nameW + COL_SIZE, body.y, 1, body.h, C.lo);
-    if (panel.error) p.text(RV, body.x + 4, body.y + 4, T.folderError, C.red);
+    // The error stands in the row after the items, under "..".
+    if (panel.error) p.text(RV, body.x + 4, body.y + (n - panel.top) * ROW + 2, T.folderError, C.red);
     scrollbar(p, hits, sb, {
       top: panel.top, view: panel.vis, total: n,
       onTop: (t) => { panel.top = t; this.ws.requestDraw(); },
