@@ -91,7 +91,7 @@ pmc (PSEUDO Midnight Commander) is the file panel. The UI is that of the editor'
 - **Letters** — quick search by the start of a name; `Backspace` erases; `Esc` clears.
 - **Columns** — Name, Size, Modified. Folders come first and show `SUB-DIR` instead of a size; `..` shows `UP--DIR`. A status line under the list describes the file under the cursor and the folder's total.
 - There is no copy, move or delete: the site is read-only.
-- The tile's bottom line is pmc's key bar: Enter Open, F3 View, Tab Panel, Esc List, Ctrl+PgUp Up, Letters Search. Every key in it can be clicked.
+- The tile's bottom line is pmc's key bar: Enter Open, F3 View, Tab Panel, Ctrl+PgUp Up, Letters Search. Every key in it can be clicked. `Esc` has no cell; it works as described above.
 - The status line under each list shows the loading bar (`load`, `done`, `errr`).
 
 ## Tile types

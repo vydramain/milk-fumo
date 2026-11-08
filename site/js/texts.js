@@ -61,7 +61,6 @@ export const PMC_KEYS = [
   { key: 'Enter', label: 'Open' },
   { key: 'F3', label: 'View' },
   { key: 'Tab', label: 'Panel' },
-  { key: 'Esc', label: 'List' },
   { key: 'Ctrl+PgUp', label: 'Up' },
   { key: 'Letters', label: 'Search' },
 ];

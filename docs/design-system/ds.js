@@ -365,7 +365,7 @@ async function cd(pmc, i, dir, name) {
 // The key bars of the tiles, with the keys that sink their cells. This is a copy of the cells the tiles build (the
 // labels come from texts.js, the codes are written here); the tiles' own bars are drawn on their stages under Tiles.
 const BARS_OF = {
-  pmc: PMC_KEYS.map((k, i) => ({ ...k, codes: [['Enter'], ['F3'], ['Tab'], ['Escape'], ['Ctrl+PageUp'], []][i] })),
+  pmc: PMC_KEYS.map((k, i) => ({ ...k, codes: [['Enter'], ['F3'], ['Tab'], ['Ctrl+PageUp'], []][i] })),
   Player: [
     { ...PLAYER_KEYS.prev, codes: ['KeyP'] }, { ...PLAYER_KEYS.play, codes: ['Space'] }, { ...PLAYER_KEYS.pause, codes: [] },
     { ...PLAYER_KEYS.stop, codes: ['KeyS'] }, { ...PLAYER_KEYS.next, codes: ['KeyN'] }, { ...PLAYER_KEYS.mute, codes: ['KeyM'] },

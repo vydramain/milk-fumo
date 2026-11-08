@@ -16,12 +16,12 @@ const COL_DATE = 70;
 const DOUBLE_MS = 400;
 // The kinds with a viewer that Enter can open a file in.
 const VIEWED = ['audio', 'video', 'image', 'note'];
-// What a key-bar cell does and which keys sink it; the labels are in texts.js.
+// What a key-bar cell does and which keys sink it; the labels are in texts.js. Esc has no cell: it still clears the
+// search and closes the quick view (key), but the bar keeps the room for the keys that need telling.
 const MC_KEYS = [
   { action: 'enter', codes: ['Enter'] },
   { action: 'quick', codes: ['F3'] },
   { action: 'tab', codes: ['Tab'] },
-  { action: 'back', codes: ['Escape'] },
   { action: 'up', codes: ['Ctrl+PageUp'] },
   { action: null, codes: [] },
 ];
@@ -400,7 +400,6 @@ export class PmcPane {
     if (action === 'enter') this.enter(this.act);
     else if (action === 'quick') this.f3();
     else if (action === 'tab') this.switchPanel();
-    else if (action === 'back') this.closeQuick();
     else if (action === 'up') this.up(this.act);
     this.ws.requestDraw();
   }
