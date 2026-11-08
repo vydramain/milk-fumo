@@ -66,7 +66,7 @@ export class Workspace {
     this.tiles = [];           // { id, r }: the whole rectangle of every tile drawn in the last frame
     this.area = { x: MARGIN, y: MARGIN, w: 0, h: 0 };
     this.frame = 0;
-    this.fullVideo = null;     // the video Player shown alone in the browser's fullscreen (spec 6)
+    this.fullVideo = null;     // the video Player shown alone in the browser's fullscreen
     this.panelUntil = 0;       // Date.now() before which the fullscreen panel shows
     this.point = null;         // the pointer's last position, for the panel
     this.screen = { w: 0, h: 0 };
@@ -617,7 +617,7 @@ export class Workspace {
     if (document.title !== t) document.title = t;
   }
 
-  // Spec 6: only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.
+  // Only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.
   renderFullVideo(p, W, H) {
     const v = this.fullVideo;
     p.fill(0, 0, W, H, C.crust);
@@ -706,7 +706,7 @@ export class Workspace {
     p.text(RV, r.x + 3, r.y + 3, label, pressed ? C.sel : C.bright);
   }
 
-  // The tab strip: a slanted tab per pane; the active one is brass with dark text. Always drawn, as in the prototype.
+  // The tab strip: a slanted tab per pane; the active one is brass with dark text. Always drawn, even for one tab.
   tabStrip(p, node, rect) {
     const strip = L.tabsRect(rect);
     let x = strip.x + 6;

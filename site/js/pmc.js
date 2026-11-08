@@ -217,7 +217,7 @@ export class PmcPane {
     return new Message();
   }
 
-  // The layout of the prototype's explorer: the .i-panel frame; the toolbar; two panels, each a sunken well with
+  // The layout: the panel frame; the toolbar; two panels, each a sunken well with
   // the path, the header and the rows, a scroll bar, and a status line under it; the key bar.
   draw(p, r, hits, focused) {
     const inner = panelFrame(p, r);

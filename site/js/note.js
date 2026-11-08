@@ -62,7 +62,7 @@ export class NoteBody {
     this.ws.requestDraw();
   }
 
-  // The note is a sunken well with the text inside it, padded as the prototype's .md (8 px by 10 px).
+  // The note is a sunken well with the text inside it, padded 8 px by 10 px.
   draw(p, r, hits) {
     const bar = { x: r.x, y: r.y + r.h - BAR_H, w: r.w, h: BAR_H };
     keyBar(p, hits, bar, this.cells(), this.ws.drawHeld);

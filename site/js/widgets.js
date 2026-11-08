@@ -45,13 +45,13 @@ export class Hits {
   }
 }
 
-// A raised or sunken box, as the prototype's classes: `raised` and `sunken` are 2 px, `raised1` and `sunken1` 1 px.
+// A raised or sunken box with a bevel `width` px wide: 1 px for small boxes, 2 px for buttons and fields.
 export function box(p, r, raised, color = C.btn, width = 1) {
   p.fill(r.x, r.y, r.w, r.h, color);
   p.bevel(r, width, raised);
 }
 
-// The panel of the prototype's .i-panel: a 1 px dark line on the top and left, a light line inside it, and a light
+// The panel frame: a 1 px dark line on the top and left, a light line inside it, and a light
 // shadow outside on the right and bottom. Returns the inside, which is 1 px border and 4 px padding in.
 export function panelFrame(p, r) {
   p.fill(r.x, r.y, r.w, 1, C.lo);
@@ -63,7 +63,7 @@ export function panelFrame(p, r) {
   return { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 };
 }
 
-// A sunken well: the 2 px frame of the prototype's .sunken. Returns the inside.
+// A sunken well with a 2 px frame. Returns the inside.
 export function wellFrame(p, r, color = C.inset) {
   p.fill(r.x, r.y, r.w, r.h, color);
   p.bevel(r, 2, false);
@@ -136,7 +136,7 @@ export function bitmap(p, x, y, rows, cols, color, scale = 1) {
 
 export const LOAD_W = 37, LOAD_H = 11;
 
-// The load bar of the prototype's .ld.ld-mini: a 1 px sunken well, a 1 px checker fill of floor(share * 35) px, and the
+// The load bar: a 1 px sunken well, a 1 px checker fill of floor(share * 35) px, and the
 // word `load`, `done` or `errr` 6 px in: bright over the empty part, dark over the fill. `load` is
 // { state, share } or null, which draws nothing.
 export function loadBar(p, x, y, load) {

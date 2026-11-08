@@ -1,5 +1,5 @@
-// Sizes in device pixels (the layout's unit, see main.js). The values are those of the prototypes' CSS:
-// explorer.html and start-screen.html, at scale 1.
+// Sizes in layout pixels: a layout pixel is one device pixel at UI scale 1 (see main.js).
+// The design system (docs/design-system) lists them all.
 export const FONT = 8;                  // rv_font cell height: the interface text size
 export const EM = 6;                    // rv_font advance: the width of "M" in the interface
 export const PAD = 4;
@@ -21,7 +21,7 @@ export const CHROME = { w: 2 * TILE_INSET, h: TILE_TOP + TILE_BOTTOM };
 export const TABS_LEFT = 6;             // the first tab starts this far from the tile's inner edge
 export const SPLITTER = 4;
 export const EDGE_SHARE = 0.25;         // a drop nearer than this share of a tile to its edge makes a neighbor
-export const ROW = 12;                  // pmc row height, as in the prototype
+export const ROW = 12;                  // pmc row height
 export const CODE_LINE = 16;            // code text in notes: PxPlus VGA 9x16 at its native size
 export const MSG_H = 14;
 export const ENV_H = 16;
@@ -29,7 +29,7 @@ export const DRAG_START = 4;            // pixels a title bar moves before the p
 export const VIEWPORT_MIN = { w: 960, h: 540 };
 export const SCREEN_MIN = { w: 960, h: 540 };
 
-// Minimum content sizes of the panes, as in the prototypes. A tile adds CHROME.
+// Minimum content sizes of the panes. A tile adds CHROME.
 export const PANE_MIN = {
   generic: { w: 20 * EM, h: 4 * FRAME },                                   // 120 x 64
   pmc: { w: 2 * (20 * EM + 56 + 70 + 14 + 4) + 4, h: FRAME + 26 + 3 * ROW + 14 + 14 + 4 * PAD }, // 532 x 122

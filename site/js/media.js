@@ -165,7 +165,7 @@ export class Player {
     return Number.isFinite(this.element.duration) ? this.element.duration : NaN;
   }
 
-  // Spec 6: a video goes to the browser's fullscreen, showing only its frame; again, it comes back. An audio player
+  // A video goes to the browser's fullscreen, showing only its frame; again, it comes back. An audio player
   // has no fullscreen: false, and the workspace maximizes the tile instead. Refusals are ignored.
   fullscreen() {
     if (this.kind !== 'video') return false;
@@ -208,7 +208,7 @@ export class Player {
     return true;
   }
 
-  // The key bar of spec 4: Space sinks Play while paused and Pause while playing; a click on Seek or Volume steps
+  // The key bar: Space sinks Play while paused and Pause while playing; a click on Seek or Volume steps
   // forward or up, as Right and Up do. A video has Loop before Seek.
   cells() {
     const on = this.playing;
@@ -235,7 +235,7 @@ export class Player {
     p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
     const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
     const tw = now.x + now.w - 8 - tx;
-    // The header (spec 5): the name large, the art line under it, the meta line moving up when there is no art.
+    // The header: the name large, the art line under it, the meta line moving up when there is no art.
     const head = headerOf(this.entry.name, this.tags.get(this.path(this.index)));
     p.text(RV, tx, now.y + 10, fitText(RV, head.name, tw, 2), C.ct, 2);
     if (head.art) p.text(RV, tx, now.y + 28, fitText(RV, head.art, tw), C.cs);
@@ -315,7 +315,7 @@ export class Player {
   }
 
   // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame, the foot panel 4 px above
-  // the key bar (spec 4: `name · 00:00 / 01:12`, the load bar, `Keyboard: —`) and the key bar.
+  // the key bar (`name · 00:00 / 01:12`, the load bar, `Keyboard: —`) and the key bar.
   drawVideo(p, r, hits) {
     const bottom = this.keys(p, hits, r);
     const end = this.transport(p, hits, r);
