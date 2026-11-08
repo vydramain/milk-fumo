@@ -159,6 +159,8 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 - a split's minimum is the sum of the minimums along its axis plus the splitter, and the largest across it;
 - a border cannot move past a minimum, with the mouse or with `Shift+R`.
 
+A key bar cell is never narrower than 34 px: one letter of its key and two of its name. So the Player is at least 286 px wide (8 cells), a video 322 px (9 cells, Loop added), and pmc 694 px, so that a panel's quick view holds a video's key bar.
+
 **UI scale.** `Shift+S` cycles 1x → 1.5x → 2x → 1x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large. A scale the window cannot hold is skipped, with the size it needs; at start and when the window shrinks the largest scale that fits is taken. 1.5x is drawn without smoothing, so a font pixel falls on a whole device pixel or none and letters come out uneven.
 
 Metrics at 1x, in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 px with 2 px padding, title bar 14 px, tab strip 14 px, splitter 4 px. A tile's frame takes 8 px across and 40 px down.

@@ -397,6 +397,9 @@ favicons.forEach((img) => img.addEventListener('load', redrawAll));
 // ---- the stages ----------------------------------------------------------------------------------------------------
 
 // Each stage: its size in layout pixels, an optional fixed scale, and the scene.
+// The pmc stages: the pmc minimum and a little room around its tile.
+const PMC_W = M.PANE_MIN.pmc.w + 28;
+
 const DEMOS = {
   // Foundations
   palette: { w: 664, h: 224, make: drawing((p) => {
@@ -544,7 +547,7 @@ const DEMOS = {
     loadBar(p, 6, 8, t < 1 ? { state: 'load', share: t } : { state: 'done', share: 1 });
     label(p, 52, 10, t < 1 ? `share ${t.toFixed(2)}` : 'done', C.text);
   }, () => true) },
-  keybars: { w: 600, h: 9 * 30 + 4, make: drawing((p, hits, W, H, st) => {
+  keybars: { w: 600, h: 10 * 30 + 4, make: drawing((p, hits, W, H, st) => {
     const held = st.focused ? st.held : NO_KEYS;
     const rows = [
       ['pmc', BARS_OF.pmc, held, W - 12], ['Player', BARS_OF.Player, held, W - 12], ['Video', BARS_OF.Video, held, W - 12],
@@ -552,7 +555,8 @@ const DEMOS = {
       ['Note', BARS_OF.Note, held, W - 12], ['App', BARS_OF.App, held, W - 12],
       ['held: S (a plain key sinks its cell)', BARS_OF.Player, new Set(['KeyS']), W - 12],
       ['held: Shift+0 (a Shift cell sinks only with Shift)', BARS_OF.App, new Set(['ShiftLeft', 'Digit0']), W - 12],
-      ['268 px, the Player minimum: names cut to two letters', BARS_OF.Player, held, 268 - 8],
+      [`${M.PANE_MIN.player.w} px, the Player minimum: names cut to two letters`, BARS_OF.Player, held, M.PANE_MIN.player.w],
+      [`${M.PANE_MIN.video.w} px, the Video minimum`, BARS_OF.Video, held, M.PANE_MIN.video.w],
     ];
     rows.forEach(([name, cells, keys, w], i) => {
       const y = 4 + i * 30;
@@ -604,30 +608,30 @@ const DEMOS = {
   }) },
 
   // The tiles
-  pmc: { w: 560, h: 260, make: tileBody((ws) => new PmcPane(ws)) },
-  'pmc-image': { w: 560, h: 260, make: tileBody(async (ws) => {
+  pmc: { w: PMC_W, h: 260, make: tileBody((ws) => new PmcPane(ws)) },
+  'pmc-image': { w: PMC_W, h: 260, make: tileBody(async (ws) => {
     const pmc = new PmcPane(ws);
     await cd(pmc, 0, 'images', 'testcard-1280.png');
     pmc.showQuick(0, pmc.cursorItem(0));
     return pmc;
   }) },
-  'pmc-audio': { w: 560, h: 300, make: tileBody(async (ws) => {
+  'pmc-audio': { w: PMC_W, h: 300, make: tileBody(async (ws) => {
     const pmc = new PmcPane(ws);
     await cd(pmc, 0, 'music', '01 brass-hum.mp3');
     pmc.showQuick(0, pmc.cursorItem(0));
     return pmc;
   }) },
-  'pmc-video': { w: 560, h: 360, make: quick('video', 'testcard.webm') },
-  'pmc-note': { w: 560, h: 200, make: quick('notes', 'short.md') },
-  'pmc-other': { w: 560, h: 160, make: quick('notes', 'plain.txt') },
-  'pmc-folder': { w: 560, h: 200, make: tileBody(async (ws) => {
+  'pmc-video': { w: PMC_W, h: 360, make: quick('video', 'testcard.webm') },
+  'pmc-note': { w: PMC_W, h: 200, make: quick('notes', 'short.md') },
+  'pmc-other': { w: PMC_W, h: 160, make: quick('notes', 'plain.txt') },
+  'pmc-folder': { w: PMC_W, h: 200, make: tileBody(async (ws) => {
     const pmc = new PmcPane(ws);
     await cd(pmc, 0, '', 'apps');
     pmc.showQuick(0, pmc.cursorItem(0));
     pmc.switchPanel();
     return pmc;
   }) },
-  'pmc-states': { w: 560, h: 200, make: tileBody(async (ws) => {
+  'pmc-states': { w: PMC_W, h: 200, make: tileBody(async (ws) => {
     const pmc = new PmcPane(ws);
     await cd(pmc, 0, 'locked');
     await cd(pmc, 1, '');
@@ -636,7 +640,7 @@ const DEMOS = {
     pmc.search(1, 'u');
     return pmc;
   }) },
-  'pmc-unfocused': { w: 560, h: 200, make: tileBody(async (ws) => {
+  'pmc-unfocused': { w: PMC_W, h: 200, make: tileBody(async (ws) => {
     const pmc = new PmcPane(ws);
     await cd(pmc, 0, 'notes', 'short.md');
     await cd(pmc, 1, 'empty');
