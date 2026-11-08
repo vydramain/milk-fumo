@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>demo.exe</title>
+<style>html, body { margin: 0; height: 100%; background: #11111b; overflow: hidden; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// A stand-in web app: a brass square that bounces, arrows push it. It tells the site it is ready, as a real app may.
+const c = document.getElementById('c'), g = c.getContext('2d');
+const s = { x: 20, y: 20, dx: 2, dy: 1.5 };
+addEventListener('keydown', (e) => {
+  const k = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.code];
+  if (k) { s.dx += k[0]; s.dy += k[1]; }
+});
+(function frame() {
+  c.width = innerWidth; c.height = innerHeight;
+  s.x += s.dx; s.y += s.dy;
+  if (s.x < 0 || s.x > c.width - 16) s.dx = -s.dx;
+  if (s.y < 0 || s.y > c.height - 16) s.dy = -s.dy;
+  g.fillStyle = '#958831';
+  g.fillRect(Math.round(s.x), Math.round(s.y), 16, 16);
+  requestAnimationFrame(frame);
+})();
+parent.postMessage({ type: 'APP_READY' }, location.origin);
+</script>
+</body>
+</html>

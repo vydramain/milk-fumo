@@ -3,6 +3,7 @@
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
 import { T } from './texts.js';
+import { TITLE_H } from './metrics.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
 export class Hits {
@@ -182,6 +183,28 @@ export function keyBar(p, hits, r, cells, held) {
     p.text(RV, nx, cell.y + 3, fitText(RV, label, cell.x + w - nx - 2), C.text);
     if (k.click) hits.add(cell, { click: k.click });
   });
+}
+
+// The screens that replace the workspace when the screen is too small or the device is a touch-first one: a tile with
+// a title and lines of text, or the text alone, centered on the darkest surface.
+export function messageScreen(p, size, title, lines) {
+  p.fill(0, 0, size.w, size.h, C.dark);
+  const lineList = Array.isArray(lines) ? lines : [lines];
+  const head = title ? TITLE_H + 6 : 0;
+  const w = 360;
+  const h = 7 + head + 8 + lineList.length * 12 + 8 + 7;
+  const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
+  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
+  p.bevel(frame, 2, true);
+  if (title) {
+    const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
+    p.dither(tr, C.win, C.lo);
+    p.fill(tr.x + 14, tr.y, textWidth(RV, title) + 12, tr.h, C.win);
+    p.text(RV, tr.x + 20, tr.y + 3, title, C.bright);
+  }
+  const body = { x: frame.x + 7, y: frame.y + 7 + head, w: frame.w - 14, h: h - 14 - head };
+  p.fill(body.x, body.y, body.w, body.h, C.inset);
+  lineList.forEach((s, i) => p.text(RV, body.x + 8, body.y + 8 + i * 12, s, C.text));
 }
 
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),

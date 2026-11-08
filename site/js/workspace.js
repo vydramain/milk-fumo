@@ -27,14 +27,14 @@ const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without mo
 const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };  // tab ids; the names are T.tile
 
 // A file that is still loading, or a list that could not be read.
-class LoadingBody {
+export class LoadingBody {
   constructor(ws) { this.ws = ws; this.minimum = TILE_MIN; }
   draw(p, r) { p.text(RV, r.x + 4, r.y + 4, T.loading, C.cov); }
   key() { return false; }
   dispose() {}
 }
 
-class MessageBody {
+export class MessageBody {
   constructor(text) { this.text = text; this.minimum = TILE_MIN; }
   draw(p, r) { p.fill(r.x, r.y, r.w, r.h, C.cb); p.text(RV, r.x + 6, r.y + 6, this.text, C.ct); }
   key() { return false; }
