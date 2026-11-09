@@ -135,7 +135,7 @@ Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 
 
 - The layout is designed for a **960×540 viewport**. A smaller viewport, or one smaller than the current layout's minimum, scrolls instead of squeezing the tiles.
 - A **screen** smaller than 960×540 (`screen.width × screen.height`) gets a "too small" notice with the required and current size.
-- A **mobile device** gets a notice that says "Sorry, we don't support mobile devices yet." A device counts as mobile when its primary input is touch: `(hover: none) and (pointer: coarse)`.
+- A **touch-first device** gets the [pocket version](#pocket-version) instead of the tiles and has no minimum size. A device counts as touch-first when its primary input is touch: `(hover: none) and (pointer: coarse)`.
 
 3dmppc-editor needs a 1280×720 display and sets 1280×720 as its minimum window size ([`rv_editor_too_small.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/app/rv_editor_too_small.cpp), [`main.cpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/main.cpp)). A browser viewport is smaller than its window, so the site sets its own minimums.
 
@@ -164,6 +164,21 @@ A key bar cell is never narrower than 34 px: one letter of its key and two of it
 **UI scale.** `Shift+S` cycles 1x → 1.5x → 2x → 1x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large. A scale the window cannot hold is skipped, with the size it needs; at start and when the window shrinks the largest scale that fits is taken. 1.5x is drawn without smoothing, so a font pixel falls on a whole device pixel or none and letters come out uneven.
 
 Metrics at 1x, in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 px with 2 px padding, title bar 14 px, tab strip 14 px, splitter 4 px. A tile's frame takes 8 px across and 40 px down.
+
+## Pocket version
+
+A phone shows the site as a Pocket PC would: one tile fills the screen, the open tiles are slanted tabs at the bottom, and Back closes the current tile. The code is [`site/js/pocket.js`](site/js/pocket.js); the tiles' bodies are the desktop's (`note.js`, `media.js`, `image.js`, `app.js`), drawn in a pocket layout from their parts.
+
+- **Scale.** The layout is 240 px wide, as a Pocket PC screen. The scale k is the largest whole number with 240·k ≤ the device width, so font pixels stay whole; the layout is the device size / k.
+- **Start.** The Note `readme.md`. Its `{{actions}}` block is the touch tutorial (`POCKET_ACTIONS` in `texts.js`): open pmc, enter a folder, open a file, switch tiles, run an app, go back.
+- **Screen.** Top to bottom: the title bar (the tile and the clock, no X), the tile, the key bar (4 cells a row, Back always in the last slot), the message line, the tab strip with the **ppmc** cell at the right. ppmc opens pmc and is sunken while pmc is the current tile.
+- **pmc.** One panel. A tap moves the cursor, a tap on the cursor opens the row; Open, Up and Down in the key bar do the same. A file opens in the tile of its type: Note, Player, Video, Image, App; another type gives "no viewer".
+- **Mode.** Chosen once, at load: `main.js` makes either the pocket version or the workspace, never both. A device that changes its primary input keeps its mode until the page is reloaded.
+- **Back.** In a pmc folder, goes up a folder, as Open on `..`; elsewhere, closes the current tile and returns to the one active before it. Each opened tile is a browser history entry, so the system back gesture does the same; Forward does nothing. The last tile is not closed. The history lives one page load: after a reload the page goes back to the first tile's entry, so the next system back leaves the site.
+- **Player and Video.** The desktop's now-playing well, Position slider and playlist; no Volume cells (the phone's buttons), Mute stays. Video has Full: the frame fills the screen and the browser's fullscreen is asked for; a tap or Back leaves it. The frame is the video element itself, placed over the tile as an app's iframe is: Android Chrome gave the canvas black frames of a video that was not on the page.
+- **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. Whatever is under the finger is drawn sunken until the finger lifts or starts a drag. The canvas has `touch-action: none`.
+
+Every screen in its states: the [pocket design system](#design-system).
 
 ## UI
 
@@ -223,7 +238,7 @@ PxPlus IBM VGA 9×16 (VileR) and the Cyrillic of `rv_font`, which is redrawn fro
 
 ### Markdown in notes
 
-- A first-level heading is `rv_font` at 16 px with a groove under it; a second-level heading is `rv_font` at 8 px with a dithered rule.
+- A first-level heading is `rv_font` at 16 px with a groove under it; a second-level heading is `rv_font` at 8 px with a dithered rule. A heading wider than the tile wraps by words.
 - Body text is `rv_font`; code is PxPlus IBM VGA 9×16 on navy.
 - Box and rule characters (`·` `│` `─` `—`) are drawn as pixel glyphs of the same cell.
 - Notes support lists, quotes, horizontal rules and links. A link `[text](address)` opens in a new browser tab. An address is kept only if it is http, https, or a relative address without `//`, spaces, colons, ampersands or backslashes.
@@ -242,10 +257,11 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 | `workspace.js` | focus, resize mode, dragging, the message line and one command table; keys, environment-bar cells and title-bar buttons all lead into it |
 | `main.js` | the canvas, events and the `keydown` router: Shift combinations by `KeyboardEvent.code` go to environment commands; other keys go to the focused tile |
 | `pmc.js`, `note.js`, `media.js`, `image.js`, `app.js` | the tile types |
+| `pocket.js` | the [pocket version](#pocket-version) for a touch-first device: one tile on the screen, tabs, ppmc and Back |
 | `catalog.js` | reading only: the folder listing (nginx JSON) and file URLs; pmc and the viewers use nothing else |
 | `download.js` | byte-counted downloads (fetch and stream reader), kept as Blobs while the tile is open |
 | `tags.js` | audio tags from the first bytes of a file: ID3v2 in mp3, Vorbis comments in Ogg |
-| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap text (`font_data.js` holds the generated glyph tables), drawing primitives, widgets (including the too-small and mobile screens), palette, view |
+| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap text (`font_data.js` holds the generated glyph tables), drawing primitives, widgets (including the too-small screen), palette, view |
 | `texts.js`, `config.js` | all interface texts; the content root (`/content/`), the start folder, the home note `readme.md` and the app suffix `.exe` |
 
 ### Why iframes stay put
@@ -275,7 +291,7 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 |---|---|
 | Foundations | the palette, both bitmap fonts with every glyph, the kind codes, the metrics (read from `metrics.js`), the UI scales 1x, 1.5x and 2x |
 | Primitives | bevels and frames, dithers, slanted tabs, pictures without smoothing |
-| Widgets | buttons, scroll bars, load bars, key bars (with held keys and cut names), foot panels, the too-small and mobile screens |
+| Widgets | buttons, scroll bars, load bars, key bars (with held keys and cut names), foot panels, the too-small screen |
 | Workspace | tiles, title bars and tabs, a maximized tile, drop previews, the message line and environment bar in their states, the favicon |
 | Tiles | pmc with its quick views and errors, notes with every Markdown block and the tutorial table, the player, the video and its fullscreen panel, images, apps, the loading and message bodies |
 | Motion | everything that moves, its trigger and timing, and where to watch it |
@@ -285,10 +301,13 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 |---|---|
 | `index.html` | the sections and their texts; an import map sends the site's `config.js` to the one here |
 | `config.js` | the site's config with the content root moved to `content/` |
-| `ds.js` | the stages: a canvas, the pointer and keys for each component; a network over the fixtures that lists folders as nginx does and can be Fast, Slow, Stalled or Offline |
+| `ds.js` | the stages: a canvas, the pointer and keys for each component |
+| `net.js` | a network over the fixtures that lists folders as nginx does and can be Fast, Slow, Stalled or Offline; both design systems use it |
 | `content/` | the fixtures: tagged and untagged tracks, a video, a large and a small picture, notes, a demo app; names that are listed but missing give `errr`, and `locked/` gives a folder error |
 
 The page has controls for the scale and the network. Clicking a stage gives it the keys, as a focused tile has them. How to open it: [README](README.md#opening-the-design-system).
+
+[`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the [pocket version](#pocket-version): the foundations and metrics, every tile in its states, the start screen on four phones, and the navigation rules. Its screens are drawn by `pocket.js` over the same fixtures and `net.js` (the network is Fast unless `?net=` says otherwise); each screen is live under the pointer.
 
 ## Open questions
 

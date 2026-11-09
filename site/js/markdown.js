@@ -100,6 +100,17 @@ export function fill(toks, width) {
 
 // Draws one line of tokens at (x, y). Keycaps are raised boxes; links are bright with a dotted underline;
 // bold words are bright and one pixel thicker; italic words lean.
+// A heading's lines: whole words that fit `width` at `scale`; a word wider than that stands on its own line.
+function wrapWords(text, width, scale = 1) {
+  const lines = [];
+  for (const word of text.split(' ')) {
+    const joined = lines.length ? lines.at(-1) + ' ' + word : word;
+    if (lines.length && textWidth(RV, joined, scale) <= width) lines[lines.length - 1] = joined;
+    else lines.push(word);
+  }
+  return lines;
+}
+
 function emitLine(L, line, x, y, color) {
   let cx = x;
   for (const t of line) {
@@ -127,27 +138,34 @@ function emitLine(L, line, x, y, color) {
 const ICON_CHECK = [0b00000, 0b00001, 0b00010, 0b10100, 0b01000];
 const ICON_ARROW = [0b10000, 0b11000, 0b11100, 0b11000, 0b10000];
 
-// Lays out the blocks for a width. `progress(action)` gives 'done', 'next' or 'none' for the tutorial table.
+// Lays out the blocks for a width. `progress(action)` gives 'done', 'next' or 'none' for the tutorial table;
+// `actions` are its rows: the desktop's, or the pocket version's, whose actions have a `touch` way instead.
 // Returns { ops, hits, height }.
-export function layout(blocks, width, progress = () => 'none') {
+export function layout(blocks, width, progress = () => 'none', actions = TUTORIAL_ACTIONS) {
   const L = { ops: [], hits: [] };
   let y = 0;
   for (const b of blocks) {
     if (b.type === 'h1') {
-      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 2, color: C.bright, s: b.text });
+      const lines = wrapWords(b.text, width, 2);
+      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + i * 18, font: RV, scale: 2, color: C.bright, s }));
+      y += (lines.length - 1) * 18;
       L.ops.push({ op: 'rect', x: 0, y: y + 21, w: width, h: 1, color: C.lo });
       L.ops.push({ op: 'rect', x: 0, y: y + 22, w: width, h: 1, color: C.hi });
       y += 31;
     } else if (b.type === 'h2') {
       y += 12;
-      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s: b.text });
-      const x = textWidth(RV, b.text) + 6;
+      const lines = wrapWords(b.text, width);
+      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + i * LINE, font: RV, scale: 1, color: C.bright, s }));
+      y += (lines.length - 1) * LINE;
+      const x = textWidth(RV, lines.at(-1)) + 6;
       L.ops.push({ op: 'dither', x, y: y + 4, w: Math.max(0, width - x), h: 4, a: C.lo, b: C.inset });
       y += 14;
     } else if (b.type === 'h3') {
       y += 4;
-      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s: b.text, bold: true });
-      y += 14;
+      for (const s of wrapWords(b.text, width)) {
+        L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s, bold: true });
+        y += 14;
+      }
     } else if (b.type === 'p') {
       for (const line of fill(tokens(b.text), width)) { emitLine(L, line, 0, y, C.text); y += LINE; }
       y += 7;
@@ -177,7 +195,8 @@ export function layout(blocks, width, progress = () => 'none') {
       b.lines.forEach((s, i) => L.ops.push({ op: 'text', x: 6, y: y + 4 + i * CODE_LINE, font: VGA, scale: 1, color: C.ct, s }));
       y += h + 8;
     } else if (b.type === 'actions') {
-      y = layoutActions(L, width, y, progress);
+      y = actions[0].touch ? layoutActionsStacked(L, width, y, progress, actions, (a) => [a.touch])
+        : layoutActions(L, width, y, progress);
     }
   }
   return { ops: L.ops, hits: L.hits, height: y };
@@ -221,17 +240,15 @@ function layoutActions(L, width, y0, progress) {
   return y + 8;
 }
 
-// The table of a narrow tile: each action, then its mouse way and its keyboard way, each under the action.
-function layoutActionsStacked(L, width, y0, progress) {
+// The table of a narrow tile: each action, then its ways under it: the mouse and the keyboard, or the touch.
+const DESK_WAYS = (a) => ['Mouse: ' + a.mouse, 'Keyboard: ' + a.keys];
+function layoutActionsStacked(L, width, y0, progress, actions = TUTORIAL_ACTIONS, waysOf = DESK_WAYS) {
   const mark = 14, indent = 14;
   let y = y0;
-  for (const action of TUTORIAL_ACTIONS) {
+  for (const action of actions) {
     const state = progress(action);
     const todo = fill(tokens(action.todo), width - mark - 6);
-    const ways = [
-      ...fill(tokens('Mouse: ' + action.mouse), width - mark - indent - 6),
-      ...fill(tokens('Keyboard: ' + action.keys), width - mark - indent - 6),
-    ];
+    const ways = waysOf(action).flatMap((w) => fill(tokens(w), width - mark - indent - 6));
     const color = state === 'next' ? C.bright : C.text;
     const h = (todo.length + ways.length) * LINE + 6;
     if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: C.inset });

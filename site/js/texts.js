@@ -23,12 +23,31 @@ export const TUTORIAL_ACTIONS = [
   { done: 'close', todo: 'Close a tile', mouse: 'X in the title bar', keys: '[Shift] + [Q], also inside a game or app' },
 ];
 
+// The tutorial of the pocket version (a touch-first device): each action and how it is done with a finger.
+export const POCKET_ACTIONS = [
+  { done: 'open', todo: 'Open pmc', touch: 'tap [ppmc] at the bottom right' },
+  { done: 'enter', todo: 'Enter a folder', touch: 'tap a row, then tap it again' },
+  { done: 'play', todo: 'Open a file', touch: 'a track, a picture, a video or a note' },
+  { done: 'switch', todo: 'Switch tiles', touch: 'tap a tab at the bottom' },
+  { done: 'app', todo: 'Run an app', touch: 'open a folder whose name ends in .exe' },
+  { done: 'close', todo: 'Go back', touch: 'tap [<] Back, or swipe back' },
+];
+
+// The texts of the pocket version.
+export const P = {
+  ppmc: 'ppmc',
+  start: 'Tap [ppmc] to browse the files.',
+  pmcHint: 'Tap a row, tap it again to open.',
+  again: (name) => `Tap again to open ${name}.`,
+  appRunning: (name) => `Running ${name}. Back closes it.`,
+  lastTile: 'The last tile cannot be closed.',
+};
+
 export const T = {
   tooSmallTitle: 'Screen too small',
   tooSmallNeeds: 'Needs at least',
   tooSmallNow: 'This screen',
   tooSmallHint: 'Open the site on a larger screen.',
-  mobile: "Sorry, we don't support mobile devices yet.",
   loading: 'Loading…',
   noViewer: 'There is no viewer for this file type.',
   appNoIndex: 'This app has no index.html.',

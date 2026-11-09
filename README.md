@@ -8,7 +8,8 @@ A personal portfolio site shaped as a tiling window manager. The browser window 
 - Everything can be done with the keyboard, with the mouse, or with both.
 - The site is read-only for visitors; they write nothing to the published content.
 - Chromium and Firefox are supported.
-- [`docs/design-system/`](docs/design-system/) shows every component the site draws and every motion, drawn by the site's own modules (see [DESIGN.md](DESIGN.md#design-system)).
+- A phone gets the pocket version: one tile on the screen, tabs at the bottom, Back closes the tile (see [DESIGN.md](DESIGN.md#pocket-version)).
+- [`docs/design-system/`](docs/design-system/) shows every component the site draws and every motion, drawn by the site's own modules (see [DESIGN.md](DESIGN.md#design-system)); [`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the pocket version.
 
 ## Controls
 
@@ -43,7 +44,7 @@ Three things run from this repository: the design system, the dev build and the 
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Open <http://localhost:8000/docs/design-system/>. The server must serve the repository root, because the page loads the site's modules from `../../site/js/`; a page opened as a file does not work, since browsers do not load ES modules from `file://`. The content is the fixtures in [`docs/design-system/content/`](docs/design-system/content/); Docker and nginx are not needed. The scale and the network are set by the controls on the page, or in the address: `?ui=2&net=slow` (`net` is `fast`, `slow`, `stalled` or `offline`). `Ctrl+C` stops the server.
+Open <http://localhost:8000/docs/design-system/>. The server must serve the repository root, because the page loads the site's modules from `../../site/js/`; a page opened as a file does not work, since browsers do not load ES modules from `file://`. The content is the fixtures in [`docs/design-system/content/`](docs/design-system/content/); Docker and nginx are not needed. The scale and the network are set by the controls on the page, or in the address: `?ui=2&net=slow` (`net` is `fast`, `slow`, `stalled` or `offline`). The pocket version's design system is <http://localhost:8000/docs/pocket-design-system/>, from the same server. `Ctrl+C` stops the server.
 
 ### Dev build
 

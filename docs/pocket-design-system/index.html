@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MILK-FUMO pocket design system</title>
+<link rel="icon" sizes="16x16" href="../../site/favicon-16.png">
+<!-- The site modules read their content root from ./config.js; inside site/js/ that import comes here instead. -->
+<script type="importmap">
+{ "scopes": { "../../site/js/": { "../../site/js/config.js": "../design-system/config.js" } } }
+</script>
+<style>
+:root {
+  --win: #4C5844; --inset: #3E4637; --sel: #958831; --hi: #7E8776; --lo: #32392C; --dark: #282E20;
+  --text: #D8DED3; --bright: #F1F2F0; --dim: #758666;
+}
+html { background: var(--dark); color: var(--text); }
+body { margin: 0 auto; max-width: 1240px; padding: 16px; font: 14px/1.5 ui-monospace, monospace; }
+h1, h2, h3 { color: var(--bright); font-weight: normal; }
+h1 { margin: 0 0 4px; }
+h2 { margin: 40px 0 8px; padding-bottom: 4px; border-bottom: 2px groove var(--hi); }
+h3 { margin: 24px 0 4px; font-size: 14px; color: var(--sel); }
+p { margin: 4px 0 8px; max-width: 80ch; }
+a { color: var(--bright); text-decoration-color: var(--sel); }
+code { color: var(--bright); }
+nav a { margin-right: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.scroll { overflow-x: auto; }
+.scroll .row { flex-wrap: nowrap; }
+.stage { position: relative; line-height: 0; }
+.stage canvas { display: block; touch-action: none; }
+.cap { color: var(--dim); margin: 4px 0 0; max-width: 300px; line-height: 1.4; }
+table { border-collapse: collapse; margin: 8px 0; }
+td, th { border: 1px solid var(--lo); padding: 2px 8px; text-align: left; vertical-align: top; }
+th { color: var(--bright); font-weight: normal; background: var(--win); }
+.sw { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; border: 1px solid var(--lo); }
+</style>
+</head>
+<body>
+<h1>MILK-FUMO pocket design system</h1>
+<p>The phone version of the site, as a Pocket PC would show it: one tile fills the screen, the open tiles are tabs at the bottom, and Back closes the current tile. Every screen here is drawn by the site's own <a href="../../site/js/pocket.js"><code>pocket.js</code></a>, the module a touch-first device runs, over the fixtures of the <a href="../design-system/">design system</a> (<a href="../design-system/net.js"><code>net.js</code></a> lists them as nginx would), so the page cannot drift from the site. Every screen is live: tap it, drag it.</p>
+<p class="cap" style="max-width:80ch">Open from a static server in the repository root: <code>python3 -m http.server 8000</code>, then <code>localhost:8000/docs/pocket-design-system/</code>. Screens are shown at about 2 CSS pixels per layout pixel. The network is fast; <code>?net=slow</code>, <code>stalled</code> or <code>offline</code> as in the design system.</p>
+<nav><a href="#foundations">Foundations</a><a href="#screens">Screens</a><a href="#devices">Devices</a><a href="#navigation">Navigation</a></nav>
+
+<h2 id="foundations">Foundations</h2>
+<h3>Palette</h3>
+<p>The site's palette, unchanged (<a href="../../site/js/theme.js"><code>theme.js</code></a>): olive surfaces and brass focus for pmc and notes, the navy wells of Catppuccin Mocha for the player and apps.</p>
+<div id="palette" class="row"></div>
+<h3>Fonts</h3>
+<p>The site's two bitmap fonts at their native size or a whole multiple: <code>rv_font</code> 5×7 for everything, at 2x for a note's first heading and the track name; PxPlus IBM VGA 9×16 at 2x for the playback time.</p>
+<h3>Metrics</h3>
+<table>
+<tr><th>Name</th><th>Value</th><th>Why</th></tr>
+<tr><td>Pocket width</td><td id="m-w"></td><td>A Pocket PC screen is 240 px wide. The scale k is the largest whole number with 240·k ≤ the screen's device width, so font pixels stay whole; the layout width is the device width / k.</td></tr>
+<tr><td>List row</td><td id="m-row"></td><td>pmc's 12 px row grown for a finger. The playlist keeps the desktop's 12 px rows.</td></tr>
+<tr><td>Key-bar row</td><td id="m-bar"></td><td>A 14 px cell of the site's key bar and 2 px between rows.</td></tr>
+<tr><td>Key-bar slots</td><td id="m-slots"></td><td>Four cells a row; the 8 cells of the desktop player need 286 px, a phone has about 260.</td></tr>
+<tr><td>Title bar, message line, tab strip</td><td>14 px</td><td>The site's title bar, message line and tab strip.</td></tr>
+<tr><td>Tile frame</td><td>2 px bevel, 2 px padding</td><td>The site's tile frame: the screen is one maximized tile.</td></tr>
+</table>
+<h3>Phones</h3>
+<p>What the rule above gives on common phones. The safe area (the notch, the home indicator) is outside the screen: the page leaves it dark.</p>
+<table id="devices-table"><tr><th>Phone</th><th>CSS size</th><th>Device pixels</th><th>k</th><th>Layout</th></tr></table>
+
+<h2 id="screens">Screens</h2>
+<p>Each tile in its states, on an iPhone 15 layout, cut in height. The top is the title bar (the tile and the clock), the bottom is the key bar, the message line and the tab strip with ppmc.</p>
+<h3>Note</h3>
+<div class="row" id="s-note"></div>
+<h3>pmc</h3>
+<div class="row" id="s-pmc"></div>
+<h3>Player</h3>
+<div class="row" id="s-player"></div>
+<h3>Video</h3>
+<div class="row" id="s-video"></div>
+<h3>Image</h3>
+<div class="row" id="s-image"></div>
+<h3>App</h3>
+<div class="row" id="s-app"></div>
+
+<h2 id="devices">Devices</h2>
+<p>The start screen at each phone's full layout. A wider layout gives the text more room; the key bar and the tabs keep their sizes.</p>
+<div class="scroll"><div class="row" id="s-devices"></div></div>
+
+<h2 id="navigation">Navigation</h2>
+<table>
+<tr><th>To do</th><th>Touch</th><th>Rule</th></tr>
+<tr><td>Open pmc</td><td>the <b>ppmc</b> cell, bottom right</td><td>Always there, as the Open cell of the site's environment bar. Brass until it is used once; sunken and not tappable while pmc is the current tile.</td></tr>
+<tr><td>Move the cursor</td><td>tap a row</td><td>The message line says the next tap opens it.</td></tr>
+<tr><td>Open a file or folder</td><td>tap the cursor row, or <b>Open</b> in the key bar</td><td>The site's click then double click, as two taps. A file opens in the tile of its type; there is one tile per type, as on the desktop.</td></tr>
+<tr><td>Move the cursor by one</td><td><b>^ Up</b>, <b>v Down</b> in pmc's key bar</td><td>The list follows the cursor. The folder above is the <code>..</code> row: there is no Up-a-folder cell.</td></tr>
+<tr><td>Scroll</td><td>drag a list or a note</td><td>The scroll bar of the desktop is left out: the finger is the scroll bar. A note has no Top and Bottom cells.</td></tr>
+<tr><td>Switch tiles</td><td>tap a tab</td><td>Tabs are the open tiles in the order they were opened; the active one is brass.</td></tr>
+<tr><td>Go back</td><td><b>&lt; Back</b>, the last key-bar slot, or the system back gesture</td><td>In a pmc folder, goes up a folder, as Open on <code>..</code>. Elsewhere, closes the current tile and returns to the one active before it. Back is in the same place on every tile. Each opened tile is a browser history entry, so the swipe from the left edge on iOS and the back button or gesture on Android do the same. The last tile is not closed; the message line says so.</td></tr>
+<tr><td>Seek</td><td>press and drag the Position slider</td><td>The desktop's slider (media.js seekBar). No Seek cell.</td></tr>
+<tr><td>Video fullscreen</td><td><b>F Full</b>; a tap or Back leaves it</td><td>The frame fills the screen. The browser's fullscreen is asked for where it exists (Android); an iPhone refuses it for a page, and the frame still fills the screen.</td></tr><tr><td>Volume</td><td>the phone's buttons</td><td>No Volume cells. Mute stays.</td></tr>
+</table>
+<p>Why no <code>X</code> in the title bar: phone apps have no close button on a screen; iOS puts Back at the top left and a sheet's close at the top right, Android has the system back. Back at the bottom right is where the thumb is, and the system gesture covers the platform habit.</p>
+
+<script type="module">
+import { NET, params } from '../design-system/net.js';
+import { C } from '../../site/js/theme.js';
+import { Paint } from '../../site/js/paint.js';
+import { view } from '../../site/js/view.js';
+import { P } from '../../site/js/texts.js';
+import { Pocket, layoutOf, POCKET_W, ROW, BAR, SLOTS } from '../../site/js/pocket.js';
+
+NET.mode = params.get('net') || 'fast';
+const dpr = window.devicePixelRatio || 1;
+const K = Math.max(1, Math.round(2 * dpr));   // device px per layout px: about 2 CSS px, a whole number of device px
+const PHONE = layoutOf(393 * 3, 852 * 3);     // iPhone 15
+
+// Phones the layout is checked on: CSS size and device pixel ratio.
+const DEVICES = [
+  { name: 'iPhone SE', w: 375, h: 667, dpr: 2 },
+  { name: 'iPhone 15', w: 393, h: 852, dpr: 3 },
+  { name: 'Pixel 7', w: 412, h: 915, dpr: 2.625 },
+  { name: 'iPhone 15 Pro Max', w: 430, h: 932, dpr: 3 },
+];
+
+document.getElementById('m-w').textContent = POCKET_W + ' px';
+document.getElementById('m-row').textContent = ROW + ' px';
+document.getElementById('m-bar').textContent = BAR + ' px';
+document.getElementById('m-slots').textContent = SLOTS;
+
+const pal = document.getElementById('palette');
+for (const [name, color] of Object.entries(C)) {
+  const d = document.createElement('div');
+  d.innerHTML = `<span class="sw" style="background:${color}"></span> <code>${name}</code> ${color}`;
+  pal.append(d);
+}
+
+const dt = document.getElementById('devices-table');
+for (const d of DEVICES) {
+  const L = layoutOf(Math.round(d.w * d.dpr), Math.round(d.h * d.dpr));
+  dt.insertAdjacentHTML('beforeend', `<tr><td>${d.name}</td><td>${d.w}×${d.h} @${d.dpr}</td><td>${Math.round(d.w * d.dpr)}×${Math.round(d.h * d.dpr)}</td><td>${L.k}</td><td>${L.w}×${L.h}</td></tr>`);
+}
+
+// A stage: a live pocket screen of w x h layout px, set up into a state, with a caption. It draws as main.js does on a
+// phone: a layout px is K device px, view.ui is K while it draws, an app's frame goes into the stage.
+function stage(parent, caption, setup, w = PHONE.w, h = 440) {
+  const wrap = document.createElement('div');
+  const box = document.createElement('div');
+  box.className = 'stage';
+  const cv = document.createElement('canvas');
+  cv.width = w * K;
+  cv.height = h * K;
+  cv.style.width = cv.width / dpr + 'px';
+  cv.style.height = cv.height / dpr + 'px';
+  box.append(cv);
+  wrap.append(box);
+  wrap.insertAdjacentHTML('beforeend', `<p class="cap">${caption}</p>`);
+  document.getElementById(parent).append(wrap);
+
+  let queued = false;
+  const draw = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      const ui = view.ui;
+      view.ui = K;
+      view.dpr = dpr;
+      pk.render(new Paint(cv.getContext('2d'), K), w, h);
+      view.ui = ui;
+      for (const app of pk.apps()) if (app.wrap.parentNode !== box) box.append(app.wrap);
+      const v = pk.players.video && pk.players.video.element;
+      if (v && v.parentNode && v.parentNode !== box) box.append(v);
+      if (pk.animated()) draw();
+    });
+  };
+  const pk = new Pocket(draw);
+  const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr / K, (e.clientY - r.top) * dpr / K]; };
+  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pk.pointerDown(...at(e)); draw(); });
+  cv.addEventListener('pointermove', (e) => pk.pointerMove(...at(e)));
+  cv.addEventListener('pointerup', (e) => { pk.pointerUp(...at(e)); draw(); });
+  cv.addEventListener('pointercancel', () => pk.cancel());
+  cv.addEventListener('wheel', (e) => { if (pk.wheel(...at(e), e.deltaY)) { e.preventDefault(); draw(); } }, { passive: false });
+  Promise.resolve(setup?.(pk)).then(draw);
+  draw();
+}
+
+stage('s-note', 'Start: readme.md with the touch tutorial; <code>›</code> marks the next action, ppmc is brass. Back alone in the key bar: the text scrolls under the finger.');
+stage('s-note', 'Progress: done actions are dim with a green tick.', (pk) => { ['open', 'enter', 'play'].forEach((d) => pk.progress.add(d)); pk.msg = ''; });
+stage('s-note', 'Another note, opened from pmc in the same Note tile; pmc is a tab.', (pk) => pk.go('notes/short.md'));
+
+stage('s-pmc', 'The root: folders first, two-letter kind codes, SUB-DIR for folders. Open, Up, Down, Back; ppmc is sunken: pmc is here.', async (pk) => { await pk.go(''); pk.msg = P.pmcHint; });
+stage('s-pmc', 'The cursor on a folder after the first tap.', async (pk) => { await pk.go(''); pk.pmc.cursor = 4; pk.msg = P.again(pk.rows()[4].name); });
+stage('s-pmc', 'A folder: <code>..</code> on top as UP--DIR, the path in brass.', async (pk) => { await pk.go('music/'); pk.pmc.cursor = 2; pk.msg = ''; });
+stage('s-pmc', 'Back in <code>/music/</code>: pmc goes up, as Open on <code>..</code>, and the cursor stands on the folder it left.', async (pk) => { await pk.go('music/'); pk.back(); await pk.pmc.load; pk.msg = ''; });
+stage('s-pmc', 'A folder that cannot be listed: the error stands in the row under <code>..</code>.', async (pk) => { await pk.go('locked/'); pk.msg = ''; });
+stage('s-pmc', 'A file with no viewer: the message line says so.', (pk) => pk.go('notes/plain.txt'));
+
+stage('s-player', 'As the desktop: the now-playing well, the Position slider on olive, the playlist with load bars and lengths. No volume.', (pk) => pk.go('music/01 brass-hum.mp3', { autoplay: false }));
+stage('s-player', 'The last track. Prev, Play, Stop, Next; Mute; Back in the last slot.', (pk) => pk.go('music/03 untagged.mp3', { autoplay: false }));
+
+stage('s-video', 'A video opened, not playing yet: the desktop top, then the fitted frame. Mute, Full and Back in the second row.', (pk) => pk.go('video/testcard.webm', { autoplay: false }));
+stage('s-video', 'Fullscreen: the frame fills the screen; a tap or Back leaves it.', async (pk) => { await pk.go('video/testcard.webm', { autoplay: false }); pk.fullscreen(true); });
+
+stage('s-image', 'A picture at whole-number scale, centered. Prev and Next go through the folder\'s pictures.', (pk) => pk.go('images/sprite-48.png'));
+stage('s-image', 'A picture larger than the screen: fitted.', (pk) => pk.go('images/testcard-1280.png'));
+
+stage('s-app', 'An app: its page in an iframe over the dark well. Restart and Back.', (pk) => pk.go('apps/demo.exe'));
+stage('s-app', 'An app with no index.html: the well says so.', (pk) => pk.go('apps/broken.exe'));
+stage('s-app', 'Four tiles open: the tabs in opening order.', async (pk) => { await pk.go('music/01 brass-hum.mp3', { autoplay: false }); await pk.go('apps/demo.exe'); await pk.go(''); pk.msg = ''; });
+stage('s-app', 'Six tiles on an iPhone SE: the tabs share the strip and cut their names, so every tile keeps a tab.', async (pk) => { for (const f of ['music/01 brass-hum.mp3', 'video/testcard.webm', 'images/sprite-48.png', 'apps/demo.exe']) await pk.go(f, { autoplay: false }); pk.msg = ''; }, 250);
+
+for (const d of DEVICES) {
+  const L = layoutOf(Math.round(d.w * d.dpr), Math.round(d.h * d.dpr));
+  stage('s-devices', `${d.name}: ${L.w}×${L.h} layout px at k = ${L.k}.`, null, L.w, L.h);
+}
+</script>
+</body>
+</html>
