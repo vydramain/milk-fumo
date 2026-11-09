@@ -163,6 +163,8 @@ function stage(parent, caption, setup, w = PHONE.w, h = 440) {
       pk.render(new Paint(cv.getContext('2d'), K), w, h);
       view.ui = ui;
       for (const app of pk.apps()) if (app.wrap.parentNode !== box) box.append(app.wrap);
+      const v = pk.players.video && pk.players.video.element;
+      if (v && v.parentNode && v.parentNode !== box) box.append(v);
       if (pk.animated()) draw();
     });
   };

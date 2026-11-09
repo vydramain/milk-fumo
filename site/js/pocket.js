@@ -14,6 +14,7 @@ import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 import { HOME_NOTE, START_DIR } from './config.js';
 import { POCKET_ACTIONS, P, T } from './texts.js';
+import { view } from './view.js';
 
 export const POCKET_W = 240;   // the layout width of a Pocket PC screen; the scale is the largest whole one that fits
 export const ROW = 16;         // a list row: pmc's 12 grown for a finger
@@ -106,7 +107,7 @@ export class Pocket {
     if (this.tiles.length === 1) { this.msg = P.lastTile; return; }
     const id = this.active;
     const kind = id === 'Player' ? 'audio' : id === 'Video' ? 'video' : null;
-    if (kind && this.players[kind]) { this.players[kind].dispose(); this.players[kind] = null; }
+    if (kind && this.players[kind]) { this.players[kind].element.remove(); this.players[kind].dispose(); this.players[kind] = null; }
     if (id === 'Image' && this.image) { this.image.dispose(); this.image = null; }
     if (id === 'App' && this.app) { this.app.dispose(); this.app = null; }
     if (id === 'Note') this.note.dispose();
@@ -245,10 +246,11 @@ export class Pocket {
       if (this.app) this.app.hide();
       const all = { x: 0, y: 0, w: W, h: H };
       p.fill(0, 0, W, H, C.crust);
-      video.drawFrame(p, all, 'fit');
+      this.placeVideo(all);
       hits.add(all, { click: () => this.fullscreen(false) });
       return;
     }
+    if (!video) this.placeVideo(null);
 
     // The one tile: a raised frame over the whole screen, as a maximized tile.
     p.fill(0, 0, W, H, C.win);
@@ -290,6 +292,20 @@ export class Pocket {
     const pr = this.down && !this.down.moved && this.down.pressed;
     const held = pr && hits.list.find((h) => h.on.click && h.r.x === pr.x && h.r.y === pr.y && h.r.w === pr.w && h.r.h === pr.h);
     if (held) p.bevel(held.r, 2, false);
+  }
+
+  // The video is shown by its own element over the frame, as app.js shows an app's iframe: a phone's browser gave the
+  // canvas black frames of a video that is not on the page (Android Chrome, 2026-11-09). `r` null hides it.
+  placeVideo(r) {
+    const el = this.players.video && this.players.video.element;
+    if (!el) return;
+    if (!r) { el.style.display = 'none'; return; }
+    if (!el.parentNode) {
+      el.style.cssText = `position:absolute;object-fit:contain;pointer-events:none;background:${C.crust};`;
+      document.body.append(el);
+    }
+    const k = view.ui / view.dpr;
+    Object.assign(el.style, { display: 'block', left: `${r.x * k}px`, top: `${r.y * k}px`, width: `${r.w * k}px`, height: `${r.h * k}px` });
   }
 
   title() {
@@ -459,7 +475,7 @@ export class Pocket {
     const rest = { x: r.x, y: below + 6, w: r.w, h: r.y + r.h - below - 6 };
     if (pl.kind === 'audio') { pl.playlist(p, hits, rest); return; }
     p.fill(rest.x, rest.y, rest.w, rest.h, C.crust);
-    pl.drawFrame(p, rest, 'fit');
+    this.placeVideo(rest);
   }
 
   // The now-playing well: the top of media.js transport() without its volume.
