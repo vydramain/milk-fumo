@@ -176,7 +176,7 @@ A phone shows the site as a Pocket PC would: one tile fills the screen, the open
 - **Mode.** Chosen once, at load: `main.js` makes either the pocket version or the workspace, never both. A device that changes its primary input keeps its mode until the page is reloaded.
 - **Back.** In a pmc folder, goes up a folder, as Open on `..`; elsewhere, closes the current tile and returns to the one active before it. Each opened tile is a browser history entry, so the system back gesture does the same; Forward does nothing. The last tile is not closed. The history lives one page load: after a reload the page goes back to the first tile's entry, so the next system back leaves the site.
 - **Player and Video.** The desktop's now-playing well, Position slider and playlist; no Volume cells (the phone's buttons), Mute stays. Video has Full: the frame fills the screen and the browser's fullscreen is asked for; a tap or Back leaves it.
-- **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. The canvas has `touch-action: none`.
+- **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. Whatever is under the finger is drawn sunken until the finger lifts or starts a drag. The canvas has `touch-action: none`.
 
 Every screen in its states: the [pocket design system](#design-system).
 

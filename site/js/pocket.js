@@ -286,6 +286,10 @@ export class Pocket {
     p.bevel(msg, 1, false);
     p.text(RV, msg.x + 4, msg.y + 3, fitText(RV, this.msg.replace(/[[\]]/g, ''), msg.w - 8), C.bright);
     this.tabStrip(p, hits, { x: 4, y: tabsY, w: W - 8, h: 14 });
+    // Every tappable thing looks pressed while the finger is on it, as on the desktop (workspace.js).
+    const pr = this.down && !this.down.moved && this.down.pressed;
+    const held = pr && hits.list.find((h) => h.on.click && h.r.x === pr.x && h.r.y === pr.y && h.r.w === pr.w && h.r.h === pr.h);
+    if (held) p.bevel(held.r, 2, false);
   }
 
   title() {
@@ -514,7 +518,9 @@ export class Pocket {
   // ---- input: a tap clicks, a drag scrolls, a press (the Position slider) follows the finger ----
 
   pointerDown(x, y) {
-    this.down = { x, y, last: y, moved: false, drag: null, scroll: this.hits.find(x, y, 'scroll') };
+    const click = this.hits.find(x, y, 'click');
+    this.down = { x, y, last: y, moved: false, drag: null, scroll: this.hits.find(x, y, 'scroll'), pressed: click && click.r };
+    this.requestDraw();
     const pr = this.hits.find(x, y, 'press');
     if (pr) {
       const r = pr.on.press(x, y);
@@ -527,7 +533,7 @@ export class Pocket {
     const d = this.down;
     if (!d) return;
     if (d.drag) { d.drag(x, y); this.requestDraw(); return; }
-    if (Math.abs(y - d.y) > DRAG || Math.abs(x - d.x) > DRAG) d.moved = true;
+    if (!d.moved && (Math.abs(y - d.y) > DRAG || Math.abs(x - d.x) > DRAG)) { d.moved = true; this.requestDraw(); }
     if (d.moved && d.scroll) { d.scroll.on.scroll(y - d.last); d.last = y; this.requestDraw(); }
   }
 
