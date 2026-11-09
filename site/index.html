@@ -9,6 +9,8 @@
 <style>
 html, body { margin: 0; height: 100%; background: #282E20; overflow: auto; }
 canvas { display: block; outline: none; }
+/* The pocket version reads every drag itself; a desktop page larger than the window still scrolls by touch. */
+@media (hover: none) and (pointer: coarse) { canvas { touch-action: none; } }
 </style>
 </head>
 <body>

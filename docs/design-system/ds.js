@@ -491,7 +491,6 @@ const DEMOS = {
   'screen-small': { w: 400, h: 110, make: drawing((p, hits, W, H) => {
     messageScreen(p, { w: W, h: H }, T.tooSmallTitle, [`${T.tooSmallNeeds} ${M.SCREEN_MIN.w}×${M.SCREEN_MIN.h}`, `${T.tooSmallNow} 800×600`, T.tooSmallHint]);
   }) },
-  'screen-mobile': { w: 400, h: 56, make: drawing((p, hits, W, H) => messageScreen(p, { w: W, h: H }, null, T.mobile)) },
 
   // The workspace
   tiles: { w: 720, h: 150, make: workspace((ws) => {

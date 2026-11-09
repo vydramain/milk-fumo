@@ -127,9 +127,10 @@ function emitLine(L, line, x, y, color) {
 const ICON_CHECK = [0b00000, 0b00001, 0b00010, 0b10100, 0b01000];
 const ICON_ARROW = [0b10000, 0b11000, 0b11100, 0b11000, 0b10000];
 
-// Lays out the blocks for a width. `progress(action)` gives 'done', 'next' or 'none' for the tutorial table.
+// Lays out the blocks for a width. `progress(action)` gives 'done', 'next' or 'none' for the tutorial table;
+// `actions` are its rows: the desktop's, or the pocket version's, whose actions have a `touch` way instead.
 // Returns { ops, hits, height }.
-export function layout(blocks, width, progress = () => 'none') {
+export function layout(blocks, width, progress = () => 'none', actions = TUTORIAL_ACTIONS) {
   const L = { ops: [], hits: [] };
   let y = 0;
   for (const b of blocks) {
@@ -177,7 +178,8 @@ export function layout(blocks, width, progress = () => 'none') {
       b.lines.forEach((s, i) => L.ops.push({ op: 'text', x: 6, y: y + 4 + i * CODE_LINE, font: VGA, scale: 1, color: C.ct, s }));
       y += h + 8;
     } else if (b.type === 'actions') {
-      y = layoutActions(L, width, y, progress);
+      y = actions[0].touch ? layoutActionsStacked(L, width, y, progress, actions, (a) => [a.touch])
+        : layoutActions(L, width, y, progress);
     }
   }
   return { ops: L.ops, hits: L.hits, height: y };
@@ -221,17 +223,15 @@ function layoutActions(L, width, y0, progress) {
   return y + 8;
 }
 
-// The table of a narrow tile: each action, then its mouse way and its keyboard way, each under the action.
-function layoutActionsStacked(L, width, y0, progress) {
+// The table of a narrow tile: each action, then its ways under it: the mouse and the keyboard, or the touch.
+const DESK_WAYS = (a) => ['Mouse: ' + a.mouse, 'Keyboard: ' + a.keys];
+function layoutActionsStacked(L, width, y0, progress, actions = TUTORIAL_ACTIONS, waysOf = DESK_WAYS) {
   const mark = 14, indent = 14;
   let y = y0;
-  for (const action of TUTORIAL_ACTIONS) {
+  for (const action of actions) {
     const state = progress(action);
     const todo = fill(tokens(action.todo), width - mark - 6);
-    const ways = [
-      ...fill(tokens('Mouse: ' + action.mouse), width - mark - indent - 6),
-      ...fill(tokens('Keyboard: ' + action.keys), width - mark - indent - 6),
-    ];
+    const ways = waysOf(action).flatMap((w) => fill(tokens(w), width - mark - indent - 6));
     const color = state === 'next' ? C.bright : C.text;
     const h = (todo.length + ways.length) * LINE + 6;
     if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: C.inset });

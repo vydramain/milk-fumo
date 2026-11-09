@@ -1,6 +1,7 @@
-// The entry point: the canvas, the frame loop, the events, and the two screens that replace the workspace
-// when the screen is too small or the device is a touch-first one.
-import { Workspace } from './workspace.js';
+// The entry point: the canvas, the frame loop, the events; the pocket version in place of the workspace on a
+// touch-first device, and the screen that replaces the workspace when the screen is too small.
+import { Workspace, SCALES } from './workspace.js';
+import { Pocket, layoutOf } from './pocket.js';
 import { Paint } from './paint.js';
 import { messageScreen } from './widgets.js';
 import { T } from './texts.js';
@@ -11,6 +12,7 @@ const MOBILE = matchMedia('(hover: none) and (pointer: coarse)');
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
 let ws = null;
+let pocket = null;          // made on the first frame drawn for a touch-first device
 let queued = false;
 let started = false;
 
@@ -40,9 +42,10 @@ function draw() {
   const d = dpr();
   view.dpr = d;
   // The site opens at the largest scale the window holds; a window that shrank below the current scale drops to the largest that fits.
-  if (!started) { started = true; view.ui = ws.largestScale(); }
-  if (view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = ws.largestScale();
   const mobile = MOBILE.matches;
+  // The pocket version sets view.ui to its own whole scale; the desktop takes one of its scales back.
+  if (!started || (!mobile && !SCALES.includes(view.ui))) { started = true; view.ui = ws.largestScale(); }
+  if (!mobile && view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = ws.largestScale();
   const small = !mobile && screenTooSmall();
   // The fullscreen video is drawn at the window's size, so its panel is always on screen.
   const size = mobile || small || ws.fullVideo ? { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) } : canvasSize();
@@ -51,8 +54,13 @@ function draw() {
   canvas.style.width = size.w / d + 'px';
   canvas.style.height = size.h / d + 'px';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (mobile) messageScreen(new Paint(ctx, 1), size, null, T.mobile);
-  else if (small) messageScreen(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
+  if (mobile) {
+    const L = layoutOf(size.w, size.h);
+    view.ui = L.k;
+    if (!pocket) pocket = new Pocket(requestDraw, { history: true });
+    pocket.render(new Paint(ctx, L.k), L.w, L.h);
+    if (pocket.animated()) requestDraw();
+  } else if (small) messageScreen(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
   else ws.render(new Paint(ctx, view.ui), Math.floor(size.w / view.ui), Math.floor(size.h / view.ui));
   if (!mobile && !small && ws.animated()) requestDraw();
   const cursor = ws.cursorHidden() ? 'none' : '';
@@ -72,22 +80,30 @@ function pointer(e) {
   return { x: (e.clientX - r.left) * d, y: (e.clientY - r.top) * d };
 }
 
+// The pointer goes to the pocket version on a touch-first device, else to the workspace.
+const target = () => (MOBILE.matches ? pocket : ws);
+
 canvas.addEventListener('pointerdown', (e) => {
-  if (screenTooSmall() || MOBILE.matches) return;
+  if (!MOBILE.matches && screenTooSmall()) return;
+  if (!target()) return;
   canvas.focus();
   canvas.setPointerCapture(e.pointerId);
   const { x, y } = pointer(e);
-  ws.pointerDown(x, y);
+  target().pointerDown(x, y);
 });
 canvas.addEventListener('pointermove', (e) => {
+  if (!target()) return;
   const { x, y } = pointer(e);
-  ws.pointerMove(x, y);
+  target().pointerMove(x, y);
 });
 canvas.addEventListener('pointerup', (e) => {
+  if (!target()) return;
   const { x, y } = pointer(e);
-  ws.pointerUp(x, y);
+  target().pointerUp(x, y);
 });
 canvas.addEventListener('pointercancel', (e) => {
+  if (!target()) return;
+  if (MOBILE.matches) { pocket.cancel(); return; }
   const { x, y } = pointer(e);
   ws.pointerUp(x, y);
 });
@@ -98,9 +114,9 @@ canvas.addEventListener('dblclick', (e) => {
   if (ws.doubleClick(x, y)) requestDraw();
 });
 canvas.addEventListener('wheel', (e) => {
-  if (screenTooSmall() || MOBILE.matches) return;
+  if ((!MOBILE.matches && screenTooSmall()) || !target()) return;
   const { x, y } = pointer(e);
-  if (ws.wheel(x, y, e.deltaY)) {
+  if (target().wheel(x, y, e.deltaY)) {
     e.preventDefault();
     requestDraw();
   }
@@ -135,11 +151,12 @@ window.addEventListener('blur', () => {
 // The apps' messages: each app is checked against its own frame.
 window.addEventListener('message', (e) => {
   for (const app of ws.apps()) app.message(e);
+  if (pocket) for (const app of pocket.apps()) app.message(e);
 });
 
 // Leaving the browser's fullscreen (Esc, or the browser's own controls) returns the video to its tile.
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) ws.fullVideo = null;
+  if (!document.fullscreenElement) { ws.fullVideo = null; if (pocket) pocket.full = false; }
   requestDraw();
 });
 
