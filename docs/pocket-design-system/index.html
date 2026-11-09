@@ -90,7 +90,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <tr><td>Move the cursor by one</td><td><b>^ Up</b>, <b>v Down</b> in pmc's key bar</td><td>The list follows the cursor. The folder above is the <code>..</code> row: there is no Up-a-folder cell.</td></tr>
 <tr><td>Scroll</td><td>drag a list or a note</td><td>The scroll bar of the desktop is left out: the finger is the scroll bar. A note has no Top and Bottom cells.</td></tr>
 <tr><td>Switch tiles</td><td>tap a tab</td><td>Tabs are the open tiles in the order they were opened; the active one is brass.</td></tr>
-<tr><td>Go back</td><td><b>&lt; Back</b>, the last key-bar slot, or the system back gesture</td><td>Closes the current tile and returns to the one active before it. Back is in the same place on every tile. Each opened tile is a browser history entry, so the swipe from the left edge on iOS and the back button or gesture on Android do the same. The last tile is not closed; the message line says so.</td></tr>
+<tr><td>Go back</td><td><b>&lt; Back</b>, the last key-bar slot, or the system back gesture</td><td>In a pmc folder, goes up a folder, as Open on <code>..</code>. Elsewhere, closes the current tile and returns to the one active before it. Back is in the same place on every tile. Each opened tile is a browser history entry, so the swipe from the left edge on iOS and the back button or gesture on Android do the same. The last tile is not closed; the message line says so.</td></tr>
 <tr><td>Seek</td><td>press and drag the Position slider</td><td>The desktop's slider (media.js seekBar). No Seek cell.</td></tr>
 <tr><td>Video fullscreen</td><td><b>F Full</b>; a tap or Back leaves it</td><td>The frame fills the screen. The browser's fullscreen is asked for where it exists (Android); an iPhone refuses it for a page, and the frame still fills the screen.</td></tr><tr><td>Volume</td><td>the phone's buttons</td><td>No Volume cells. Mute stays.</td></tr>
 </table>
@@ -184,6 +184,7 @@ stage('s-note', 'Another note, opened from pmc in the same Note tile; pmc is a t
 stage('s-pmc', 'The root: folders first, two-letter kind codes, SUB-DIR for folders. Open, Up, Down, Back; ppmc is sunken: pmc is here.', async (pk) => { await pk.go(''); pk.msg = P.pmcHint; });
 stage('s-pmc', 'The cursor on a folder after the first tap.', async (pk) => { await pk.go(''); pk.pmc.cursor = 4; pk.msg = P.again(pk.rows()[4].name); });
 stage('s-pmc', 'A folder: <code>..</code> on top as UP--DIR, the path in brass.', async (pk) => { await pk.go('music/'); pk.pmc.cursor = 2; pk.msg = ''; });
+stage('s-pmc', 'Back in <code>/music/</code>: pmc goes up, as Open on <code>..</code>, and the cursor stands on the folder it left.', async (pk) => { await pk.go('music/'); pk.back(); await pk.pmc.load; pk.msg = ''; });
 stage('s-pmc', 'A folder that cannot be listed: the error stands in the row under <code>..</code>.', async (pk) => { await pk.go('locked/'); pk.msg = ''; });
 stage('s-pmc', 'A file with no viewer: the message line says so.', (pk) => pk.go('notes/plain.txt'));
 

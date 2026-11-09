@@ -69,6 +69,7 @@ export class Pocket {
         // Forward (an entry with as many tiles or more) opens nothing back; only going back closes.
         if ((e.state?.pocket ?? 1) >= this.tiles.length) return;
         if (this.full) { this.fullscreen(false); window.history.pushState({ pocket: this.tiles.length }, ''); }
+        else if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); window.history.pushState({ pocket: this.tiles.length }, ''); }
         else if (this.tiles.length > 1) this.closeActive();
         this.requestDraw();
       });
@@ -94,6 +95,8 @@ export class Pocket {
   // Back: through the history when this screen owns it, so the cell and the system gesture are one action.
   back() {
     if (this.full) { this.fullscreen(false); return; }
+    // In a folder, pmc's Back goes up, as Open on `..`; at the root it closes pmc.
+    if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); return; }
     if (this.tiles.length === 1) { this.msg = P.lastTile; return; }
     if (this.useHistory && window.history.state && window.history.state.pocket > 1) window.history.back();
     else this.closeActive();
