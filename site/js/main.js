@@ -1,6 +1,6 @@
 // The entry point: the canvas, the frame loop, the events; the pocket version in place of the workspace on a
 // touch-first device, and the screen that replaces the workspace when the screen is too small.
-import { Workspace, SCALES } from './workspace.js';
+import { Workspace } from './workspace.js';
 import { Pocket, layoutOf } from './pocket.js';
 import { Paint } from './paint.js';
 import { messageScreen } from './widgets.js';
@@ -8,11 +8,13 @@ import { T } from './texts.js';
 import { SCREEN_MIN, VIEWPORT_MIN } from './metrics.js';
 import { view } from './view.js';
 
-const MOBILE = matchMedia('(hover: none) and (pointer: coarse)');
+// The mode is chosen once, at load: a touch-first device gets the pocket version, any other the workspace. A device
+// that changes its primary input keeps its mode until the page is reloaded.
+const MOBILE = matchMedia('(hover: none) and (pointer: coarse)').matches;
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
 let ws = null;
-let pocket = null;          // made on the first frame drawn for a touch-first device
+let pocket = null;
 let queued = false;
 let started = false;
 
@@ -36,33 +38,40 @@ function canvasSize() {
   };
 }
 
-// Draws a frame. The buffer is in device pixels; the element's CSS size is the buffer divided by the ratio.
-function draw() {
-  queued = false;
-  const d = dpr();
-  view.dpr = d;
-  // The site opens at the largest scale the window holds; a window that shrank below the current scale drops to the largest that fits.
-  const mobile = MOBILE.matches;
-  // The pocket version sets view.ui to its own whole scale; the desktop takes one of its scales back.
-  if (!started || (!mobile && !SCALES.includes(view.ui))) { started = true; view.ui = ws.largestScale(); }
-  if (!mobile && view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = ws.largestScale();
-  const small = !mobile && screenTooSmall();
-  // The fullscreen video is drawn at the window's size, so its panel is always on screen.
-  const size = mobile || small || ws.fullVideo ? { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) } : canvasSize();
+// The buffer in device pixels; the element's CSS size is the buffer divided by the ratio.
+function fitCanvas(size, d) {
   canvas.width = size.w;
   canvas.height = size.h;
   canvas.style.width = size.w / d + 'px';
   canvas.style.height = size.h / d + 'px';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (mobile) {
+}
+
+// Draws a frame.
+function draw() {
+  queued = false;
+  const d = dpr();
+  view.dpr = d;
+  if (pocket) {
+    // The pocket version: the window, at the largest whole scale that keeps a 240 px wide layout.
+    const size = { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) };
+    fitCanvas(size, d);
     const L = layoutOf(size.w, size.h);
     view.ui = L.k;
-    if (!pocket) pocket = new Pocket(requestDraw, { history: true });
     pocket.render(new Paint(ctx, L.k), L.w, L.h);
     if (pocket.animated()) requestDraw();
-  } else if (small) messageScreen(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
+    return;
+  }
+  // The site opens at the largest scale the window holds; a window that shrank below the current scale drops to the largest that fits.
+  if (!started) { started = true; view.ui = ws.largestScale(); }
+  if (view.ui !== 1 && !ws.fitsScale(view.ui)) view.ui = ws.largestScale();
+  const small = screenTooSmall();
+  // The fullscreen video is drawn at the window's size, so its panel is always on screen.
+  fitCanvas(small || ws.fullVideo ? { w: Math.round(innerWidth * d), h: Math.round(innerHeight * d) } : canvasSize(), d);
+  const size = { w: canvas.width, h: canvas.height };
+  if (small) messageScreen(new Paint(ctx, 1), size, T.tooSmallTitle, [`${T.tooSmallNeeds} ${SCREEN_MIN.w}×${SCREEN_MIN.h}`, `${T.tooSmallNow} ${screen.width}×${screen.height}`, T.tooSmallHint]);
   else ws.render(new Paint(ctx, view.ui), Math.floor(size.w / view.ui), Math.floor(size.h / view.ui));
-  if (!mobile && !small && ws.animated()) requestDraw();
+  if (!small && ws.animated()) requestDraw();
   const cursor = ws.cursorHidden() ? 'none' : '';
   if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
 }
@@ -81,40 +90,36 @@ function pointer(e) {
 }
 
 // The pointer goes to the pocket version on a touch-first device, else to the workspace.
-const target = () => (MOBILE.matches ? pocket : ws);
+const target = () => pocket || ws;
 
 canvas.addEventListener('pointerdown', (e) => {
-  if (!MOBILE.matches && screenTooSmall()) return;
-  if (!target()) return;
+  if (!MOBILE && screenTooSmall()) return;
   canvas.focus();
   canvas.setPointerCapture(e.pointerId);
   const { x, y } = pointer(e);
   target().pointerDown(x, y);
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!target()) return;
   const { x, y } = pointer(e);
   target().pointerMove(x, y);
 });
 canvas.addEventListener('pointerup', (e) => {
-  if (!target()) return;
   const { x, y } = pointer(e);
   target().pointerUp(x, y);
 });
 canvas.addEventListener('pointercancel', (e) => {
-  if (!target()) return;
-  if (MOBILE.matches) { pocket.cancel(); return; }
+  if (pocket) { pocket.cancel(); return; }
   const { x, y } = pointer(e);
   ws.pointerUp(x, y);
 });
 // A double click on a video's frame, or anywhere in its fullscreen, toggles the fullscreen.
 canvas.addEventListener('dblclick', (e) => {
-  if (screenTooSmall() || MOBILE.matches) return;
+  if (screenTooSmall() || MOBILE) return;
   const { x, y } = pointer(e);
   if (ws.doubleClick(x, y)) requestDraw();
 });
 canvas.addEventListener('wheel', (e) => {
-  if ((!MOBILE.matches && screenTooSmall()) || !target()) return;
+  if (!MOBILE && screenTooSmall()) return;
   const { x, y } = pointer(e);
   if (target().wheel(x, y, e.deltaY)) {
     e.preventDefault();
@@ -123,7 +128,7 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {
-  if (screenTooSmall() || MOBILE.matches) return;
+  if (screenTooSmall() || MOBILE) return;
   // A Ctrl combination is held as 'Ctrl+' + code too, for the cells of Ctrl keys.
   const codes = e.ctrlKey ? [e.code, 'Ctrl+' + e.code] : [e.code];
   if (codes.some((c) => !ws.held.has(c))) { codes.forEach((c) => ws.held.add(c)); requestDraw(); }
@@ -134,11 +139,13 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
+  if (MOBILE) return;
   if (ws.held.delete(e.code) | ws.held.delete('Ctrl+' + e.code)) requestDraw();
 });
 
 // A click that goes into an app's frame gives the focus to that app's tile. Keys released outside the window are lost.
 window.addEventListener('blur', () => {
+  if (MOBILE) return;
   ws.held.clear();
   requestDraw();
   const el = document.activeElement;
@@ -150,18 +157,17 @@ window.addEventListener('blur', () => {
 
 // The apps' messages: each app is checked against its own frame.
 window.addEventListener('message', (e) => {
-  for (const app of ws.apps()) app.message(e);
-  if (pocket) for (const app of pocket.apps()) app.message(e);
+  for (const app of target().apps()) app.message(e);
 });
 
 // Leaving the browser's fullscreen (Esc, or the browser's own controls) returns the video to its tile.
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) { ws.fullVideo = null; if (pocket) pocket.full = false; }
+  if (!document.fullscreenElement) { if (pocket) pocket.full = false; else ws.fullVideo = null; }
   requestDraw();
 });
 
 window.addEventListener('resize', requestDraw);
-MOBILE.addEventListener('change', requestDraw);
 
-ws = new Workspace(requestDraw);
+if (MOBILE) pocket = new Pocket(requestDraw, { history: true });
+else ws = new Workspace(requestDraw);
 requestDraw();

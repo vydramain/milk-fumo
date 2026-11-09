@@ -173,6 +173,7 @@ A phone shows the site as a Pocket PC would: one tile fills the screen, the open
 - **Start.** The Note `readme.md`. Its `{{actions}}` block is the touch tutorial (`POCKET_ACTIONS` in `texts.js`): open pmc, enter a folder, open a file, switch tiles, run an app, go back.
 - **Screen.** Top to bottom: the title bar (the tile and the clock, no X), the tile, the key bar (4 cells a row, Back always in the last slot), the message line, the tab strip with the **ppmc** cell at the right. ppmc opens pmc and is sunken while pmc is the current tile.
 - **pmc.** One panel. A tap moves the cursor, a tap on the cursor opens the row; Open, Up and Down in the key bar do the same. A file opens in the tile of its type: Note, Player, Video, Image, App; another type gives "no viewer".
+- **Mode.** Chosen once, at load: `main.js` makes either the pocket version or the workspace, never both. A device that changes its primary input keeps its mode until the page is reloaded.
 - **Back.** Closes the current tile and returns to the one active before it. Each opened tile is a browser history entry, so the system back gesture does the same. The last tile is not closed.
 - **Player and Video.** The desktop's now-playing well, Position slider and playlist; no Volume cells (the phone's buttons), Mute stays. Video has Full: the frame fills the screen and the browser's fullscreen is asked for; a tap or Back leaves it.
 - **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. The canvas has `touch-action: none`.
