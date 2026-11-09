@@ -100,6 +100,17 @@ export function fill(toks, width) {
 
 // Draws one line of tokens at (x, y). Keycaps are raised boxes; links are bright with a dotted underline;
 // bold words are bright and one pixel thicker; italic words lean.
+// A heading's lines: whole words that fit `width` at `scale`; a word wider than that stands on its own line.
+function wrapWords(text, width, scale = 1) {
+  const lines = [];
+  for (const word of text.split(' ')) {
+    const joined = lines.length ? lines.at(-1) + ' ' + word : word;
+    if (lines.length && textWidth(RV, joined, scale) <= width) lines[lines.length - 1] = joined;
+    else lines.push(word);
+  }
+  return lines;
+}
+
 function emitLine(L, line, x, y, color) {
   let cx = x;
   for (const t of line) {
@@ -135,20 +146,26 @@ export function layout(blocks, width, progress = () => 'none', actions = TUTORIA
   let y = 0;
   for (const b of blocks) {
     if (b.type === 'h1') {
-      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 2, color: C.bright, s: b.text });
+      const lines = wrapWords(b.text, width, 2);
+      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + i * 18, font: RV, scale: 2, color: C.bright, s }));
+      y += (lines.length - 1) * 18;
       L.ops.push({ op: 'rect', x: 0, y: y + 21, w: width, h: 1, color: C.lo });
       L.ops.push({ op: 'rect', x: 0, y: y + 22, w: width, h: 1, color: C.hi });
       y += 31;
     } else if (b.type === 'h2') {
       y += 12;
-      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s: b.text });
-      const x = textWidth(RV, b.text) + 6;
+      const lines = wrapWords(b.text, width);
+      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + i * LINE, font: RV, scale: 1, color: C.bright, s }));
+      y += (lines.length - 1) * LINE;
+      const x = textWidth(RV, lines.at(-1)) + 6;
       L.ops.push({ op: 'dither', x, y: y + 4, w: Math.max(0, width - x), h: 4, a: C.lo, b: C.inset });
       y += 14;
     } else if (b.type === 'h3') {
       y += 4;
-      L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s: b.text, bold: true });
-      y += 14;
+      for (const s of wrapWords(b.text, width)) {
+        L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s, bold: true });
+        y += 14;
+      }
     } else if (b.type === 'p') {
       for (const line of fill(tokens(b.text), width)) { emitLine(L, line, 0, y, C.text); y += LINE; }
       y += 7;

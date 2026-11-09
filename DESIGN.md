@@ -238,7 +238,7 @@ PxPlus IBM VGA 9×16 (VileR) and the Cyrillic of `rv_font`, which is redrawn fro
 
 ### Markdown in notes
 
-- A first-level heading is `rv_font` at 16 px with a groove under it; a second-level heading is `rv_font` at 8 px with a dithered rule.
+- A first-level heading is `rv_font` at 16 px with a groove under it; a second-level heading is `rv_font` at 8 px with a dithered rule. A heading wider than the tile wraps by words.
 - Body text is `rv_font`; code is PxPlus IBM VGA 9×16 on navy.
 - Box and rule characters (`·` `│` `─` `—`) are drawn as pixel glyphs of the same cell.
 - Notes support lists, quotes, horizontal rules and links. A link `[text](address)` opens in a new browser tab. An address is kept only if it is http, https, or a relative address without `//`, spaces, colons, ampersands or backslashes.
