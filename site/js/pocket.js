@@ -59,7 +59,11 @@ export class Pocket {
     this.changeDir(START_DIR);
 
     if (history) {
-      window.history.replaceState({ pocket: 1 }, '');
+      // The history lives one page load: after a reload the page stands on an old tile's entry, so it goes back to
+      // the entry of the first tile, and the next system back leaves the site.
+      const n = window.history.state?.pocket || 1;
+      if (n > 1) window.history.go(1 - n);
+      else window.history.replaceState({ pocket: 1 }, '');
       // The system back leaves the fullscreen first and gives the history entry back, as the Back cell does.
       window.addEventListener('popstate', (e) => {
         // Forward (an entry with as many tiles or more) opens nothing back; only going back closes.
