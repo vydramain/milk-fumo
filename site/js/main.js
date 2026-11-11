@@ -4,7 +4,8 @@ import { Workspace } from './workspace.js';
 import { Pocket, layoutOf } from './pocket.js';
 import { Paint } from './paint.js';
 import { messageScreen } from './widgets.js';
-import { T } from './texts.js';
+import { T, ERRORS } from './texts.js';
+import { linkPath } from './catalog.js';
 import { SCREEN_MIN, VIEWPORT_MIN } from './metrics.js';
 import { view } from './view.js';
 
@@ -168,6 +169,15 @@ document.addEventListener('fullscreenchange', () => {
 
 window.addEventListener('resize', requestDraw);
 
-if (MOBILE) pocket = new Pocket(requestDraw, { history: true });
-else ws = new Workspace(requestDraw);
+// The link and the server's error code are read once, at load. nginx's error page (error.html) carries its status in
+// <meta name="error">, and a plain line under #fallback for the case that this script never runs; any other page has
+// neither. A code from the server, or a broken link, gives the error stub; a good link gives the path to open. The mode
+// gets all three; the pocket version reads them in a later step.
+document.getElementById('fallback')?.remove();
+const link = linkPath(location.search);
+const served = Number(document.querySelector('meta[name="error"]')?.content);
+const code = ERRORS[served] ? served : link && link.code;
+const start = { history: true, link: link && link.path, stub: code ? { code, line: ERRORS[code].line } : null };
+if (MOBILE) pocket = new Pocket(requestDraw, start);
+else ws = new Workspace(requestDraw, start);
 requestDraw();

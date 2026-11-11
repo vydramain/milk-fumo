@@ -62,8 +62,8 @@ The environment bar at the bottom is always visible. It shows the key for each a
 
 - The screen is divided into rectangular tiles. **Tiles never overlap.**
 - A new tile shares its neighbor's space 1:1. A closed tile gives its space back. There is no manual splitting: tiles appear by opening a file or with `Shift+Enter`.
-- **One tile per type:** pmc, Player, Video, Image, Note. An app has one tile per app. Opening a file of a type that already has a tile focuses that tile and opens the file there.
-- The title bar of a tile holds `X` and `M`. A tile's title is the app name only; the browser tab title follows the focused tile, and the favicon is `Mf`.
+- **One tile per type:** pmc, player, video, image, note. An app has one tile per app. Opening a file of a type that already has a tile focuses that tile and opens the file there.
+- The title bar of a tile holds `X` and `M`. A tile's title is the app name only, in lowercase: `pmc`, `note`, `player`, `video`, `image`, `file` (a file without a viewer); an app's title is its folder name, its tab `app`. The browser tab title follows the focused tile, and the favicon is `Mf`.
 - The layout is a tree of splits whose leaves hold tabs. Stacked tiles show tabs at their bottom, like tabs on folders in a card file.
 - A tile can be maximized to the whole screen and the layout restored.
 - Dragging a title bar to the edge of another tile creates a neighbor; dropping it in the centre or on the tab strip stacks it into tabs. The future place is highlighted; `Esc` cancels.
@@ -71,7 +71,7 @@ The environment bar at the bottom is always visible. It shows the key for each a
 
 ### Start screen
 
-Two tiles split the screen 1:1: the Note `readme.md` on the left and **pmc** on the right, focused. There are no buttons; the start screen is the tutorial. `readme.md` merges the author's text and the instructions (the old `home.md` and `tutorial.md` are no longer used), so the content root needs `readme.md`. Its path is set in [`site/js/config.js`](site/js/config.js).
+Two tiles split the screen 1:1: the note `readme.md` on the left and **pmc** on the right, focused. A [link](#links) opens one tile instead. There are no buttons; the start screen is the tutorial. `readme.md` merges the author's text and the instructions (the old `home.md` and `tutorial.md` are no longer used), so the content root needs `readme.md`. Its path is set in [`site/js/config.js`](site/js/config.js).
 
 The tutorial is written so that someone who knows i3 recognizes it, and someone who sees tiles for the first time learns how to use them. The table of actions marks progress: `✓` beside an action already done, `›` beside the next one to try.
 
@@ -89,7 +89,7 @@ pmc (PSEUDO Midnight Commander) is the file panel. The UI is that of the editor'
 - `Ctrl+PgUp` — one level up.
 - **`F3` — quick view.** The other panel shows what the cursor is on: a folder's information, the player of a track or a video with its set, an image, or a `.md` note; a file of another type says that it has no viewer. `F3` on a file of another type replaces the viewer; on a file of the same type the same viewer opens that file. `F3` closes the quick view when the focus is on it or the cursor is on the file it shows; `Esc` brings the list back. `F3` on an app shows the folder's information. The quick view does not follow the cursor: it changes only by `F3` or `Enter`. (`F3` replaces MC's `Ctrl+Q`, which quits Firefox.)
 - **Letters** — quick search by the start of a name; `Backspace` erases; `Esc` clears.
-- **Columns** — Name, Size, Modified. Folders come first and show `SUB-DIR` instead of a size; `..` shows `UP--DIR`. A status line under the list describes the file under the cursor and the folder's total.
+- **Columns** — Name, Size, Modified. Folders come first and show `SUB-DIR` instead of a size; `..` shows `UP--DIR`. A folder's name ends in `/`, except an app's (`plug-run.exe`, `APP-DIR`), which is a program rather than a place; the quick view's Path line of an app has no trailing slash either. A status line under the list describes the file under the cursor and the folder's total.
 - There is no copy, move or delete: the site is read-only.
 - The tile's bottom line is pmc's key bar: Enter Open, F3 View, Tab Panel, Ctrl+PgUp Up, Letters Search. Every key in it can be clicked. `Esc` has no cell; it works as described above.
 - The status line under each list shows the loading bar (`load`, `done`, `errr`).
@@ -99,34 +99,36 @@ pmc (PSEUDO Midnight Commander) is the file panel. The UI is that of the editor'
 | Type | Content |
 |---|---|
 | pmc | Published folders and files, two panels |
-| Note | Markdown text |
-| Audio player | Time, position, volume, playlist from the folder; tags (title, artist, album, year) in the header and the playlist |
-| Video player | The audio player's top, then Fit / 1x / 2x and loop, and the frame; fullscreen |
-| App | A folder whose name ends in `.exe` and contains `index.html`: a web game in an iframe that fills the tile; `Shift+0` restarts it; a foot panel and a key bar below |
-| Image | The selected image and switching through the folder's set |
+| note | Markdown text |
+| player (audio) | The title, the artist line and the format line (type, length, the folder's name only, number); position with its times, volume, the playlist of the folder; tags (title, artist, album, year) in the header and the playlist |
+| video | The player's top, the file's load bar at the end of its format line, then the frame, always fitted; fullscreen |
+| app | A folder whose name ends in `.exe` and contains `index.html`: a web game in an iframe that fills the tile; `Shift+0` restarts it; a foot panel and a key bar below |
+| image | The selected image and switching through the folder's set |
 
 Each tile, in its states, is in the Tiles section of the [design system](#design-system).
 
-Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 s, `Volume` +5%). Tiles other than pmc and Player also have a foot panel: the file's line, the loading bar and a `Keyboard:` field.
+Every tile ends with a key bar; its cells are buttons (clicking `Seek` moves +5 s, `Volume` +5%). Tiles other than pmc, player and video also have a foot panel: the file's line, the loading bar and a `Keyboard:` field.
 
 | Tile | Key bar |
 |---|---|
-| Player | P Prev · Space Play · Space Pause · S Stop · N Next · M Mute · L/R Seek · U/D Volume |
-| Video | the Player's cells plus L Loop before Seek |
-| Image | Left/P Prev · Right/N Next |
-| App | Shift+Q Close · Shift+0 Restart · Shift+F Fullscreen |
-| Note | U/D Scroll · Home/End Top/Bottom (`PgUp` and `PgDn` scroll too, without a cell) |
+| player | P Prev · Space Play (Pause while playing, one cell) · S Stop · N Next · M Mute · <- -> Seek · ^ v Volume |
+| video | the player's cells plus L Loop before Seek and Shift+F Full last |
+| image | Left/P Prev · Right/N Next |
+| app | Shift+Q Close · Shift+0 Restart · Shift+F Fullscreen |
+| note | U/D Scroll · Home/End Top/Bottom (`PgUp` and `PgDn` scroll too, without a cell) |
 
-**Loading.** The bar shows `load`, `done` or `errr` in the Player's rows, in the foot panels (Video, Image, Note, App) and in pmc's status line. Files are downloaded counting bytes and kept while the tile is open; the next file of the folder is preloaded; an `errr` file is retried when it is selected again. An app counts progress only by its `index.html`.
+The player's and the video's key bars never cut a name: the bar takes the fewest rows in which every cell holds its key and its whole name (`keyRows` in `widgets.js`), so the player's bar has two rows at its 286 px minimum and one at 700, the video's three at 322 and two at 440. The other key bars stay one row and cut a name to two letters. A video in pmc's quick view has no Full cell: there `Shift+F` belongs to pmc and maximizes it.
 
-**Audio tags.** ID3v2 and Vorbis/Opus tags are shown in the Player header and in the playlist.
+**Loading.** The bar shows `load`, `done` or `errr` in the player's rows, at the end of the video's format line, in the foot panels (image, note, app) and in pmc's status line. Files are downloaded counting bytes and kept while the tile is open; the next file of the folder is preloaded; an `errr` file is retried when it is selected again. An app counts progress only by its `index.html`.
 
-**Video fullscreen.** `Shift+F`, `M` in the title bar or a double click on the frame. On mouse move a panel with the position bar and the key bar appears and hides after 3 seconds; `Esc` or the same action returns.
+**Audio tags.** ID3v2 and Vorbis/Opus tags are shown in the player's header and in the playlist.
+
+**Video fullscreen.** `Shift+F`, its `Shift+F Full` cell, `M` in the title bar or a double click on the frame. On mouse move a panel with the position bar and the key bar appears and hides after 3 seconds; `Esc` or the same action returns.
 
 ### Main scenario
 
 1. The visitor reads the start screen.
-2. Uses pmc on the right, enters the music folder and opens a track: the Player appears beside it, pmc stays; the next track opens in the same Player.
+2. Uses pmc on the right, enters the music folder and opens a track: the player appears beside it, pmc stays; the next track opens in the same player.
 3. Opens a game and places it.
 4. Moves the player under pmc or stacks them into tabs.
 5. Maximizes the game and restores the layout.
@@ -159,7 +161,7 @@ Tile minimums follow the editor ([`rv_editor_shell_minimums.cpp`](https://github
 - a split's minimum is the sum of the minimums along its axis plus the splitter, and the largest across it;
 - a border cannot move past a minimum, with the mouse or with `Shift+R`.
 
-A key bar cell is never narrower than 34 px: one letter of its key and two of its name. So the Player is at least 286 px wide (8 cells), a video 322 px (9 cells, Loop added), and pmc 694 px, so that a panel's quick view holds a video's key bar.
+A cell of a one-row key bar is never narrower than 34 px: one letter of its key and two of its name. The player is at least 286 px wide and a video 322 px, the widths of their former one-row bars of 8 and 9 cells; their bars now wrap into rows instead of cutting names. pmc is at least 694 px, so that a panel's quick view holds a video at its minimum width.
 
 **UI scale.** `Shift+S` cycles 1x → 1.5x → 2x → 1x. At 2x each layout pixel is two device pixels, so every font pixel and border is twice as large. A scale the window cannot hold is skipped, with the size it needs; at start and when the window shrinks the largest scale that fits is taken. 1.5x is drawn without smoothing, so a font pixel falls on a whole device pixel or none and letters come out uneven.
 
@@ -169,16 +171,56 @@ Metrics at 1x, in device pixels: font 8 px, em 6 px, padding 4 px, tile frame 2 
 
 A phone shows the site as a Pocket PC would: one tile fills the screen, the open tiles are slanted tabs at the bottom, and Back closes the current tile. The code is [`site/js/pocket.js`](site/js/pocket.js); the tiles' bodies are the desktop's (`note.js`, `media.js`, `image.js`, `app.js`), drawn in a pocket layout from their parts.
 
-- **Scale.** The layout is 240 px wide, as a Pocket PC screen. The scale k is the largest whole number with 240·k ≤ the device width, so font pixels stay whole; the layout is the device size / k.
-- **Start.** The Note `readme.md`. Its `{{actions}}` block is the touch tutorial (`POCKET_ACTIONS` in `texts.js`): open pmc, enter a folder, open a file, switch tiles, run an app, go back.
-- **Screen.** Top to bottom: the title bar (the tile and the clock, no X), the tile, the key bar (4 cells a row, Back always in the last slot), the message line, the tab strip with the **ppmc** cell at the right. ppmc opens pmc and is sunken while pmc is the current tile.
-- **pmc.** One panel. A tap moves the cursor, a tap on the cursor opens the row; Open, Up and Down in the key bar do the same. A file opens in the tile of its type: Note, Player, Video, Image, App; another type gives "no viewer".
+- **Scale.** The layout is 240 px across the screen's short side, as a Pocket PC screen. The scale k is the largest whole number with 240·k ≤ the short side, so font pixels stay whole and k does not change when the phone turns (iPhone 15: 294x639 upright, 639x294 turned); the layout is the device size / k.
+- **Start.** The note `readme.md`. Its `{{actions}}` block is the touch tutorial (`POCKET_ACTIONS` in `texts.js`): open ppmc, enter a folder, open a file, switch tiles, run an app, go back. A [link](#links) opens one tile instead.
+- **Screen.** Top to bottom: the title bar (the tile and the clock, no X), the tile, the key bar (4 cells a row, Back always in the last slot), the message line, the tab strip with the **ppmc** cell at the right. ppmc opens the file panel and is sunken while it is the current tile. Tile names are lowercase; the file panel is `ppmc` in its title bar and its tab.
+- **Turned.** A phone held sideways (wider than tall) gets its own layout for every tile: the title bar across the full width with the clock at its right end; under it the tile on the left and the tile's key cells as a column 64 px wide on the right, from under the title bar, with Back as its bottom cell; the message line and the tab strip across the bottom. Turning back gives the upright layout; a playing track keeps playing and a game keeps its state, since only the frames move.
+- **ppmc.** One panel. A tap moves the cursor, a tap on the cursor opens the row; Open, Up and Down in the key bar do the same. A file opens in the tile of its type: note, player, video, image, app; another type gives "no viewer".
 - **Mode.** Chosen once, at load: `main.js` makes either the pocket version or the workspace, never both. A device that changes its primary input keeps its mode until the page is reloaded.
 - **Back.** In a pmc folder, goes up a folder, as Open on `..`; elsewhere, closes the current tile and returns to the one active before it. Each opened tile is a browser history entry, so the system back gesture does the same; Forward does nothing. The last tile is not closed. The history lives one page load: after a reload the page goes back to the first tile's entry, so the next system back leaves the site.
-- **Player and Video.** The desktop's now-playing well, Position slider and playlist; no Volume cells (the phone's buttons), Mute stays. Video has Full: the frame fills the screen and the browser's fullscreen is asked for; a tap or Back leaves it. The frame is the video element itself, placed over the tile as an app's iframe is: Android Chrome gave the canvas black frames of a video that was not on the page.
-- **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. Whatever is under the finger is drawn sunken until the finger lifts or starts a drag. The canvas has `touch-action: none`.
+- **player and video.** The desktop's now-playing well with its lines wrapped by words instead of cut (the title, the artist line, the format line); a taller Position for a finger (track 14 px, knob 6x18, a press band of 18 px); under it a transport row of four 28 px buttons, `|<`, `>` or `||`, `[]`, `>|`; then the playlist or the frame. No volume (the phone has its buttons). The key row is `M Mute`, Back, and for a video `F Full`. The frame is the video element itself, placed over the tile as an app's iframe is: Android Chrome gave the canvas black frames of a video that was not on the page.
+- **Full.** One mode for a video and a game: `F Full` in the video's or the app's key row (the app's while it loads or runs) covers the whole screen with the frame or the game, and the browser's fullscreen is asked for where it exists (an iPhone refuses it for a page; the frame still covers the screen). Back, the system back or leaving the browser's fullscreen returns to the tile, and the game is not restarted. A tap on a video leaves its Full; a game takes its own taps.
+- **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. Whatever is under the finger is drawn sunken until the finger lifts or starts a drag: a tab in its slanted shape and ppmc as its cell, although their tap areas are larger. The canvas has `touch-action: none`.
 
 Every screen in its states: the [pocket design system](#design-system).
+
+## Links
+
+- **Form.** A file, a folder or an app has the address `/?open=<path under the content root>`, e.g.
+  `/?open=music/ambient/track_01.mp3`. Each path segment is encoded by `encodeURIComponent` and the slashes stay
+  (`/?open=music/01%20brass-hum.mp3`); a folder has no trailing slash, and a link with one is accepted; the pmc root is
+  `/`. nginx serves the page at `/` as before, so links need no server change. Rejected: `/music/...` (needs an nginx
+  fallback and absolute paths in the page, and breaks content names equal to site files) and `/#music/...` (the
+  server never sees the path).
+- **The address follows the current file.** On the desktop the focused tile's (pmc: its active panel's folder), on the
+  phone the current tile's; a new track in the player changes it too. It is rewritten with `history.replaceState`
+  only when it differs, so focus changes add no history entries and the phone keeps one entry per opened tile. The
+  address can be copied and shared, and a reload reopens its file as a link.
+- **A link opens exactly one tile:** a track the player, a video the video, a picture the image, an `.exe` folder the
+  app, a folder pmc (ppmc on the phone) in that folder, a `.md` file the note. No readme, no tutorial and no pmc
+  beside it: on the desktop the tile fills the window; on the phone Back on it says the last tile cannot be closed, and
+  since the tile takes the page's own history entry, the system back leaves the site. pmc opened later starts in the
+  linked file's folder with the cursor on the file. A linked track or video plays if the browser allows autoplay, and
+  waits paused otherwise.
+- **Resolving.** The link's parent folder is listed, the same request as opening it by hand; the name is looked up
+  in that listing.
+- **Bad links.** The path is checked before any request (a link opens only what is under the content root): an
+  empty `open`, `..`, `.`, empty segments (`//`), `\` and `:` give 400 `This link is broken.`. A name missing from its
+  folder gives 404 `<name> is not here.` (names starting with a dot are not listed, so they too); a folder nginx refuses
+  403 `This file cannot be read.`; any other listing failure 404; a file without a viewer (e.g. `.txt`) 415 `<name>: no
+  viewer for this file type.`. A game folder without `index.html` opens the app tile with its own message.
+- **Error pages.** nginx answers 400, 403, 404, 405, 414, 500 and 503 with one page, [`site/error.html`](site/error.html),
+  keeping the real status code: nginx SSI writes the code into a `<meta name="error">` of the page and into a plain
+  line `Error <code>`, which stays only when the scripts fail. The page draws the same stub as a bad link. The lines:
+  403 `This file cannot be read.`, 404 `Nothing is at this address.`, 405 `The site only reads.`, 414 `The address is
+  too long.`, 500 `The server failed. Try again later.`, 503 `The server is busy. Try again later.` 502 and 504 come
+  from the host's reverse proxy, outside the repository, and are not covered.
+- **The stub.** Desktop: a 360 px tile on the darkest surface, the code's name on its title plate (`Not Found`), the
+  code large in VGA 2x and the line, and a key bar like every tile's with one cell `Enter Return to /`; `Enter` or a
+  click opens the start screen. It is drawn at the largest UI scale that fits, after the too-small check. Phone, upright
+  and turned: the title `404 Not Found`, the code and the line in the well, no key row, the message line `Tap [ppmc] to
+  return to /.`, and a tab strip with only the ppmc cell, which opens ppmc at the root and sets the address to `/`.
+- **Not indexed.** Search engines still see only a canvas; see [Open questions](#open-questions).
 
 ## UI
 
@@ -291,7 +333,8 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 |---|---|
 | Foundations | the palette, both bitmap fonts with every glyph, the kind codes, the metrics (read from `metrics.js`), the UI scales 1x, 1.5x and 2x |
 | Primitives | bevels and frames, dithers, slanted tabs, pictures without smoothing |
-| Widgets | buttons, scroll bars, load bars, key bars (with held keys and cut names), foot panels, the too-small screen |
+| Widgets | scroll bars, load bars, key bars (with held keys, cut names, and the player's and video's bars in rows at their minimum widths), foot panels, the too-small screen, the error screen for every code |
+| Links | the site's own link check (`linkPath` in `catalog.js`) run over good and broken links, each with its result |
 | Workspace | tiles, title bars and tabs, a maximized tile, drop previews, the message line and environment bar in their states, the favicon |
 | Tiles | pmc with its quick views and errors, notes with every Markdown block and the tutorial table, the player, the video and its fullscreen panel, images, apps, the loading and message bodies |
 | Motion | everything that moves, its trigger and timing, and where to watch it |
@@ -307,7 +350,7 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 
 The page has controls for the scale and the network. Clicking a stage gives it the keys, as a focused tile has them. How to open it: [README](README.md#opening-the-design-system).
 
-[`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the [pocket version](#pocket-version): the foundations and metrics, every tile in its states, the start screen on four phones, and the navigation rules. Its screens are drawn by `pocket.js` over the same fixtures and `net.js` (the network is Fast unless `?net=` says otherwise); each screen is live under the pointer.
+[`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the [pocket version](#pocket-version): the foundations and metrics, every tile in its states (the app also in Full, the players with their transport row), the start screen on four phones upright and turned, the error stub upright and turned, and the navigation rules. Its screens are drawn by `pocket.js` over the same fixtures and `net.js` (the network is Fast unless `?net=` says otherwise); each screen is live under the pointer.
 
 ## Open questions
 
@@ -315,7 +358,7 @@ The page has controls for the scale and the network. Clicking a stage gives it t
 - **Modifier.** Whether the modifier can be changed, like `$mod` in an i3 config, is undecided. Shift is the default.
 - **Bandwidth for other services.** Limiting the site's traffic with nginx `limit_rate` or `limit_conn` is under consideration.
 - **Ports.** 80 and 443 are probably free on the server; the owner checks.
-- **Direct links.** Links to a specific game or track, or state in the URL, are not designed. Search engines do not index content that appears only after JavaScript, and the site draws everything in a canvas.
+- **Indexing.** [Links](#links) open a file directly, but search engines still do not index content that appears only after JavaScript, and the site draws everything in a canvas.
 - **Probes to run.** Whether Chromium and Firefox support `devicePixelContentBoxSize`; whether an iframe shifts off the pixel grid at fractional screen scales.
 
 ## Source links

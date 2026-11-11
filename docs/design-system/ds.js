@@ -6,7 +6,7 @@ import * as M from '../../site/js/metrics.js';
 import { Paint } from '../../site/js/paint.js';
 import { RV, VGA } from '../../site/js/font.js';
 import { RV_FONT, VGA_9X16 } from '../../site/js/font_data.js';
-import { Hits, box, panelFrame, wellFrame, button, scrollbar, loadBar, keyBar, footBar, messageScreen, NO_KEYS } from '../../site/js/widgets.js';
+import { Hits, box, panelFrame, wellFrame, scrollbar, loadBar, keyBar, keyRows, footBar, messageScreen, errorScreen, NO_KEYS } from '../../site/js/widgets.js';
 import * as L from '../../site/js/layout.js';
 import { Workspace, LoadingBody, MessageBody } from '../../site/js/workspace.js';
 import { PmcPane } from '../../site/js/pmc.js';
@@ -14,9 +14,9 @@ import { NoteBody } from '../../site/js/note.js';
 import { Player } from '../../site/js/media.js';
 import { ImageView } from '../../site/js/image.js';
 import { AppPane } from '../../site/js/app.js';
-import { KIND, list, setOf, urlOf } from '../../site/js/catalog.js';
+import { KIND, list, setOf, urlOf, linkPath, linkOf } from '../../site/js/catalog.js';
 import { view } from '../../site/js/view.js';
-import { T, PMC_KEYS, PLAYER_KEYS, IMAGE_KEYS, NOTE_KEYS, APP_KEYS } from '../../site/js/texts.js';
+import { T, ERRORS, LINK_LINES, PMC_KEYS, PLAYER_KEYS, IMAGE_KEYS, NOTE_KEYS, APP_KEYS } from '../../site/js/texts.js';
 import { NET, params } from './net.js';
 
 // ---- the network: net.js ------------------------------------------------------------------------------------------
@@ -283,25 +283,40 @@ async function cd(pmc, i, dir, name) {
 
 // The key bars of the tiles, with the keys that sink their cells. This is a copy of the cells the tiles build (the
 // labels come from texts.js, the codes are written here); the tiles' own bars are drawn on their stages under Tiles.
+const PLAYER_CELLS = [
+  { ...PLAYER_KEYS.prev, codes: ['KeyP'] }, { ...PLAYER_KEYS.play, wide: PLAYER_KEYS.pause.label, codes: ['Space'] },
+  { ...PLAYER_KEYS.stop, codes: ['KeyS'] }, { ...PLAYER_KEYS.next, codes: ['KeyN'] }, { ...PLAYER_KEYS.mute, codes: ['KeyM'] },
+  { ...PLAYER_KEYS.seek, codes: ['ArrowRight', 'ArrowLeft'] }, { ...PLAYER_KEYS.volume, codes: ['ArrowUp', 'ArrowDown'] },
+];
 const BARS_OF = {
   pmc: PMC_KEYS.map((k, i) => ({ ...k, codes: [['Enter'], ['F3'], ['Tab'], ['Ctrl+PageUp'], []][i] })),
-  Player: [
-    { ...PLAYER_KEYS.prev, codes: ['KeyP'] }, { ...PLAYER_KEYS.play, codes: ['Space'] }, { ...PLAYER_KEYS.pause, codes: [] },
-    { ...PLAYER_KEYS.stop, codes: ['KeyS'] }, { ...PLAYER_KEYS.next, codes: ['KeyN'] }, { ...PLAYER_KEYS.mute, codes: ['KeyM'] },
-    { ...PLAYER_KEYS.seek, codes: ['ArrowRight', 'ArrowLeft'] }, { ...PLAYER_KEYS.volume, codes: ['ArrowUp', 'ArrowDown'] },
-  ],
-  Video: [
-    { ...PLAYER_KEYS.prev, codes: ['KeyP'] }, { ...PLAYER_KEYS.play, codes: ['Space'] }, { ...PLAYER_KEYS.pause, codes: [] },
-    { ...PLAYER_KEYS.stop, codes: ['KeyS'] }, { ...PLAYER_KEYS.next, codes: ['KeyN'] }, { ...PLAYER_KEYS.mute, codes: ['KeyM'] },
-    { ...PLAYER_KEYS.loop, codes: ['KeyL'] },
-    { ...PLAYER_KEYS.seek, codes: ['ArrowRight', 'ArrowLeft'] }, { ...PLAYER_KEYS.volume, codes: ['ArrowUp', 'ArrowDown'] },
-  ],
+  Player: PLAYER_CELLS,
+  Video: [...PLAYER_CELLS.slice(0, 5), { ...PLAYER_KEYS.loop, codes: ['KeyL'] }, ...PLAYER_CELLS.slice(5), { ...PLAYER_KEYS.full, codes: ['KeyF'] }],
   Image: [{ ...IMAGE_KEYS.prev, codes: ['ArrowLeft', 'KeyP'] }, { ...IMAGE_KEYS.next, codes: ['ArrowRight', 'KeyN'] }],
   Note: [
     { ...NOTE_KEYS.scroll, codes: ['ArrowUp', 'ArrowDown'] }, { ...NOTE_KEYS.edge, codes: ['Home', 'End'] },
   ],
   App: [{ ...APP_KEYS.close, codes: ['KeyQ'] }, { ...APP_KEYS.restart, codes: ['Digit0'] }, { ...APP_KEYS.full, codes: ['KeyF'] }],
 };
+
+// The rows of the key-bar stage. The player and video bars are `whole`: their rows come from keyRows at the width, as in
+// the tiles (M9); the others stay one row, a name that does not fit cut to two letters. `keys` fixes the held keys.
+const KEYBAR_W = 700;
+const KEYBARS = [];
+const oneRow = (name, cells, keys) => KEYBARS.push({ name, cells, w: KEYBAR_W, rows: 1, whole: false, keys });
+const wholeRows = (title, cells, w, keys) => {
+  const rows = keyRows(cells, w);
+  KEYBARS.push({ name: `${title}, ${w} px, ${rows} ${rows === 1 ? 'row' : 'rows'}`, cells, w, rows, whole: true, keys });
+};
+oneRow('pmc', BARS_OF.pmc);
+oneRow('Image', BARS_OF.Image);
+oneRow('Note', BARS_OF.Note);
+oneRow('App', BARS_OF.App);
+for (const w of [M.PANE_MIN.player.w, 440, KEYBAR_W]) wholeRows(w === M.PANE_MIN.player.w ? 'Player, the minimum' : 'Player', BARS_OF.Player, w);
+for (const w of [M.PANE_MIN.video.w, 440]) wholeRows(w === M.PANE_MIN.video.w ? 'Video, the minimum' : 'Video', BARS_OF.Video, w);
+wholeRows('held: S (a plain key sinks its cell), Player', BARS_OF.Player, 440, new Set(['KeyS']));
+oneRow('held: Shift+0 (a Shift cell sinks only with Shift)', BARS_OF.App, new Set(['ShiftLeft', 'Digit0']));
+const KEYBARS_H = 4 + KEYBARS.reduce((h, k) => h + 11 + (k.rows * 16 - 2) + 5, 0);
 
 const glyphs = (font) => Object.keys(font).map(Number).filter((c) => c > 0).sort((a, b) => a - b);
 const RV_CODES = glyphs(RV_FONT), VGA_CODES = glyphs(VGA_9X16);
@@ -424,18 +439,6 @@ const DEMOS = {
   }) },
 
   // Widgets
-  buttons: { w: 640, h: 44, make: (st) => {
-    let speed = 'fit', loop = false;
-    return drawing((p, hits) => {
-      let x = 6;
-      for (const s of ['fit', '1x', '2x']) {
-        button(p, hits, { x, y: 8, w: 30, h: 16 }, s === 'fit' ? 'Fit' : s, { on: speed === s, click: () => { speed = s; } });
-        x += 33;
-      }
-      button(p, hits, { x: x + 6, y: 8, w: 46, h: 16 }, 'Loop', { on: loop, click: () => { loop = !loop; } });
-      label(p, 6, 30, 'button: raised, or sunk while on; a click is sunk while the pointer is down.');
-    })(st);
-  } },
   scrollbars: { w: 640, h: 140, make: (st) => {
     const tops = [0, 15, 30, 0];
     const totals = [40, 40, 40, 5];
@@ -466,22 +469,15 @@ const DEMOS = {
     loadBar(p, 6, 8, t < 1 ? { state: 'load', share: t } : { state: 'done', share: 1 });
     label(p, 52, 10, t < 1 ? `share ${t.toFixed(2)}` : 'done', C.text);
   }, () => true) },
-  keybars: { w: 600, h: 10 * 30 + 4, make: drawing((p, hits, W, H, st) => {
+  keybars: { w: KEYBAR_W + 12, h: KEYBARS_H, make: drawing((p, hits, W, H, st) => {
     const held = st.focused ? st.held : NO_KEYS;
-    const rows = [
-      ['pmc', BARS_OF.pmc, held, W - 12], ['Player', BARS_OF.Player, held, W - 12], ['Video', BARS_OF.Video, held, W - 12],
-      ['Image', BARS_OF.Image, held, W - 12],
-      ['Note', BARS_OF.Note, held, W - 12], ['App', BARS_OF.App, held, W - 12],
-      ['held: S (a plain key sinks its cell)', BARS_OF.Player, new Set(['KeyS']), W - 12],
-      ['held: Shift+0 (a Shift cell sinks only with Shift)', BARS_OF.App, new Set(['ShiftLeft', 'Digit0']), W - 12],
-      [`${M.PANE_MIN.player.w} px, the Player minimum: names cut to two letters`, BARS_OF.Player, held, M.PANE_MIN.player.w],
-      [`${M.PANE_MIN.video.w} px, the Video minimum`, BARS_OF.Video, held, M.PANE_MIN.video.w],
-    ];
-    rows.forEach(([name, cells, keys, w], i) => {
-      const y = 4 + i * 30;
-      label(p, 6, y, name, C.text);
-      keyBar(p, hits, { x: 6, y: y + 11, w, h: 14 }, cells, keys);
-    });
+    let y = 4;
+    for (const k of KEYBARS) {
+      const h = k.rows * 16 - 2;
+      label(p, 6, y, k.name, C.text);
+      keyBar(p, hits, { x: 6, y: y + 11, w: k.w, h }, k.cells, k.keys || held, k.whole);
+      y += 11 + h + 5;
+    }
   }) },
   footbars: { w: 600, h: 70, make: drawing((p, hits, W) => {
     footBar(p, { x: 6, y: 6, w: W - 12, h: 14 }, 'testcard-1280.png · PNG · 93K · 3 of 3', { state: 'load', share: 0.4 }, false);
@@ -491,6 +487,15 @@ const DEMOS = {
   'screen-small': { w: 400, h: 110, make: drawing((p, hits, W, H) => {
     messageScreen(p, { w: W, h: H }, T.tooSmallTitle, [`${T.tooSmallNeeds} ${M.SCREEN_MIN.w}×${M.SCREEN_MIN.h}`, `${T.tooSmallNow} 800×600`, T.tooSmallHint]);
   }) },
+
+  // The error screen, a stage per code and per link line: Enter sinks the cell while the stage is focused, a click only redraws.
+  ...Object.fromEntries([
+    ...Object.entries(ERRORS).map(([code, e]) => [`error-${code}`, code, e.line]),
+    ['error-link-404', 404, LINK_LINES[404]('track_09.mp3')],
+    ['error-link-415', 415, LINK_LINES[415]('plain.txt')],
+  ].map(([id, code, line]) => [id, { w: 400, h: 110, make: drawing((p, hits, W, H, st) => {
+    errorScreen(p, hits, { w: W, h: H }, { code, line }, st.focused ? st.held : NO_KEYS, () => {});
+  }) }])),
 
   // The workspace
   tiles: { w: 720, h: 150, make: workspace((ws) => {
@@ -635,6 +640,19 @@ const metrics = document.querySelector('[data-metrics]');
 if (metrics) {
   metrics.innerHTML = '<tr><th>Constant</th><th>Value</th></tr>' + Object.entries(M)
     .map(([k, v]) => `<tr><td><code>${k}</code></td><td><code>${JSON.stringify(v)}</code></td></tr>`).join('');
+}
+
+// The links table runs the site's own link check over the inputs of the acceptance criteria.
+const links = document.querySelector('[data-links]');
+if (links) {
+  const inputs = ['?open=music/ambient/track_01.mp3', '?open=video/teaser.webm', '?open=images/poster.jpg', '?open=games/plug-run.exe',
+    '?open=music', '?open=about.md', '?open=music/01%20brass-hum.mp3', '?open=../etc/passwd', '?open=a//b', '?open=./x',
+    '?open=a%5Cb', '?open=a:b', '?open=', '?open=music/', ''];
+  const result = (r) => (r === null ? 'no open parameter: the start screen' : r.code ? `${r.code} ${ERRORS[r.code].name}: ${ERRORS[r.code].line}` : `opens ${JSON.stringify(r.path)}`);
+  links.innerHTML = '<tr><th>Query string</th><th>Result</th><th>Address written</th></tr>' + inputs.map((q) => {
+    const r = linkPath(q);
+    return `<tr><td><code>${q || '(none)'}</code></td><td>${result(r)}</td><td><code>${r && r.path ? linkOf(r.path) : ''}</code></td></tr>`;
+  }).join('');
 }
 
 for (const el of document.querySelectorAll('[data-demo]')) {

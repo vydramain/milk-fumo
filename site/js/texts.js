@@ -41,6 +41,25 @@ export const P = {
   again: (name) => `Tap again to open ${name}.`,
   appRunning: (name) => `Running ${name}. Back closes it.`,
   lastTile: 'The last tile cannot be closed.',
+  stubHint: 'Tap [ppmc] to return to /.',
+};
+
+// The error stub (a bad link, or an error page of nginx): the name and the line of each code. The 404 line here is the
+// address's; a link's 404 and 415 name the file (LINK_LINES). A 415 comes from a link only, so its line is the
+// viewer's own.
+export const ERRORS = {
+  400: { name: 'Bad Request', line: 'This link is broken.' },
+  403: { name: 'Forbidden', line: 'This file cannot be read.' },
+  404: { name: 'Not Found', line: 'Nothing is at this address.' },
+  405: { name: 'Method Not Allowed', line: 'The site only reads.' },
+  414: { name: 'URI Too Long', line: 'The address is too long.' },
+  415: { name: 'Unsupported Media Type', line: 'There is no viewer for this file type.' },
+  500: { name: 'Internal Server Error', line: 'The server failed. Try again later.' },
+  503: { name: 'Service Unavailable', line: 'The server is busy. Try again later.' },
+};
+export const LINK_LINES = {
+  404: (name) => `${name} is not here.`,
+  415: (name) => `${name}: no viewer for this file type.`,
 };
 
 export const T = {
@@ -50,6 +69,7 @@ export const T = {
   tooSmallHint: 'Open the site on a larger screen.',
   loading: 'Loading…',
   noViewer: 'There is no viewer for this file type.',
+  returnTo: 'Return to /',
   appNoIndex: 'This app has no index.html.',
   appLoading: 'Loading the app…',
   appRunning: 'Running. Keys go to the app — click another tile to take them back.',
@@ -72,7 +92,7 @@ export const T = {
   keyboardApp: 'Keyboard: app',
   keyboardNone: 'Keyboard: —',
   // The title and the tab of a tile, by its tab id; an app's title is its folder name.
-  tile: { pmc: 'pmc', Player: 'Player', Video: 'Video', Image: 'Image', Note: 'Note', File: 'File', App: 'App' },
+  tile: { pmc: 'pmc', Player: 'player', Video: 'video', Image: 'image', Note: 'note', File: 'file', App: 'app' },
 };
 
 // The key bar of pmc: the key as shown and the name after it.
@@ -84,7 +104,8 @@ export const PMC_KEYS = [
   { key: 'Letters', label: 'Search' },
 ];
 
-// The key bar of the player: the key as shown and the name after it. Loop is the video's only.
+// The key bar of the player: the key as shown and the name after it. Space is one cell, Play or Pause by the state
+// (play and pause stay for the design system's sheet); Loop and Full are the video's only.
 export const PLAYER_KEYS = {
   prev: { key: 'P', label: 'Prev' },
   play: { key: 'Space', label: 'Play' },
@@ -93,8 +114,9 @@ export const PLAYER_KEYS = {
   next: { key: 'N', label: 'Next' },
   mute: { key: 'M', label: 'Mute' },
   loop: { key: 'L', label: 'Loop' },
-  seek: { key: 'L/R', label: 'Seek' },
-  volume: { key: 'U/D', label: 'Volume' },
+  seek: { key: '<- ->', label: 'Seek' },
+  volume: { key: '^ v', label: 'Volume' },
+  full: { key: 'Shift+F', label: 'Full' },
 };
 
 // The key bars of the picture and of the note.

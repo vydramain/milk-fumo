@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pmc</title>
+<meta name="error" content="<!--# echo var="status" -->">
+<link rel="icon" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" sizes="32x32" href="/favicon-32.png">
+<style>
+html, body { margin: 0; height: 100%; background: #282E20; overflow: auto; }
+canvas { display: block; outline: none; }
+#fallback { margin: 8px; color: #D8DED3; font-family: monospace; }
+/* The pocket version reads every drag itself; a desktop page larger than the window still scrolls by touch. */
+@media (hover: none) and (pointer: coarse) { canvas { touch-action: none; } }
+</style>
+</head>
+<body>
+<p id="fallback">Error <!--# echo var="status" --></p>
+<canvas id="screen" tabindex="0"></canvas>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 // Widgets of the immediate-mode UI. A widget draws itself and, in the same call, registers its rectangle
 // with the frame's hit list. A click is checked against the list from the top down.
 import { C } from './theme.js';
-import { RV, textWidth, fitText } from './font.js';
-import { T } from './texts.js';
+import { RV, VGA, textWidth, fitText } from './font.js';
+import { T, ERRORS } from './texts.js';
 import { TITLE_H } from './metrics.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
@@ -159,28 +159,54 @@ export function loadBar(p, x, y, load) {
 // The held set of a tile that is not focused: its cells never sink.
 export const NO_KEYS = Object.freeze(new Set());
 
-export function keyBar(p, hits, r, cells, held) {
-  const w = Math.floor((r.w - 2 * (cells.length - 1)) / cells.length);
+// The fewest rows in which every cell holds its key and its whole name (`wide`, when a cell has one, is the longest
+// name it may switch to, so the rows stay put when it does). Cells are equal and 2 px apart in a row of w px.
+export function keyRows(cells, w) {
+  const n = cells.length;
+  const need = Math.max(...cells.map((k) => textWidth(RV, k.key) + textWidth(RV, k.wide || k.label) + 10));
+  for (let rows = 1; rows < n; rows++) {
+    const cols = Math.ceil(n / rows);
+    if (Math.floor((w - 2 * (cols - 1)) / cols) >= need) return rows;
+  }
+  return n;
+}
+
+// `whole`: the bar holds (r.h + 2) / 16 rows of equal columns and every cell shows its key and its whole name (the
+// player's bar, sized by keyRows). Otherwise one row, and a name that does not fit is cut to two letters.
+export function keyBar(p, hits, r, cells, held, whole = false) {
+  const rows = whole ? Math.max(1, Math.round((r.h + 2) / 16)) : 1;
+  const cols = Math.ceil(cells.length / rows);
+  const w = Math.floor((r.w - 2 * (cols - 1)) / cols);
+  const ch = whole ? 14 : r.h;
   // A cell sinks only with its own modifiers: a Shift cell with Shift held, any other without Shift; a plain code
   // without Ctrl (a Ctrl key is held as 'Ctrl+' + code). So the environment's Shift combinations sink no tile cell.
   const shift = held.has('ShiftLeft') || held.has('ShiftRight');
   const ctrl = held.has('ControlLeft') || held.has('ControlRight');
   cells.forEach((k, i) => {
-    const cell = { x: r.x + i * (w + 2), y: r.y, w, h: r.h };
+    const cell = { x: r.x + (i % cols) * (w + 2), y: r.y + Math.floor(i / cols) * 16, w, h: ch };
     const down = shift === k.key.startsWith('Shift+') && k.codes.some((c) => held.has(c) && (c.startsWith('Ctrl+') || !ctrl));
     box(p, cell, !down, down ? C.inset : C.btn, 1);
-    // A name that does not fit whole is cut to its first two letters, and the key gives way to them, down to one letter.
-    let key = fitText(RV, k.key, w - 14);
-    let label = k.label;
-    if (textWidth(RV, label) > w - textWidth(RV, key) - 16) {
-      label = [...label].slice(0, 2).join('');
-      key = fitText(RV, k.key, Math.max(RV.advance, w - 16 - textWidth(RV, label)));
+    if (whole) {
+      const key = fitText(RV, k.key, w - 12);
+      const kw = textWidth(RV, key);
+      p.fill(cell.x + 3, cell.y + 2, kw + 4, 10, C.dark);
+      p.text(RV, cell.x + 5, cell.y + 3, key, C.bright);
+      const nx = cell.x + 3 + kw + 4 + 3;
+      p.text(RV, nx, cell.y + 3, fitText(RV, k.label, cell.x + w - nx), C.text);
+    } else {
+      // A name that does not fit whole is cut to its first two letters, and the key gives way to them, down to one letter.
+      let key = fitText(RV, k.key, w - 14);
+      let label = k.label;
+      if (textWidth(RV, label) > w - textWidth(RV, key) - 16) {
+        label = [...label].slice(0, 2).join('');
+        key = fitText(RV, k.key, Math.max(RV.advance, w - 16 - textWidth(RV, label)));
+      }
+      const keyW = textWidth(RV, key);
+      p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
+      p.text(RV, cell.x + 7, cell.y + 3, key, C.bright);
+      const nx = cell.x + 4 + keyW + 6 + 4;
+      p.text(RV, nx, cell.y + 3, fitText(RV, label, cell.x + w - nx - 2), C.text);
     }
-    const keyW = textWidth(RV, key);
-    p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
-    p.text(RV, cell.x + 7, cell.y + 3, key, C.bright);
-    const nx = cell.x + 4 + keyW + 6 + 4;
-    p.text(RV, nx, cell.y + 3, fitText(RV, label, cell.x + w - nx - 2), C.text);
     if (k.click) hits.add(cell, { click: k.click });
   });
 }
@@ -205,6 +231,30 @@ export function messageScreen(p, size, title, lines) {
   const body = { x: frame.x + 7, y: frame.y + 7 + head, w: frame.w - 14, h: h - 14 - head };
   p.fill(body.x, body.y, body.w, body.h, C.inset);
   lineList.forEach((s, i) => p.text(RV, body.x + 8, body.y + 8 + i * 12, s, C.text));
+}
+
+// The desktop error stub, centered on the darkest surface: a 360 px box with the code's name on its title plate, the code
+// in VGA 2x and the line in the body, and a key bar of one cell, `Enter Return to /`, whose `click` leaves the stub.
+// `stub` is { code, line }. The cell is drawn sunken while Enter is in `held`.
+export function errorScreen(p, hits, size, { code, line }, held, click) {
+  p.fill(0, 0, size.w, size.h, C.dark);
+  const bodyH = 48;
+  const w = 360, h = 7 + 20 + bodyH + 2 + 14 + 7;
+  const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
+  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
+  p.bevel(frame, 2, true);
+  const name = ERRORS[code].name;
+  const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
+  p.dither(tr, C.win, C.lo);
+  p.fill(tr.x + 14, tr.y, textWidth(RV, name) + 12, tr.h, C.win);
+  p.text(RV, tr.x + 20, tr.y + 3, name, C.bright);
+  const body = { x: frame.x + 7, y: frame.y + 27, w: frame.w - 14, h: bodyH };
+  p.fill(body.x, body.y, body.w, body.h, C.inset);
+  p.text(VGA, body.x + 10, body.y + 8, String(code), C.sel, 2);
+  const lx = body.x + 10 + 54 + 12;
+  p.text(RV, lx, body.y + 20, fitText(RV, line, body.x + body.w - 8 - lx), C.text);
+  const cell = { x: body.x, y: body.y + body.h + 2, w: body.w, h: 14 };
+  keyBar(p, hits, cell, [{ key: 'Enter', label: T.returnTo, codes: ['Enter'], click }], held);
 }
 
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),

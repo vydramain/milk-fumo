@@ -4,7 +4,7 @@ import { START_DIR } from './config.js';
 import { PANE_MIN, ROW } from './metrics.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { KIND, kindOf, list, known, setOf, formatSize, formatBytes } from './catalog.js';
+import { KIND, kindOf, list, known, setOf, formatSize, formatBytes, isApp } from './catalog.js';
 import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
@@ -31,19 +31,23 @@ function newPanel(dir) {
 }
 
 export class PmcPane {
-  constructor(ws) {
+  // Both panels start in `dir`, the cursor on `cursorName` once the listing arrives (a link's file, or none).
+  constructor(ws, dir = START_DIR, cursorName) {
     this.ws = ws;
     this.id = null;
     this.act = 0;
-    this.panels = [newPanel(START_DIR), newPanel(START_DIR)];
+    this.panels = [newPanel(dir), newPanel(dir)];
     // The quick view (F3) is shown on panel quickIdx. It changes only by F3 or Enter, never by the cursor.
     this.quick = null; // { kind, path, view }
     this.quickIdx = 1;
-    this.panels.forEach((_, i) => this.reload(i));
+    this.panels.forEach((_, i) => this.reload(i).then((applied) => this.placeCursor(i, applied, cursorName)));
     this.lastClick = { panel: -1, row: -1, at: 0 };
   }
 
   get minimum() { return PANE_MIN.pmc; }
+
+  // The content path the address shows while this tile is focused: the active panel's folder.
+  get address() { return this.panels[this.act].dir; }
 
   // The items of a panel: the parent entry first, when there is one, then the listing.
   items(panel) {
@@ -77,12 +81,15 @@ export class PmcPane {
     panel.cursor = 0;
     panel.top = 0;
     panel.search = '';
-    this.reload(idx).then((applied) => {
-      if (!applied || cursorName === undefined) return;
-      const i = this.items(panel).findIndex((e) => e.name === cursorName);
-      panel.cursor = Math.max(0, i);
-      this.ws.requestDraw();
-    });
+    this.reload(idx).then((applied) => this.placeCursor(idx, applied, cursorName));
+  }
+
+  // Puts a panel's cursor on a name once its listing was applied (the first row when the name is not there).
+  placeCursor(idx, applied, name) {
+    if (!applied || name === undefined) return;
+    const panel = this.panels[idx];
+    panel.cursor = Math.max(0, this.items(panel).findIndex((e) => e.name === name));
+    this.ws.requestDraw();
   }
 
   // Up one level: the cursor stands on the folder that was just left, as in MC.
@@ -337,7 +344,7 @@ export class PmcPane {
     if (cursor && active) p.fill(r.x, r.y, r.w, r.h, focused ? C.sel : C.lo);
     const kind = item.up ? 'up' : kindOf(item);
     const dim = cursor && !active;
-    const name = item.dir && !item.up ? item.name + '/' : item.name;
+    const name = item.dir && !item.up && kind !== 'app' ? item.name + '/' : item.name;
     const size = item.up ? 'UP--DIR' : item.dir ? (kind === 'app' ? 'APP-DIR' : 'SUB-DIR') : formatSize(item.size);
     p.text(RV, r.x + 4, r.y + 2, KIND[kind].code, dark ? C.dark : C[KIND[kind].color]);
     p.text(RV, r.x + 22, r.y + 2, fitText(RV, name, nameW - 26), dark ? C.dark : dim ? C.dim : item.dir ? C.bright : C.text);
@@ -429,7 +436,7 @@ class FolderInfo {
 
   draw(p, r) {
     p.fill(r.x, r.y, r.w, r.h, C.win);
-    const rows = [['Path', '/' + this.path + '/'], ['Type', 'folder'], ['Items', this.failed ? '—' : this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
+    const rows = [['Path', '/' + this.path + (isApp(this.item.name) ? '' : '/')], ['Type', 'folder'], ['Items', this.failed ? '—' : this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
     rows.forEach(([k, v], i) => {
       p.text(RV, r.x + 8, r.y + 8 + i * 12, k, C.dim);
       p.text(RV, r.x + 70, r.y + 8 + i * 12, v, C.bright);

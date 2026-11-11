@@ -4,39 +4,39 @@
 // and foot panels, so this module draws their pocket layout from their parts, and its own chrome: the title bar,
 // a key bar of touch cells, the message line and the tab strip with ppmc.
 import { C } from './theme.js';
-import { RV, VGA, textWidth, fitText } from './font.js';
-import { Hits, box, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
-import { KIND, kindOf, list, setOf, formatSize } from './catalog.js';
+import { RV, VGA, textWidth, fitText, wrapText } from './font.js';
+import { Hits, box, centerText, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
+import { KIND, kindOf, list, setOf, formatSize, isApp, linkOf, resolveLink } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
-import { Player, headerOf } from './media.js';
+import { Player, nowWell } from './media.js';
 import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 import { HOME_NOTE, START_DIR } from './config.js';
-import { POCKET_ACTIONS, P, T } from './texts.js';
+import { POCKET_ACTIONS, P, T, ERRORS, LINK_LINES } from './texts.js';
 import { view } from './view.js';
 
 export const POCKET_W = 240;   // the layout width of a Pocket PC screen; the scale is the largest whole one that fits
 export const ROW = 16;         // a list row: pmc's 12 grown for a finger
 export const BAR = 16;         // a key-bar row: a 14 px cell and 2 px between rows
 export const SLOTS = 4;        // key-bar cells in a row; Back is always the last slot of the last row
+const KEYCOL = 64;             // the key column of the landscape layout
 const DRAG = 4;                // layout pixels a finger moves before a tap is a drag
 
 // The layout of a screen `devW` x `devH` device pixels: a whole scale k, so font pixels stay whole, and the size in
-// layout pixels.
+// layout pixels. The scale comes from the short side, so it does not change when the phone turns.
 export function layoutOf(devW, devH) {
-  const k = Math.max(1, Math.floor(devW / POCKET_W));
+  const k = Math.max(1, Math.floor(Math.min(devW, devH) / POCKET_W));
   return { k, w: Math.floor(devW / k), h: Math.floor(devH / k) };
 }
 
 const join = (dir, name) => (dir ? dir + '/' : '') + name;
-const clock = (t) => (Number.isFinite(t) && t >= 0
-  ? String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(Math.floor(t % 60)).padStart(2, '0') : '--:--');
 const TILE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };
 
 export class Pocket {
   // `history`: Back and the system back gesture go through the browser history (the site; one screen on the page).
-  constructor(requestDraw, { history = false } = {}) {
+  // `link`: a content path to open as the only tile; `stub`: { code, line } to show instead of any tile (main.js).
+  constructor(requestDraw, { history = false, link = null, stub = null } = {}) {
     this.requestDraw = requestDraw;
     this.useHistory = history;
     // What the desktop bodies read from their workspace.
@@ -44,20 +44,24 @@ export class Pocket {
     this.fullVideo = null;
     this.frame = 0;
 
-    this.tiles = ['Note'];     // the open tiles, in tab order
-    this.recent = ['Note'];    // the same, the most recently active last: Back returns to the one before
-    this.active = 'Note';
+    // A link or a stub starts with no tiles: the loading screen or the stub is drawn until a tile opens.
+    const bare = !!(link || stub);
+    this.tiles = bare ? [] : ['Note'];     // the open tiles, in tab order
+    this.recent = [...this.tiles];         // the same, the most recently active last: Back returns to the one before
+    this.active = bare ? null : 'Note';
+    this.stub = stub;
+    this.loading = !!link && !stub;
     this.progress = new Set();
-    this.msg = P.start;
-    this.full = false;         // the video fills the screen
-    this.note = new NoteBody(this, HOME_NOTE);
+    this.msg = bare ? T.loading : P.start;
+    this.full = false;         // the video or the game fills the screen
+    this.note = bare ? null : new NoteBody(this, HOME_NOTE);
     this.pmc = { dir: START_DIR, entries: null, error: false, load: null, cursor: 0, top: 0, view: 1 };
     this.players = { audio: null, video: null };
     this.image = null;
     this.app = null;
     this.hits = new Hits();
     this.down = null;
-    this.changeDir(START_DIR);
+    if (!bare) this.changeDir(START_DIR);
 
     if (history) {
       // The history lives one page load: after a reload the page stands on an old tile's entry, so it goes back to
@@ -68,13 +72,35 @@ export class Pocket {
       // The system back leaves the fullscreen first and gives the history entry back, as the Back cell does.
       window.addEventListener('popstate', (e) => {
         // Forward (an entry with as many tiles or more) opens nothing back; only going back closes.
-        if ((e.state?.pocket ?? 1) >= this.tiles.length) return;
-        if (this.full) { this.fullscreen(false); window.history.pushState({ pocket: this.tiles.length }, ''); }
-        else if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); window.history.pushState({ pocket: this.tiles.length }, ''); }
-        else if (this.tiles.length > 1) this.closeActive();
+        if ((e.state?.pocket ?? 1) < this.tiles.length) {
+          if (this.full) { this.fullscreen(false); window.history.pushState({ pocket: this.tiles.length }, ''); }
+          else if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); window.history.pushState({ pocket: this.tiles.length }, ''); }
+          else if (this.tiles.length > 1) this.closeActive();
+        }
         this.requestDraw();
       });
     }
+    if (this.loading) this.openLink(link);
+  }
+
+  // A share link: the folder is listed first, so pmc opened later starts there with the cursor on the file, then
+  // exactly the linked tile opens (a folder: pmc).
+  async openLink(link) {
+    const r = await resolveLink(link);
+    if (r.code) { this.showStub(r.code, r.name); return; }
+    await this.changeDir(r.dir, r.kind === 'folder' ? undefined : r.entry.name);
+    const row = r.kind === 'folder' ? null : this.rows().find((e) => e.name === r.entry.name);
+    if (r.kind !== 'folder' && !row) { this.showStub(404, r.entry.name); return; }
+    this.loading = false;
+    this.msg = '';
+    if (row) this.openRow(row); else this.open('pmc');
+    this.requestDraw();
+  }
+
+  showStub(code, name) {
+    this.loading = false;
+    this.stub = { code, line: LINK_LINES[code] ? LINK_LINES[code](name) : ERRORS[code].line };
+    this.requestDraw();
   }
 
   // ---- tiles ----
@@ -87,14 +113,17 @@ export class Pocket {
 
   open(id) {
     if (!this.tiles.includes(id)) {
+      // The first tile takes the page's own history entry; the next ones push.
+      const first = !this.tiles.length;
       this.tiles.push(id);
-      if (this.useHistory) window.history.pushState({ pocket: this.tiles.length }, '');
+      if (this.useHistory) window.history[first ? 'replaceState' : 'pushState']({ pocket: this.tiles.length }, '');
     }
     this.activate(id);
   }
 
   // Back: through the history when this screen owns it, so the cell and the system gesture are one action.
   back() {
+    if (!this.tiles.length) return;
     if (this.full) { this.fullscreen(false); return; }
     // In a folder, pmc's Back goes up, as Open on `..`; at the root it closes pmc.
     if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); return; }
@@ -104,13 +133,14 @@ export class Pocket {
   }
 
   closeActive() {
+    if (!this.tiles.length) return;
     if (this.tiles.length === 1) { this.msg = P.lastTile; return; }
     const id = this.active;
     const kind = id === 'Player' ? 'audio' : id === 'Video' ? 'video' : null;
     if (kind && this.players[kind]) { this.players[kind].element.remove(); this.players[kind].dispose(); this.players[kind] = null; }
     if (id === 'Image' && this.image) { this.image.dispose(); this.image = null; }
     if (id === 'App' && this.app) { this.app.dispose(); this.app = null; }
-    if (id === 'Note') this.note.dispose();
+    if (id === 'Note') this.note?.dispose();
     this.tiles =this.tiles.filter((x) => x !== id);
     this.recent = this.recent.filter((x) => x !== id);
     this.active = this.recent.at(-1);
@@ -137,8 +167,8 @@ export class Pocket {
     return POCKET_ACTIONS.find((a) => !this.progress.has(a.done)) === action ? 'next' : 'none';
   }
 
-  // The video's fullscreen: the frame fills the screen, a tap or Back leaves it. The browser's fullscreen is asked
-  // for on the site only; an iPhone refuses it for a page, and the frame still fills the screen.
+  // Full, for a video or a game: the frame fills the screen, Back (a tap on a video) leaves it. The browser's
+  // fullscreen is asked for on the site only; an iPhone refuses it for a page, and the frame still fills the screen.
   fullscreen(on) {
     this.full = on;
     if (!this.useHistory) return;
@@ -201,7 +231,7 @@ export class Pocket {
     this.progress.add('play');
     this.msg = '';
     if (kind === 'note') {
-      this.note.dispose();
+      this.note?.dispose();
       this.note = new NoteBody(this, join(pm.dir, e.name));
     } else {
       const set = setOf(pm.entries, kind);
@@ -242,12 +272,20 @@ export class Pocket {
     this.frame++;
     const hits = this.hits = new Hits();
     const video = this.active === 'Video' && this.players.video;
-    if (this.full && video) {
-      if (this.app) this.app.hide();
+    const game = this.active === 'App' && this.app;
+    // Full: a video or a game covers the whole screen. The video's tap leaves it; the game's iframe lies over the
+    // canvas and takes the touches, so Back or the system back leaves it.
+    if (this.full && (video || game)) {
       const all = { x: 0, y: 0, w: W, h: H };
       p.fill(0, 0, W, H, C.crust);
-      this.placeVideo(all);
-      hits.add(all, { click: () => this.fullscreen(false) });
+      if (video) {
+        if (this.app) this.app.hide();
+        this.placeVideo(all);
+        hits.add(all, { click: () => this.fullscreen(false) });
+      } else {
+        this.placeVideo(null);
+        this.app.place(all);
+      }
       return;
     }
     if (!video) this.placeVideo(null);
@@ -257,16 +295,35 @@ export class Pocket {
     p.bevel({ x: 0, y: 0, w: W, h: H }, 2, true);
     this.titleBar(p, { x: 4, y: 4, w: W - 8, h: 14 });
 
-    const keys = this.keysOf(this.active);
-    const keyRows = Math.ceil(keys.length / SLOTS);
+    const start = this.stub || this.loading;   // no tile yet: the stub, or the screen of a link that loads
+    const keys = start ? [] : this.keysOf(this.active);
     const tabsY = H - 4 - 14;
     const msgY = tabsY - 2 - 14;
-    const keysY = msgY - 2 - keyRows * BAR;
-    const body = { x: 4, y: 20, w: W - 8, h: keysY - 2 - 20 };
+    // Landscape (W > H): the key cells are a column on the right, from under the title bar, Back at its bottom.
+    // Portrait: a key bar of SLOTS cells a row above the message line; an empty slot stays blank, so Back keeps its
+    // place on every tile.
+    const cells = [];   // [cell, rect]
+    let body;
+    if (start) {
+      body = { x: 4, y: 20, w: W - 8, h: msgY - 2 - 20 };
+    } else if (W > H) {
+      body = { x: 4, y: 20, w: W - 8 - KEYCOL - 2, h: msgY - 2 - 20 };
+      const x = W - 4 - KEYCOL;
+      keys.slice(0, -1).filter(Boolean).forEach((c, i) => cells.push([c, { x, y: 20 + i * BAR, w: KEYCOL, h: 14 }]));
+      cells.push([keys.at(-1), { x, y: msgY - 2 - 14, w: KEYCOL, h: 14 }]);
+    } else {
+      const keysY = msgY - 2 - Math.ceil(keys.length / SLOTS) * BAR;
+      body = { x: 4, y: 20, w: W - 8, h: keysY - 2 - 20 };
+      const cellW = Math.floor((W - 8 - 2 * (SLOTS - 1)) / SLOTS);
+      keys.forEach((c, i) => {
+        if (c) cells.push([c, { x: 4 + (i % SLOTS) * (cellW + 2), y: keysY + Math.floor(i / SLOTS) * BAR, w: cellW, h: 14 }]);
+      });
+    }
 
     p.clip(body);
     hits.clip(body);
-    if (this.active === 'Note') this.drawNote(p, hits, body);
+    if (start) this.drawStart(p, body);
+    else if (this.active === 'Note') this.drawNote(p, hits, body);
     else if (this.active === 'pmc') this.drawPmc(p, hits, body);
     else if (this.active === 'Player') this.drawMedia(p, hits, body, this.players.audio);
     else if (video) this.drawMedia(p, hits, body, video);
@@ -276,22 +333,56 @@ export class Pocket {
     p.unclip();
     if (this.app && this.active !== 'App') this.app.hide();
 
-    // The key bar: SLOTS cells a row; an empty slot stays blank, so Back keeps its place on every tile.
-    const cellW = Math.floor((W - 8 - 2 * (SLOTS - 1)) / SLOTS);
-    keys.forEach((cell, i) => {
-      if (!cell) return;
-      const r = { x: 4 + (i % SLOTS) * (cellW + 2), y: keysY + Math.floor(i / SLOTS) * BAR, w: cellW, h: 14 };
-      keyBar(p, hits, r, [cell], NO_KEYS);
-    });
+    for (const [cell, r] of cells) keyBar(p, hits, r, [cell], NO_KEYS);
     const msg = { x: 4, y: msgY, w: W - 8, h: 14 };
     p.fill(msg.x, msg.y, msg.w, msg.h, C.inset);
     p.bevel(msg, 1, false);
-    p.text(RV, msg.x + 4, msg.y + 3, fitText(RV, this.msg.replace(/[[\]]/g, ''), msg.w - 8), C.bright);
-    this.tabStrip(p, hits, { x: 4, y: tabsY, w: W - 8, h: 14 });
+    if (this.stub) this.drawHint(p, msg);
+    else p.text(RV, msg.x + 4, msg.y + 3, fitText(RV, this.msg.replace(/[[\]]/g, ''), msg.w - 8), C.bright);
+    // While a link loads nothing is tappable: the strip is drawn into a throwaway hit list.
+    this.tabStrip(p, this.loading ? new Hits() : hits, { x: 4, y: tabsY, w: W - 8, h: 14 });
     // Every tappable thing looks pressed while the finger is on it, as on the desktop (workspace.js).
     const pr = this.down && !this.down.moved && this.down.pressed;
     const held = pr && hits.list.find((h) => h.on.click && h.r.x === pr.x && h.r.y === pr.y && h.r.w === pr.w && h.r.h === pr.h);
-    if (held) p.bevel(held.r, 2, false);
+    const shape = held && this.shapes.find((q) => q.r.x === held.r.x && q.r.y === held.r.y && q.r.w === held.r.w && q.r.h === held.r.h);
+    if (shape) shape.sunk(p);
+    else if (held) p.bevel(held.r, 2, false);
+
+    // The address follows the current tile (the stub and the loading screen leave it). The wanted address is resolved
+    // first, so the browser's own encoding of it does not count as a change.
+    if (this.useHistory && !start) {
+      const a = this.active;
+      const path = a === 'pmc' ? this.pmc.dir : a === 'Note' ? this.note.address : a === 'Image' ? this.image?.address
+        : a === 'App' ? this.app?.address : this.players[a === 'Player' ? 'audio' : 'video']?.address;
+      const want = path === undefined ? null : new URL(linkOf(path), location.href);
+      if (want && want.pathname + want.search !== location.pathname + location.search) {
+        history.replaceState(history.state, '', want.pathname + want.search);
+      }
+    }
+  }
+
+  // The body of the stub (a well with the code and its line) or, while a link loads, an empty well.
+  drawStart(p, r) {
+    const well = wellFrame(p, r, C.inset);
+    if (!this.stub) return;
+    p.text(VGA, well.x + 8, well.y + 8, String(this.stub.code), C.sel, 2);
+    wrapText(RV, this.stub.line, well.w - 16).forEach((s, i) => p.text(RV, well.x + 8, well.y + 48 + i * 12, s, C.text));
+  }
+
+  // The stub's message line: P.stubHint with each [word] as a keycap, as markdown.js draws them.
+  drawHint(p, msg) {
+    let x = msg.x + 4;
+    for (const s of P.stubHint.split(/(\[[^\]]*\])/)) {
+      const cap = s.startsWith('[');
+      const t = cap ? s.slice(1, -1) : s;
+      const w = textWidth(RV, t) + (cap ? 6 : 0);
+      if (cap) {
+        p.fill(x, msg.y + 2, w, 10, C.btn);
+        p.bevel({ x, y: msg.y + 2, w, h: 10 }, 1, true);
+      }
+      p.text(RV, x + (cap ? 3 : 0), msg.y + 3, t, C.bright);
+      x += w;
+    }
   }
 
   // The video is shown by its own element over the frame, as app.js shows an app's iframe: a phone's browser gave the
@@ -309,10 +400,13 @@ export class Pocket {
   }
 
   title() {
+    if (this.stub) return `${this.stub.code} ${ERRORS[this.stub.code].name}`;
+    if (this.loading) return T.tile.File;
     const a = this.active;
     if (a === 'Note') return T.tile.Note + ' · ' + this.note.path.split('/').pop();
     if (a === 'Image' && this.image) return T.tile.Image + ' · ' + this.image.entry.name;
     if (a === 'App' && this.app) return T.tile.App + ' · ' + this.app.name;
+    if (a === 'pmc') return P.ppmc;
     return T.tile[a] || a;
   }
 
@@ -333,22 +427,33 @@ export class Pocket {
   // pmc is the current tile the cell is sunken and takes no tap.
   tabStrip(p, hits, r) {
     const cell = { x: r.x + r.w - 44, y: r.y, w: 44, h: r.h };
+    // The sunken look of each tappable thing, found by its hit rectangle: a pressed tab or the ppmc cell is drawn
+    // sunken by its own shape, not by its (larger) hit rectangle.
+    this.shapes = [];
     let x = r.x + 2;
     // Too many tabs for the strip: all get the same narrower width and a cut name, so every tile keeps a tab.
-    const names = this.tiles.map((id) => T.tile[id] || id);
+    const names = this.tiles.map((id) => (id === 'pmc' ? P.ppmc : T.tile[id] || id));
     const fit = Math.floor((cell.x - 6 - x) / names.length) - 4;
     const full = names.reduce((s, n) => s + textWidth(RV, n) + 22, 0) <= cell.x - 6 - x;
     for (const [i, id] of this.tiles.entries()) {
       const w = full ? textWidth(RV, names[i]) + 18 : fit;
       const label = fitText(RV, names[i], w - 18);
       const active = id === this.active;
-      const rows = p.slant(x, r.y, w, r.h, 6, active ? C.sel : C.win);
+      const tx = x;
+      const rows = p.slant(tx, r.y, w, r.h, 6, active ? C.sel : C.win);
       if (!active) rows.forEach((rx, i) => { p.fill(rx + w - 1, r.y + i, 1, 1, C.lo); p.fill(rx + w, r.y + i, 2, 1, C.hi); });
-      p.text(RV, x + 9, r.y + 3, label, active ? C.dark : C.text);
-      hits.add({ x, y: r.y - 2, w: w + 6, h: r.h + 4 }, { click: () => {
+      p.text(RV, tx + 9, r.y + 3, label, active ? C.dark : C.text);
+      const hit = { x: tx, y: r.y - 2, w: w + 6, h: r.h + 4 };
+      hits.add(hit, { click: () => {
         if (id !== this.active) this.progress.add('switch');
         this.activate(id);
         this.msg = '';
+      } });
+      this.shapes.push({ r: hit, sunk: (q) => {
+        const sr = q.slant(tx, r.y, w, r.h, 6, C.inset);
+        sr.forEach((rx, j) => { q.fill(rx, r.y + j, 1, 1, C.lo); q.fill(rx + w - 1, r.y + j, 1, 1, C.lo); });
+        q.fill(sr[0], r.y, w, 1, C.lo);
+        q.text(RV, tx + 10, r.y + 4, label, active ? C.dark : C.text);
       } });
       x += w + 4;
     }
@@ -357,16 +462,22 @@ export class Pocket {
     p.fill(cell.x + 3, cell.y + 2, textWidth(RV, P.ppmc) + 6, 10, C.dark);
     p.text(RV, cell.x + 6, cell.y + 3, P.ppmc, here ? C.dim : this.progress.has('open') ? C.bright : C.sel);
     if (!here) {
-      hits.add({ x: cell.x - 2, y: cell.y - 4, w: cell.w + 4, h: cell.h + 6 }, { click: () => {
+      const hit = { x: cell.x - 2, y: cell.y - 4, w: cell.w + 4, h: cell.h + 6 };
+      hits.add(hit, { click: () => {
+        // From the stub: it goes, pmc opens at the root as the only tile.
+        if (this.stub) { this.stub = null; this.changeDir(START_DIR); }
         this.open('pmc');
         this.progress.add('open');
         this.msg = P.pmcHint;
       } });
+      this.shapes.push({ r: hit, sunk: (q) => q.bevel(cell, 2, false) });
     }
   }
 
   // The key bars, SLOTS a row, null for an empty slot. The key is a symbol: a phone has no keyboard.
   // No volume and no seek cells: the phone has volume buttons, and the position slider seeks under the finger.
+  // The players keep Mute, Full (video) and Back in one row; Prev, Play/Pause, Stop and Next are the transport row
+  // that drawMedia draws.
   keysOf(id) {
     const c = (key, label, click) => ({ key, label, codes: [], click: () => { click(); this.requestDraw(); } });
     const BACK = c('<', 'Back', () => this.back());
@@ -377,19 +488,17 @@ export class Pocket {
     }
     if ((id === 'Player' || id === 'Video') && this.players[id === 'Player' ? 'audio' : 'video']) {
       const pl = this.players[id === 'Player' ? 'audio' : 'video'];
-      const cells = [
-        c('|<', 'Prev', () => pl.load(pl.index - 1, pl.playing)),
-        pl.playing ? c('||', 'Pause', () => pl.pause()) : c('>', 'Play', () => pl.play()),
-        c('[]', 'Stop', () => pl.stop()),
-        c('>|', 'Next', () => pl.load(pl.index + 1, pl.playing)),
-        c('M', pl.element.muted ? 'Unmute' : 'Mute', () => pl.toggleMute()),
-      ];
-      return id === 'Player' ? [...cells, null, null, BACK] : [...cells, c('F', 'Full', () => this.fullscreen(true)), null, BACK];
+      const mute = c('M', pl.element.muted ? 'Unmute' : 'Mute', () => pl.toggleMute());
+      return id === 'Player' ? [mute, null, null, BACK] : [mute, c('F', 'Full', () => this.fullscreen(true)), null, BACK];
     }
     if (id === 'Image' && this.image) {
       return [c('<', 'Prev', () => this.image.load(this.image.index - 1)), c('>', 'Next', () => this.image.load(this.image.index + 1)), null, BACK];
     }
-    if (id === 'App' && this.app) return [c('0', 'Restart', () => this.app.restart()), null, null, BACK];
+    if (id === 'App' && this.app) {
+      // Full only while the app loads or runs: a failed app has nothing to show.
+      const full = this.app.status !== 'error' ? c('F', 'Full', () => this.fullscreen(true)) : null;
+      return [c('0', 'Restart', () => this.app.restart()), full, null, BACK];
+    }
     // A note scrolls under the finger: Back alone.
     return [null, null, null, BACK];
   }
@@ -436,7 +545,7 @@ export class Pocket {
       const cur = n === pm.cursor;
       if (cur) p.fill(row.x, row.y, row.w, row.h, C.sel);
       p.text(RV, row.x + 4, row.y + 4, kd.code, cur ? C.dark : C[kd.color]);
-      p.text(RV, row.x + 20, row.y + 4, fitText(RV, e.name + (e.dir ? '/' : ''), sizeX - row.x - 24), cur ? C.dark : C.text);
+      p.text(RV, row.x + 20, row.y + 4, fitText(RV, e.name + (e.dir && !isApp(e.name) ? '/' : ''), sizeX - row.x - 24), cur ? C.dark : C.text);
       p.text(RV, sizeX, row.y + 4, e.up ? 'UP--DIR' : e.dir ? 'SUB-DIR' : formatSize(e.size), cur ? C.dark : e.dir || e.up ? C.dim : C.text);
       // A tap on a row puts the cursor there; a tap on the cursor opens it.
       hits.add(row, { click: () => {
@@ -467,34 +576,27 @@ export class Pocket {
     loadBar(p, status.x + status.w - 38, status.y + 1, { state, share: state === 'done' ? 1 : 0 });
   }
 
-  // The Player and Video tiles as the desktop draws them (media.js) on the olive tile: the now-playing well, the
-  // Position slider, then the playlist (audio) or the fitted frame (video). The volume is left out.
+  // The Player and Video tiles on the olive tile: media.js's phone now-playing well, the big Position slider, the
+  // transport row (four big buttons: Prev, Play/Pause, Stop, Next), then the playlist (audio) or the fitted frame
+  // (video). The volume is left out: the phone has volume buttons.
   drawMedia(p, hits, r, pl) {
-    const end = this.nowPlaying(p, r, pl);
-    const below = pl.seekBar(p, hits, { x: r.x + 2, y: end + 6, w: r.w - 4 });
-    const rest = { x: r.x, y: below + 6, w: r.w, h: r.y + r.h - below - 6 };
+    const h = nowWell(p, pl, r, { phone: true });
+    const below = pl.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 }, true);
+    const ty = below + 6;
+    const cw = Math.floor((r.w - 6) / 4);
+    const act = [['|<', () => pl.load(pl.index - 1, pl.playing)], [pl.playing ? '||' : '>', () => pl.toggle()],
+      ['[]', () => pl.stop()], ['>|', () => pl.load(pl.index + 1, pl.playing)]];
+    act.forEach(([sym, click], i) => {
+      const b = { x: r.x + i * (cw + 2), y: ty, w: cw, h: 28 };
+      box(p, b, true, C.btn, 2);
+      const at = centerText(RV, b, sym, 2);
+      p.text(RV, at.x, at.y, sym, C.text, 2);
+      hits.add(b, { click });
+    });
+    const rest = { x: r.x, y: ty + 34, w: r.w, h: Math.max(0, r.y + r.h - (ty + 34)) };
     if (pl.kind === 'audio') { pl.playlist(p, hits, rest); return; }
     p.fill(rest.x, rest.y, rest.w, rest.h, C.crust);
-    this.placeVideo(rest);
-  }
-
-  // The now-playing well: the top of media.js transport() without its volume.
-  // ponytail: a copy of those lines, since transport() draws the volume too; a shared function in media.js if they drift.
-  nowPlaying(p, r, pl) {
-    const now = { x: r.x, y: r.y, w: r.w, h: 56 };
-    p.fill(now.x, now.y, now.w, now.h, C.cb);
-    const time = clock(pl.element.currentTime);
-    p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
-    const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
-    const tw = now.x + now.w - 8 - tx;
-    const head = headerOf(pl.entry.name, pl.tags.get(pl.path(pl.index)));
-    p.text(RV, tx, now.y + 10, fitText(RV, head.name, tw, 2), C.ct, 2);
-    if (head.art) p.text(RV, tx, now.y + 28, fitText(RV, head.art, tw), C.cs);
-    const folder = pl.dir ? '/' + pl.dir + '/' : '/';
-    const size = pl.kind === 'video' ? ` · ${pl.videoSize()}` : '';
-    const meta = `${pl.entry.name.split('.').pop().toUpperCase()} · ${clock(pl.duration())} · ${folder} · ${pl.index + 1} of ${pl.set.length}${size}`;
-    p.text(RV, tx, now.y + (head.art ? 40 : 30), fitText(RV, meta, tw), C.cs);
-    return now.y + now.h;
+    this.placeVideo(rest.h > 0 ? rest : null);
   }
 
   // The picture: fitted into the navy area and never enlarged, as image.js draws it; its name is in the title.

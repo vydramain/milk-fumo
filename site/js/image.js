@@ -25,6 +25,9 @@ export class ImageView {
 
   path(i) { return (this.dir ? this.dir + '/' : '') + this.set[i].name; }
 
+  // The content path the address shows while this tile is focused: the current picture.
+  get address() { return this.path(this.index); }
+
   // Another picture or folder, from pmc or the workspace: the downloads stay, they are kept by path.
   open(dir, set, index) {
     this.dir = dir;

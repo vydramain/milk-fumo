@@ -29,13 +29,14 @@ export const DRAG_START = 4;            // pixels a title bar moves before the p
 export const VIEWPORT_MIN = { w: 960, h: 540 };
 export const SCREEN_MIN = { w: 960, h: 540 };
 
-// The narrowest key-bar cell that still shows its key and two letters of its name (widgets.js: keyBar): 4 px in,
-// a one-letter key in its dark box (6 + 6), 4 px, two letters (12) and 2 px at the end.
+// The narrowest cell of a one-row key bar (tiles other than the players) that still shows its key and two letters
+// of its name (widgets.js: keyBar): 4 px in, a one-letter key in its dark box (6 + 6), 4 px, two letters (12)
+// and 2 px at the end.
 export const KEY_CELL_MIN = 34;
 // The narrowest key bar of n cells, 2 px apart.
 export const keyBarMin = (n) => n * KEY_CELL_MIN + 2 * (n - 1);
 
-// The player is as wide as its key bar of 8 cells at their narrowest, a video as its 9 (Loop added).
+// The player and video widths are kept; their key bars (7 and 9 cells) now wrap into rows (widgets.js keyRows).
 const PLAYER_W = keyBarMin(8);   // 286
 const VIDEO_W = keyBarMin(9);    // 322
 
