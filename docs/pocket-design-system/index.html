@@ -51,7 +51,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <h3>Metrics</h3>
 <table>
 <tr><th>Name</th><th>Value</th><th>Why</th></tr>
-<tr><td>Pocket width</td><td id="m-w"></td><td>A Pocket PC screen is 240 px wide. The scale k is the largest whole number with 240·k ≤ the screen's device width, so font pixels stay whole; the layout width is the device width / k.</td></tr>
+<tr><td>Pocket width</td><td id="m-w"></td><td>A Pocket PC screen is 240 px across. The scale k is the largest whole number with 240·k ≤ the screen's short side in device pixels, so font pixels stay whole and k does not change when the phone turns; the layout is the device size / k.</td></tr>
 <tr><td>List row</td><td id="m-row"></td><td>pmc's 12 px row grown for a finger. The playlist keeps the desktop's 12 px rows.</td></tr>
 <tr><td>Key-bar row</td><td id="m-bar"></td><td>A 14 px cell of the site's key bar and 2 px between rows.</td></tr>
 <tr><td>Key-bar slots</td><td id="m-slots"></td><td>Four cells a row, Back the last. Turned, the cells stand in a column 64 px wide on the right instead. Every key has its own cell, and a tile with more keys than a row holds wraps into a second row.</td></tr>
