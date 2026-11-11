@@ -106,9 +106,6 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <h2 id="widgets">Widgets</h2>
 <p><code>widgets.js</code>: immediate-mode widgets. A widget draws itself and adds its rectangle to the frame's hit list in the same call.</p>
 
-<h3>Buttons</h3>
-<div class="scroll"><div class="stage" data-demo="buttons"></div></div>
-
 <h3>Scroll bar</h3>
 <p>Arrows at both ends, a dithered track, a thumb no shorter than 8 px. A click on an arrow moves one item; a press on the track jumps and drags.</p>
 <div class="scroll"><div class="stage" data-demo="scrollbars"></div></div>
@@ -118,7 +115,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <div class="scroll"><div class="stage" data-demo="loadbars"></div></div>
 
 <h3>Key bar</h3>
-<p>Cells of equal width, the key in a dark box and its name. A cell sinks while one of its keys is held, but only with its own modifiers: a Shift cell with Shift, any other without. Click the stage and hold keys to see the first six bars sink. A name that does not fit is cut to two letters. The cells here are a copy of the ones the tiles build; each tile's own bar is on its stage under Tiles.</p>
+<p>Cells of equal width, the key in a dark box and its name. A cell sinks while one of its keys is held, but only with its own modifiers: a Shift cell with Shift, any other without. Click the stage and hold keys to see the bars sink. The player and video bars never cut a name: they wrap into as many rows as it takes (<code>keyRows</code>), and the captions give the row count at the minimum widths and at 440 and 700 px. The other bars stay one row, and a name that does not fit is cut to two letters. The cells here are a copy of the ones the tiles build; each tile's own bar is on its stage under Tiles.</p>
 <div class="scroll"><div class="stage" data-demo="keybars"></div></div>
 
 <h3>Foot panel</h3>
@@ -129,6 +126,21 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <p>What replaces the workspace on a screen under 960 x 540. <code>widgets.js: messageScreen</code>, chosen by <code>main.js</code>. A touch-first device gets the pocket version: <a href="../pocket-design-system/">pocket design system</a>.</p>
 <div class="row">
   <div class="scroll"><div class="stage" data-demo="screen-small"></div></div>
+</div>
+
+<h3>Error screen</h3>
+<p>The stub of a bad link or an nginx error page (the table of codes in <code>texts.js: ERRORS</code>): the code's name on the title plate, the code in VGA 2x, the line, and one key cell, <code>Enter Return to /</code>, which leads to the start screen. <code>widgets.js: errorScreen</code>, chosen by <code>main.js</code>. One stage per code, then the two link lines that name the file. Click a stage and hold Enter to see the cell sink; a click does nothing here but redraw.</p>
+<div class="row">
+  <div class="scroll"><div class="stage" data-demo="error-400"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-403"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-404"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-405"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-414"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-415"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-500"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-503"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-link-404"></div></div>
+  <div class="scroll"><div class="stage" data-demo="error-link-415"></div></div>
 </div>
 
 <h2 id="workspace">Workspace</h2>
@@ -189,11 +201,11 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 </div>
 
 <h3>Player</h3>
-<p><code>media.js</code>, <code>tags.js</code>. The clock, the header from ID3v2 or Vorbis tags (the third track has none), the position, the volume, and the playlist with a load bar per row. <code>missing.mp3</code> ends in <code>errr</code> once you select it.</p>
+<p><code>media.js</code>, <code>tags.js</code>. The header from ID3v2 or Vorbis tags (the third track has none), the folder's name, the position, the volume, the playlist with a load bar per row, and the key bar: <code>P Prev</code>, <code>Space Play</code> (one cell, <code>Pause</code> while playing), <code>S Stop</code>, <code>N Next</code>, <code>M Mute</code>, <code>&lt;- -&gt; Seek</code>, <code>^ v Volume</code>, wrapped into rows when the tile is narrow. <code>missing.mp3</code> ends in <code>errr</code> once you select it.</p>
 <div class="scroll"><div class="stage" data-demo="player"></div></div>
 
 <h3>Video</h3>
-<p>The player's top, Fit / 1x / 2x, Loop, the frame and the foot panel. Then the fullscreen: only the frame, and a panel with the position and the key bar that shows on a pointer move or a key and hides 3 s later with the cursor. Shift+F or a double click returns to the tile; here the stage stands in for the screen.</p>
+<p>The player's top and the frame, which always fits the tile and fills down to the key bar; the same cells as the player, with <code>L Loop</code> before Seek and <code>Shift+F Full</code> last. The file's load bar ends the format line. Then the fullscreen: only the frame, and a panel with the position and the key bar that shows on a pointer move or a key and hides 3 s later with the cursor. Shift+F or a double click returns to the tile; here the stage stands in for the screen.</p>
 <div class="scroll"><div class="stage" data-demo="video"></div></div>
 <div class="scroll"><div class="stage" data-demo="video-full"></div></div>
 
@@ -224,7 +236,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
   <tr><td>Pressed button</td><td>a clicked rectangle stays sunk until the pointer is up</td><td><code>Workspace.render</code></td><td>any button</td></tr>
   <tr><td>Drop preview</td><td>follows the pointer once a title bar has moved 4 px; Esc cancels</td><td><code>Workspace.tileDrag</code>, <code>layout.js: dropTarget</code></td><td><a href="#workspace">Tiles</a></td></tr>
   <tr><td>Border drag</td><td>follows the pointer, stops at a minimum and says why on the message line</td><td><code>Workspace.borderDrag</code></td><td><a href="#workspace">Tiles</a></td></tr>
-  <tr><td>Clock and position</td><td>each <code>timeupdate</code> of a playing track</td><td><code>Player.transport</code></td><td><a href="#tiles">Player</a></td></tr>
+  <tr><td>Position</td><td>each <code>timeupdate</code> of a playing track</td><td><code>Player.transport</code></td><td><a href="#tiles">Player</a></td></tr>
   <tr><td>Video frames</td><td>every animation frame while a video plays</td><td><code>Player.animated</code></td><td><a href="#tiles">Video</a></td></tr>
   <tr><td>Fullscreen panel and cursor</td><td>shown on a pointer move or a player key, hidden 3 s later; kept while the pointer is over it</td><td><code>Workspace.showPanel</code></td><td><a href="#tiles">Video</a></td></tr>
   <tr><td>Tutorial marks</td><td>✓ beside an action once it is done, › beside the next one</td><td><code>Workspace.progressOf</code>, <code>markdown.js</code></td><td><a href="#environment">Environment</a></td></tr>
