@@ -21,7 +21,7 @@ export const ROW = 16;         // a list row: pmc's 12 grown for a finger
 export const BAR = 16;         // a key-bar row: a 14 px cell and 2 px between rows
 export const SLOTS = 4;        // key-bar cells in a row; Back is always the last slot of the last row
 const KEYCOL = 64;             // the key column of the landscape layout
-const DRAG = 4;               // layout pixels a finger moves before a tap is a drag
+const DRAG = 4;                // layout pixels a finger moves before a tap is a drag
 
 // The layout of a screen `devW` x `devH` device pixels: a whole scale k, so font pixels stay whole, and the size in
 // layout pixels. The scale comes from the short side, so it does not change when the phone turns.
@@ -307,7 +307,9 @@ export class Pocket {
     // Every tappable thing looks pressed while the finger is on it, as on the desktop (workspace.js).
     const pr = this.down && !this.down.moved && this.down.pressed;
     const held = pr && hits.list.find((h) => h.on.click && h.r.x === pr.x && h.r.y === pr.y && h.r.w === pr.w && h.r.h === pr.h);
-    if (held) p.bevel(held.r, 2, false);
+    const shape = held && this.shapes.find((q) => q.r.x === held.r.x && q.r.y === held.r.y && q.r.w === held.r.w && q.r.h === held.r.h);
+    if (shape) shape.sunk(p);
+    else if (held) p.bevel(held.r, 2, false);
   }
 
   // The video is shown by its own element over the frame, as app.js shows an app's iframe: a phone's browser gave the
@@ -350,6 +352,9 @@ export class Pocket {
   // pmc is the current tile the cell is sunken and takes no tap.
   tabStrip(p, hits, r) {
     const cell = { x: r.x + r.w - 44, y: r.y, w: 44, h: r.h };
+    // The sunken look of each tappable thing, found by its hit rectangle: a pressed tab or the ppmc cell is drawn
+    // sunken by its own shape, not by its (larger) hit rectangle.
+    this.shapes = [];
     let x = r.x + 2;
     // Too many tabs for the strip: all get the same narrower width and a cut name, so every tile keeps a tab.
     const names = this.tiles.map((id) => (id === 'pmc' ? P.ppmc : T.tile[id] || id));
@@ -359,13 +364,21 @@ export class Pocket {
       const w = full ? textWidth(RV, names[i]) + 18 : fit;
       const label = fitText(RV, names[i], w - 18);
       const active = id === this.active;
-      const rows = p.slant(x, r.y, w, r.h, 6, active ? C.sel : C.win);
+      const tx = x;
+      const rows = p.slant(tx, r.y, w, r.h, 6, active ? C.sel : C.win);
       if (!active) rows.forEach((rx, i) => { p.fill(rx + w - 1, r.y + i, 1, 1, C.lo); p.fill(rx + w, r.y + i, 2, 1, C.hi); });
-      p.text(RV, x + 9, r.y + 3, label, active ? C.dark : C.text);
-      hits.add({ x, y: r.y - 2, w: w + 6, h: r.h + 4 }, { click: () => {
+      p.text(RV, tx + 9, r.y + 3, label, active ? C.dark : C.text);
+      const hit = { x: tx, y: r.y - 2, w: w + 6, h: r.h + 4 };
+      hits.add(hit, { click: () => {
         if (id !== this.active) this.progress.add('switch');
         this.activate(id);
         this.msg = '';
+      } });
+      this.shapes.push({ r: hit, sunk: (q) => {
+        const sr = q.slant(tx, r.y, w, r.h, 6, C.inset);
+        sr.forEach((rx, j) => { q.fill(rx, r.y + j, 1, 1, C.lo); q.fill(rx + w - 1, r.y + j, 1, 1, C.lo); });
+        q.fill(sr[0], r.y, w, 1, C.lo);
+        q.text(RV, tx + 10, r.y + 4, label, active ? C.dark : C.text);
       } });
       x += w + 4;
     }
@@ -374,11 +387,13 @@ export class Pocket {
     p.fill(cell.x + 3, cell.y + 2, textWidth(RV, P.ppmc) + 6, 10, C.dark);
     p.text(RV, cell.x + 6, cell.y + 3, P.ppmc, here ? C.dim : this.progress.has('open') ? C.bright : C.sel);
     if (!here) {
-      hits.add({ x: cell.x - 2, y: cell.y - 4, w: cell.w + 4, h: cell.h + 6 }, { click: () => {
+      const hit = { x: cell.x - 2, y: cell.y - 4, w: cell.w + 4, h: cell.h + 6 };
+      hits.add(hit, { click: () => {
         this.open('pmc');
         this.progress.add('open');
         this.msg = P.pmcHint;
       } });
+      this.shapes.push({ r: hit, sunk: (q) => q.bevel(cell, 2, false) });
     }
   }
 
