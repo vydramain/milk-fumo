@@ -4,12 +4,12 @@
 // and foot panels, so this module draws their pocket layout from their parts, and its own chrome: the title bar,
 // a key bar of touch cells, the message line and the tab strip with ppmc.
 import { C } from './theme.js';
-import { RV, VGA, textWidth, fitText } from './font.js';
-import { Hits, box, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
+import { RV, textWidth, fitText } from './font.js';
+import { Hits, box, centerText, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
 import { KIND, kindOf, list, setOf, formatSize, isApp } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
-import { Player, headerOf } from './media.js';
+import { Player, nowWell } from './media.js';
 import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 import { HOME_NOTE, START_DIR } from './config.js';
@@ -30,8 +30,6 @@ export function layoutOf(devW, devH) {
 }
 
 const join = (dir, name) => (dir ? dir + '/' : '') + name;
-const clock = (t) => (Number.isFinite(t) && t >= 0
-  ? String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(Math.floor(t % 60)).padStart(2, '0') : '--:--');
 const TILE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };
 
 export class Pocket {
@@ -368,6 +366,8 @@ export class Pocket {
 
   // The key bars, SLOTS a row, null for an empty slot. The key is a symbol: a phone has no keyboard.
   // No volume and no seek cells: the phone has volume buttons, and the position slider seeks under the finger.
+  // The players keep Mute, Full (video) and Back in one row; Prev, Play/Pause, Stop and Next are the transport row
+  // that drawMedia draws.
   keysOf(id) {
     const c = (key, label, click) => ({ key, label, codes: [], click: () => { click(); this.requestDraw(); } });
     const BACK = c('<', 'Back', () => this.back());
@@ -378,14 +378,8 @@ export class Pocket {
     }
     if ((id === 'Player' || id === 'Video') && this.players[id === 'Player' ? 'audio' : 'video']) {
       const pl = this.players[id === 'Player' ? 'audio' : 'video'];
-      const cells = [
-        c('|<', 'Prev', () => pl.load(pl.index - 1, pl.playing)),
-        pl.playing ? c('||', 'Pause', () => pl.pause()) : c('>', 'Play', () => pl.play()),
-        c('[]', 'Stop', () => pl.stop()),
-        c('>|', 'Next', () => pl.load(pl.index + 1, pl.playing)),
-        c('M', pl.element.muted ? 'Unmute' : 'Mute', () => pl.toggleMute()),
-      ];
-      return id === 'Player' ? [...cells, null, null, BACK] : [...cells, c('F', 'Full', () => this.fullscreen(true)), null, BACK];
+      const mute = c('M', pl.element.muted ? 'Unmute' : 'Mute', () => pl.toggleMute());
+      return id === 'Player' ? [mute, null, null, BACK] : [mute, c('F', 'Full', () => this.fullscreen(true)), null, BACK];
     }
     if (id === 'Image' && this.image) {
       return [c('<', 'Prev', () => this.image.load(this.image.index - 1)), c('>', 'Next', () => this.image.load(this.image.index + 1)), null, BACK];
@@ -468,34 +462,27 @@ export class Pocket {
     loadBar(p, status.x + status.w - 38, status.y + 1, { state, share: state === 'done' ? 1 : 0 });
   }
 
-  // The Player and Video tiles as the desktop draws them (media.js) on the olive tile: the now-playing well, the
-  // Position slider, then the playlist (audio) or the fitted frame (video). The volume is left out.
+  // The Player and Video tiles on the olive tile: media.js's phone now-playing well, the big Position slider, the
+  // transport row (four big buttons: Prev, Play/Pause, Stop, Next), then the playlist (audio) or the fitted frame
+  // (video). The volume is left out: the phone has volume buttons.
   drawMedia(p, hits, r, pl) {
-    const end = this.nowPlaying(p, r, pl);
-    const below = pl.seekBar(p, hits, { x: r.x + 2, y: end + 6, w: r.w - 4 });
-    const rest = { x: r.x, y: below + 6, w: r.w, h: r.y + r.h - below - 6 };
+    const h = nowWell(p, pl, r, { phone: true });
+    const below = pl.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 }, true);
+    const ty = below + 6;
+    const cw = Math.floor((r.w - 6) / 4);
+    const act = [['|<', () => pl.load(pl.index - 1, pl.playing)], [pl.playing ? '||' : '>', () => pl.toggle()],
+      ['[]', () => pl.stop()], ['>|', () => pl.load(pl.index + 1, pl.playing)]];
+    act.forEach(([sym, click], i) => {
+      const b = { x: r.x + i * (cw + 2), y: ty, w: cw, h: 28 };
+      box(p, b, true, C.btn, 2);
+      const at = centerText(RV, b, sym, 2);
+      p.text(RV, at.x, at.y, sym, C.text, 2);
+      hits.add(b, { click });
+    });
+    const rest = { x: r.x, y: ty + 34, w: r.w, h: Math.max(0, r.y + r.h - (ty + 34)) };
     if (pl.kind === 'audio') { pl.playlist(p, hits, rest); return; }
     p.fill(rest.x, rest.y, rest.w, rest.h, C.crust);
-    this.placeVideo(rest);
-  }
-
-  // The now-playing well: the top of media.js transport() without its volume.
-  // ponytail: a copy of those lines, since transport() draws the volume too; a shared function in media.js if they drift.
-  nowPlaying(p, r, pl) {
-    const now = { x: r.x, y: r.y, w: r.w, h: 56 };
-    p.fill(now.x, now.y, now.w, now.h, C.cb);
-    const time = clock(pl.element.currentTime);
-    p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
-    const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
-    const tw = now.x + now.w - 8 - tx;
-    const head = headerOf(pl.entry.name, pl.tags.get(pl.path(pl.index)));
-    p.text(RV, tx, now.y + 10, fitText(RV, head.name, tw, 2), C.ct, 2);
-    if (head.art) p.text(RV, tx, now.y + 28, fitText(RV, head.art, tw), C.cs);
-    const folder = pl.dir ? '/' + pl.dir + '/' : '/';
-    const size = pl.kind === 'video' ? ` · ${pl.videoSize()}` : '';
-    const meta = `${pl.entry.name.split('.').pop().toUpperCase()} · ${clock(pl.duration())} · ${folder} · ${pl.index + 1} of ${pl.set.length}${size}`;
-    p.text(RV, tx, now.y + (head.art ? 40 : 30), fitText(RV, meta, tw), C.cs);
-    return now.y + now.h;
+    this.placeVideo(rest.h > 0 ? rest : null);
   }
 
   // The picture: fitted into the navy area and never enlarged, as image.js draws it; its name is in the title.
