@@ -8,7 +8,8 @@ A personal portfolio site shaped as a tiling window manager. The browser window 
 - Everything can be done with the keyboard, with the mouse, or with both.
 - The site is read-only for visitors; they write nothing to the published content.
 - Chromium and Firefox are supported.
-- A phone gets the pocket version: one tile on the screen, tabs at the bottom, Back closes the tile (see [DESIGN.md](DESIGN.md#pocket-version)).
+- A phone gets the pocket version: one tile on the screen, tabs at the bottom, Back closes the tile; it works upright and turned (see [DESIGN.md](DESIGN.md#pocket-version)).
+- The address bar always shows the open file, as `/?open=music/ambient/track_01.mp3`; that address, copied and shared, opens exactly that file (see [DESIGN.md](DESIGN.md#links)).
 - [`docs/design-system/`](docs/design-system/) shows every component the site draws and every motion, drawn by the site's own modules (see [DESIGN.md](DESIGN.md#design-system)); [`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the pocket version.
 
 ## Controls
@@ -22,7 +23,7 @@ The modifier key is **Shift**. Keys are matched by physical position (`KeyboardE
 | Move a tile | drag its title bar to the edge of another | `Ctrl+Shift` + arrows |
 | Stack into tabs | drop its title bar onto the tabs | `Shift+W` |
 | Resize | drag the border | `Shift+R`, then arrows; `Enter` or `Esc` to finish |
-| Fullscreen and back | `M` in the title bar | `Shift+F` (a video also: double click on its frame) |
+| Fullscreen and back | `M` in the title bar (a video also: its **Full** cell, or a double click on its frame) | `Shift+F` |
 | Close a tile | `X` in the title bar | `Shift+Q`, also inside a game or app |
 | Restart an app | the **Restart** cell of its key bar | `Shift+0`, also inside the app's frame |
 | UI scale 1x, 1.5x or 2x | the **Scale** cell of the bottom bar | `Shift+S` |
@@ -86,6 +87,8 @@ On the server:
 
 **Updating.** New content needs nothing: it is served once it is uploaded. New site code is `git pull`, served on the next page load. A change to `nginx/nginx.conf` needs `docker compose --env-file .env.prod restart`.
 
+**Error pages.** nginx answers 400, 403, 404, 405, 414, 500 and 503 with [`site/error.html`](site/error.html), keeping the status code; the page draws the site's own error screen. 502 and 504 come from the host's reverse proxy, which keeps its own pages.
+
 **Operating.** `docker compose --env-file .env.prod logs -f` shows the requests; `docker compose --env-file .env.prod down` stops the site. The service is `restart: unless-stopped`, so it comes back after a reboot when Docker starts on boot.
 
 **Without Docker.** Any nginx with [`nginx/nginx.conf`](nginx/nginx.conf) works as well; its `root /srv/site` and `alias /srv/content/` are then set to the real paths.
@@ -100,7 +103,7 @@ The project document, covering the purpose, the structure and the reasons behind
 
 ## What is on the screen
 
-The screen is divided into tiles of six types: pmc, Note, Player, Video, App and Image. Each of pmc, Note, Player, Video and Image has one tile; an app has one tile per app. Every tile ends with a key bar whose cells can be clicked.
+The screen is divided into tiles of six types: pmc, note, player, video, app and image. Each of pmc, note, player, video and image has one tile; an app has one tile per app. Every tile ends with a key bar whose cells can be clicked.
 
 pmc is the file manager: two panels in one tile, in the spirit of early Midnight Commander. Details of the tiles and of pmc are in [DESIGN.md](DESIGN.md).
 
