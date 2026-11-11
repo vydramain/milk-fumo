@@ -20,12 +20,13 @@ export const POCKET_W = 240;   // the layout width of a Pocket PC screen; the sc
 export const ROW = 16;         // a list row: pmc's 12 grown for a finger
 export const BAR = 16;         // a key-bar row: a 14 px cell and 2 px between rows
 export const SLOTS = 4;        // key-bar cells in a row; Back is always the last slot of the last row
-const DRAG = 4;                // layout pixels a finger moves before a tap is a drag
+const KEYCOL = 64;             // the key column of the landscape layout
+const DRAG = 4;               // layout pixels a finger moves before a tap is a drag
 
 // The layout of a screen `devW` x `devH` device pixels: a whole scale k, so font pixels stay whole, and the size in
-// layout pixels.
+// layout pixels. The scale comes from the short side, so it does not change when the phone turns.
 export function layoutOf(devW, devH) {
-  const k = Math.max(1, Math.floor(devW / POCKET_W));
+  const k = Math.max(1, Math.floor(Math.min(devW, devH) / POCKET_W));
   return { k, w: Math.floor(devW / k), h: Math.floor(devH / k) };
 }
 
@@ -47,7 +48,7 @@ export class Pocket {
     this.active = 'Note';
     this.progress = new Set();
     this.msg = P.start;
-    this.full = false;         // the video fills the screen
+    this.full = false;         // the video or the game fills the screen
     this.note = new NoteBody(this, HOME_NOTE);
     this.pmc = { dir: START_DIR, entries: null, error: false, load: null, cursor: 0, top: 0, view: 1 };
     this.players = { audio: null, video: null };
@@ -135,8 +136,8 @@ export class Pocket {
     return POCKET_ACTIONS.find((a) => !this.progress.has(a.done)) === action ? 'next' : 'none';
   }
 
-  // The video's fullscreen: the frame fills the screen, a tap or Back leaves it. The browser's fullscreen is asked
-  // for on the site only; an iPhone refuses it for a page, and the frame still fills the screen.
+  // Full, for a video or a game: the frame fills the screen, Back (a tap on a video) leaves it. The browser's
+  // fullscreen is asked for on the site only; an iPhone refuses it for a page, and the frame still fills the screen.
   fullscreen(on) {
     this.full = on;
     if (!this.useHistory) return;
@@ -240,12 +241,20 @@ export class Pocket {
     this.frame++;
     const hits = this.hits = new Hits();
     const video = this.active === 'Video' && this.players.video;
-    if (this.full && video) {
-      if (this.app) this.app.hide();
+    const game = this.active === 'App' && this.app;
+    // Full: a video or a game covers the whole screen. The video's tap leaves it; the game's iframe lies over the
+    // canvas and takes the touches, so Back or the system back leaves it.
+    if (this.full && (video || game)) {
       const all = { x: 0, y: 0, w: W, h: H };
       p.fill(0, 0, W, H, C.crust);
-      this.placeVideo(all);
-      hits.add(all, { click: () => this.fullscreen(false) });
+      if (video) {
+        if (this.app) this.app.hide();
+        this.placeVideo(all);
+        hits.add(all, { click: () => this.fullscreen(false) });
+      } else {
+        this.placeVideo(null);
+        this.app.place(all);
+      }
       return;
     }
     if (!video) this.placeVideo(null);
@@ -256,11 +265,26 @@ export class Pocket {
     this.titleBar(p, { x: 4, y: 4, w: W - 8, h: 14 });
 
     const keys = this.keysOf(this.active);
-    const keyRows = Math.ceil(keys.length / SLOTS);
     const tabsY = H - 4 - 14;
     const msgY = tabsY - 2 - 14;
-    const keysY = msgY - 2 - keyRows * BAR;
-    const body = { x: 4, y: 20, w: W - 8, h: keysY - 2 - 20 };
+    // Landscape (W > H): the key cells are a column on the right, from under the title bar, Back at its bottom.
+    // Portrait: a key bar of SLOTS cells a row above the message line; an empty slot stays blank, so Back keeps its
+    // place on every tile.
+    const cells = [];   // [cell, rect]
+    let body;
+    if (W > H) {
+      body = { x: 4, y: 20, w: W - 8 - KEYCOL - 2, h: msgY - 2 - 20 };
+      const x = W - 4 - KEYCOL;
+      keys.slice(0, -1).filter(Boolean).forEach((c, i) => cells.push([c, { x, y: 20 + i * BAR, w: KEYCOL, h: 14 }]));
+      cells.push([keys.at(-1), { x, y: msgY - 2 - 14, w: KEYCOL, h: 14 }]);
+    } else {
+      const keysY = msgY - 2 - Math.ceil(keys.length / SLOTS) * BAR;
+      body = { x: 4, y: 20, w: W - 8, h: keysY - 2 - 20 };
+      const cellW = Math.floor((W - 8 - 2 * (SLOTS - 1)) / SLOTS);
+      keys.forEach((c, i) => {
+        if (c) cells.push([c, { x: 4 + (i % SLOTS) * (cellW + 2), y: keysY + Math.floor(i / SLOTS) * BAR, w: cellW, h: 14 }]);
+      });
+    }
 
     p.clip(body);
     hits.clip(body);
@@ -274,13 +298,7 @@ export class Pocket {
     p.unclip();
     if (this.app && this.active !== 'App') this.app.hide();
 
-    // The key bar: SLOTS cells a row; an empty slot stays blank, so Back keeps its place on every tile.
-    const cellW = Math.floor((W - 8 - 2 * (SLOTS - 1)) / SLOTS);
-    keys.forEach((cell, i) => {
-      if (!cell) return;
-      const r = { x: 4 + (i % SLOTS) * (cellW + 2), y: keysY + Math.floor(i / SLOTS) * BAR, w: cellW, h: 14 };
-      keyBar(p, hits, r, [cell], NO_KEYS);
-    });
+    for (const [cell, r] of cells) keyBar(p, hits, r, [cell], NO_KEYS);
     const msg = { x: 4, y: msgY, w: W - 8, h: 14 };
     p.fill(msg.x, msg.y, msg.w, msg.h, C.inset);
     p.bevel(msg, 1, false);
@@ -384,7 +402,11 @@ export class Pocket {
     if (id === 'Image' && this.image) {
       return [c('<', 'Prev', () => this.image.load(this.image.index - 1)), c('>', 'Next', () => this.image.load(this.image.index + 1)), null, BACK];
     }
-    if (id === 'App' && this.app) return [c('0', 'Restart', () => this.app.restart()), null, null, BACK];
+    if (id === 'App' && this.app) {
+      // Full only while the app loads or runs: a failed app has nothing to show.
+      const full = this.app.status !== 'error' ? c('F', 'Full', () => this.fullscreen(true)) : null;
+      return [c('0', 'Restart', () => this.app.restart()), full, null, BACK];
+    }
     // A note scrolls under the finger: Back alone.
     return [null, null, null, BACK];
   }
