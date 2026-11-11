@@ -72,7 +72,7 @@ export const T = {
   keyboardApp: 'Keyboard: app',
   keyboardNone: 'Keyboard: —',
   // The title and the tab of a tile, by its tab id; an app's title is its folder name.
-  tile: { pmc: 'pmc', Player: 'Player', Video: 'Video', Image: 'Image', Note: 'Note', File: 'File', App: 'App' },
+  tile: { pmc: 'pmc', Player: 'player', Video: 'video', Image: 'image', Note: 'note', File: 'file', App: 'app' },
 };
 
 // The key bar of pmc: the key as shown and the name after it.

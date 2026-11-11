@@ -6,7 +6,7 @@
 import { C } from './theme.js';
 import { RV, VGA, textWidth, fitText } from './font.js';
 import { Hits, box, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
-import { KIND, kindOf, list, setOf, formatSize } from './catalog.js';
+import { KIND, kindOf, list, setOf, formatSize, isApp } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
 import { Player, headerOf } from './media.js';
@@ -313,6 +313,7 @@ export class Pocket {
     if (a === 'Note') return T.tile.Note + ' · ' + this.note.path.split('/').pop();
     if (a === 'Image' && this.image) return T.tile.Image + ' · ' + this.image.entry.name;
     if (a === 'App' && this.app) return T.tile.App + ' · ' + this.app.name;
+    if (a === 'pmc') return P.ppmc;
     return T.tile[a] || a;
   }
 
@@ -335,7 +336,7 @@ export class Pocket {
     const cell = { x: r.x + r.w - 44, y: r.y, w: 44, h: r.h };
     let x = r.x + 2;
     // Too many tabs for the strip: all get the same narrower width and a cut name, so every tile keeps a tab.
-    const names = this.tiles.map((id) => T.tile[id] || id);
+    const names = this.tiles.map((id) => (id === 'pmc' ? P.ppmc : T.tile[id] || id));
     const fit = Math.floor((cell.x - 6 - x) / names.length) - 4;
     const full = names.reduce((s, n) => s + textWidth(RV, n) + 22, 0) <= cell.x - 6 - x;
     for (const [i, id] of this.tiles.entries()) {
@@ -436,7 +437,7 @@ export class Pocket {
       const cur = n === pm.cursor;
       if (cur) p.fill(row.x, row.y, row.w, row.h, C.sel);
       p.text(RV, row.x + 4, row.y + 4, kd.code, cur ? C.dark : C[kd.color]);
-      p.text(RV, row.x + 20, row.y + 4, fitText(RV, e.name + (e.dir ? '/' : ''), sizeX - row.x - 24), cur ? C.dark : C.text);
+      p.text(RV, row.x + 20, row.y + 4, fitText(RV, e.name + (e.dir && !isApp(e.name) ? '/' : ''), sizeX - row.x - 24), cur ? C.dark : C.text);
       p.text(RV, sizeX, row.y + 4, e.up ? 'UP--DIR' : e.dir ? 'SUB-DIR' : formatSize(e.size), cur ? C.dark : e.dir || e.up ? C.dim : C.text);
       // A tap on a row puts the cursor there; a tap on the cursor opens it.
       hits.add(row, { click: () => {

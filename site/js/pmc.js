@@ -4,7 +4,7 @@ import { START_DIR } from './config.js';
 import { PANE_MIN, ROW } from './metrics.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { KIND, kindOf, list, known, setOf, formatSize, formatBytes } from './catalog.js';
+import { KIND, kindOf, list, known, setOf, formatSize, formatBytes, isApp } from './catalog.js';
 import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
@@ -337,7 +337,7 @@ export class PmcPane {
     if (cursor && active) p.fill(r.x, r.y, r.w, r.h, focused ? C.sel : C.lo);
     const kind = item.up ? 'up' : kindOf(item);
     const dim = cursor && !active;
-    const name = item.dir && !item.up ? item.name + '/' : item.name;
+    const name = item.dir && !item.up && kind !== 'app' ? item.name + '/' : item.name;
     const size = item.up ? 'UP--DIR' : item.dir ? (kind === 'app' ? 'APP-DIR' : 'SUB-DIR') : formatSize(item.size);
     p.text(RV, r.x + 4, r.y + 2, KIND[kind].code, dark ? C.dark : C[KIND[kind].color]);
     p.text(RV, r.x + 22, r.y + 2, fitText(RV, name, nameW - 26), dark ? C.dark : dim ? C.dim : item.dir ? C.bright : C.text);
@@ -429,7 +429,7 @@ class FolderInfo {
 
   draw(p, r) {
     p.fill(r.x, r.y, r.w, r.h, C.win);
-    const rows = [['Path', '/' + this.path + '/'], ['Type', 'folder'], ['Items', this.failed ? '—' : this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
+    const rows = [['Path', '/' + this.path + (isApp(this.item.name) ? '' : '/')], ['Type', 'folder'], ['Items', this.failed ? '—' : this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
     rows.forEach(([k, v], i) => {
       p.text(RV, r.x + 8, r.y + 8 + i * 12, k, C.dim);
       p.text(RV, r.x + 70, r.y + 8 + i * 12, v, C.bright);
