@@ -4,7 +4,7 @@ import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from
 import * as L from './layout.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box, NO_KEYS } from './widgets.js';
+import { Hits, box, NO_KEYS, keyRows } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
 import { view } from './view.js';
 import { HOME_NOTE } from './config.js';
@@ -21,7 +21,7 @@ const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
 const TILE_MIN = PANE_MIN.generic;
-const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4
+const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4; 16 more per extra key row
 const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without movement or a player key
 // The tab and title of the tile that shows each kind of file: at most one tile of each.
 const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' };  // tab ids; the names are T.tile
@@ -273,7 +273,9 @@ export class Workspace {
   }
 
   panelRect() {
-    return { x: 0, y: this.screen.h - PANEL_H, w: this.screen.w, h: PANEL_H };
+    const rows = this.fullVideo ? keyRows(this.fullVideo.cells(), this.screen.w - 8) : 1;
+    const h = PANEL_H + 16 * (rows - 1);
+    return { x: 0, y: this.screen.h - h, w: this.screen.w, h };
   }
 
   // The panel shows for 3 s after a move or a player key, and stays while the pointer is over it.
@@ -621,14 +623,14 @@ export class Workspace {
   renderFullVideo(p, W, H) {
     const v = this.fullVideo;
     p.fill(0, 0, W, H, C.crust);
-    v.drawFrame(p, { x: 0, y: 0, w: W, h: H }, 'fit');
+    v.drawFrame(p, { x: 0, y: 0, w: W, h: H });
     if (!this.panelShown()) return;
     const r = this.panelRect();
     p.fill(r.x, r.y, r.w, r.h, C.win);
     p.bevel(r, 1, true);
     const end = v.seekBar(p, this.hits, { x: r.x + 6, y: r.y + 6, w: r.w - 12 });
     this.drawHeld = this.held;
-    v.keys(p, this.hits, { x: r.x + 4, y: end + 4, w: r.w - 8, h: 14 });
+    v.keys(p, this.hits, { x: r.x + 4, y: end + 4, w: r.w - 8, h: r.y + r.h - 4 - (end + 4) });
   }
 
   renderTiles(p, W, H) {

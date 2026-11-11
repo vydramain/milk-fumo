@@ -1,24 +1,20 @@
 // The media player: an audio or video element created by the script and never put in the page.
 // Video frames are drawn into the canvas. The same player serves the audio and video tiles and the quick view.
-// Both layouts share the top: now playing, the position and the volume. Then the playlist (audio) or the frame with
-// its view buttons (video), and the key bar at the bottom.
+// Both layouts share the top: now playing, the position and the volume. Then the playlist (audio) or the frame
+// (video), and the key bar at the bottom; the key bar wraps into rows (widgets.js keyRows).
 // Files are downloaded with a byte counter (download.js): the current one and the next; every started download runs to
 // its end. The element streams the file meanwhile, or plays the Blob once it is done.
 import { C } from './theme.js';
 import { PANE_MIN } from './metrics.js';
-import { RV, VGA, textWidth, fitText } from './font.js';
+import { RV, textWidth, fitText, wrapText } from './font.js';
 import { urlOf } from './catalog.js';
-import { box, button, keyBar, loadBar, footBar, LOAD_W } from './widgets.js';
+import { box, keyBar, keyRows, loadBar, LOAD_W } from './widgets.js';
 import { Downloads } from './download.js';
 import { readTags } from './tags.js';
 import { PLAYER_KEYS as K } from './texts.js';
 
-const SPEEDS = ['fit', '1x', '2x'];
 const PAD = 4;
-const NOW_H = 56;
 const VOLUME_H = 14;
-const KEYS_H = 14;
-const FOOT_H = 14;
 const TAG_LIMIT = 1 << 20;        // tags are looked for in the first 1 MiB only
 
 function timeText(sec) {
@@ -39,7 +35,6 @@ export class Player {
     this.element.preload = 'auto';
     this.element.playsInline = true;
     this.element.volume = 0.82;
-    this.speed = 'fit';
     this.loop = false;
     this.tags = new Map();        // path -> tags ({} when there are none)
     this.durations = new Map();   // path -> seconds
@@ -208,20 +203,22 @@ export class Player {
     return true;
   }
 
-  // The key bar: Space sinks Play while paused and Pause while playing; a click on Seek or Volume steps
-  // forward or up, as Right and Up do. A video has Loop before Seek.
+  // The key bar: Space is one cell, Play while paused and Pause while playing (`wide` keeps the rows put); a click on
+  // Seek or Volume steps forward or up, as Right and Up do. A video in a tile has Loop before Seek and Full last.
   cells() {
-    const on = this.playing;
+    const video = this.kind === 'video';
+    // In a quick view Shift+F belongs to pmc (it maximizes the pmc tile), so the Player gets no Full cell there.
+    const tile = !this.ws.tileOf || !!this.ws.tileOf(this);
     return [
       { ...K.prev, codes: ['KeyP'], click: () => this.load(this.index - 1, this.playing) },
-      { ...K.play, codes: on ? [] : ['Space'], click: () => this.play() },
-      { ...K.pause, codes: on ? ['Space'] : [], click: () => this.pause() },
+      { ...K.play, label: this.playing ? K.pause.label : K.play.label, wide: K.pause.label, codes: ['Space'], click: () => this.toggle() },
       { ...K.stop, codes: ['KeyS'], click: () => this.stop() },
       { ...K.next, codes: ['KeyN'], click: () => this.load(this.index + 1, this.playing) },
       { ...K.mute, codes: ['KeyM'], click: () => this.toggleMute() },
-      ...(this.kind === 'video' ? [{ ...K.loop, codes: ['KeyL'], click: () => this.toggleLoop() }] : []),
+      ...(video ? [{ ...K.loop, codes: ['KeyL'], click: () => this.toggleLoop() }] : []),
       { ...K.seek, codes: ['ArrowRight', 'ArrowLeft'], click: () => this.seekBy(5) },
       { ...K.volume, codes: ['ArrowUp', 'ArrowDown'], click: () => this.volumeBy(0.05) },
+      ...(video && tile ? [{ ...K.full, codes: ['KeyF'], click: () => this.fullscreen() }] : []),
     ];
   }
 
@@ -229,22 +226,8 @@ export class Player {
   // Returns the y under the volume.
   transport(p, hits, r) {
     const e = this.element;
-    const now = { x: r.x, y: r.y, w: r.w, h: NOW_H };
-    p.fill(now.x, now.y, now.w, now.h, C.cb);
-    const time = timeText(e.currentTime);
-    p.text(VGA, now.x + 10, now.y + 12, time, C.green, 2);
-    const tx = now.x + 10 + textWidth(VGA, time, 2) + 12;
-    const tw = now.x + now.w - 8 - tx;
-    // The header: the name large, the art line under it, the meta line moving up when there is no art.
-    const head = headerOf(this.entry.name, this.tags.get(this.path(this.index)));
-    p.text(RV, tx, now.y + 10, fitText(RV, head.name, tw, 2), C.ct, 2);
-    if (head.art) p.text(RV, tx, now.y + 28, fitText(RV, head.art, tw), C.cs);
-    const folder = this.dir ? '/' + this.dir + '/' : '/';
-    const size = this.kind === 'video' ? ` · ${this.videoSize()}` : '';
-    const meta = `${this.entry.name.split('.').pop().toUpperCase()} · ${timeText(this.duration())} · ${folder} · ${this.index + 1} of ${this.set.length}${size}`;
-    p.text(RV, tx, now.y + (head.art ? 40 : 30), fitText(RV, meta, tw), C.cs);
-
-    const end = this.seekBar(p, hits, { x: r.x + 2, y: r.y + 62, w: r.w - 4 });
+    const h = nowWell(p, this, r, { bar: this.kind === 'video' });
+    const end = this.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 });
 
     const vol = { x: r.x + PAD, y: end + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
     p.dither(vol, C.inset, C.lo);
@@ -257,30 +240,37 @@ export class Player {
   }
 
   // The position, from y = r.y across r.w: a sunken slider, a scale of ticks under it, and the caption with the times.
-  // Its knob reaches 2 px above r.y. Returns the y under the caption (r.y + 30). The tile and the fullscreen panel share it.
-  seekBar(p, hits, r) {
+  // `big` (a finger): a track of 14 px, a knob of 6x18 and a press band of 18 px. Its knob reaches 2 px above r.y.
+  // Returns the y under the caption. The tile and the fullscreen panel share it.
+  seekBar(p, hits, r, big = false) {
     const e = this.element;
-    const seek = { x: r.x, y: r.y, w: r.w, h: 10 };
+    const th = big ? 14 : 10;
+    const seek = { x: r.x, y: r.y, w: r.w, h: th };
     const frac = this.duration() ? e.currentTime / this.duration() : 0;
     p.fill(seek.x, seek.y, seek.w, seek.h, C.inset);
     p.bevel(seek, 1, false);
     p.fill(seek.x + 1, seek.y + 1, Math.round((seek.w - 2) * frac), seek.h - 2, C.sel);
-    box(p, { x: seek.x + Math.round((seek.w - 2) * frac) - 2, y: seek.y - 2, w: 4, h: 14 }, true, C.btn);
-    hits.add(seek, { press: (x) => { this.seek((x - seek.x) / seek.w); return (qx) => this.seek((qx - seek.x) / seek.w); } });
-    const ruler = { x: seek.x, y: seek.y + 13, w: seek.w, h: 8 };
+    const kx = seek.x + Math.round((seek.w - 2) * frac);
+    box(p, big ? { x: kx - 3, y: seek.y - 2, w: 6, h: 18 } : { x: kx - 2, y: seek.y - 2, w: 4, h: 14 }, true, C.btn);
+    const go = (x) => this.seek((x - seek.x) / seek.w);
+    hits.add(big ? { x: seek.x, y: seek.y - 2, w: seek.w, h: 18 } : seek, { press: (x) => { go(x); return (qx) => go(qx); } });
+    const ruler = { x: seek.x, y: seek.y + th + 3, w: seek.w, h: 8 };
     for (let x = 0; x < ruler.w; x += 6) p.fill(ruler.x + x, ruler.y + (x % 30 ? 4 : 0), 1, x % 30 ? 4 : 8, C.dim);
     const caption = { x: seek.x, y: ruler.y + 9, w: seek.w, h: 8 };
-    p.text(RV, caption.x, caption.y, timeText(e.currentTime), C.dim);
+    p.text(RV, caption.x, caption.y, timeText(e.currentTime), C.text);
     p.text(RV, caption.x + Math.floor((caption.w - textWidth(RV, 'Position')) / 2), caption.y, 'Position', C.dim);
     const dur = timeText(this.duration());
-    p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.dim);
+    p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.text);
     return caption.y + caption.h;
   }
 
-  // The key bar: the last 14 px of the body. Returns the y 4 px above it, where the layout above ends.
+  // The key bar at the bottom of r: as many rows of 16 px as keyRows asks for, every name whole. Returns the y 4 px
+  // above it, where the layout above ends.
   keys(p, hits, r) {
-    const bar = { x: r.x, y: r.y + r.h - KEYS_H, w: r.w, h: KEYS_H };
-    keyBar(p, hits, bar, this.cells(), this.ws.drawHeld);
+    const cells = this.cells();
+    const h = keyRows(cells, r.w) * 16 - 2;
+    const bar = { x: r.x, y: r.y + r.h - h, w: r.w, h };
+    keyBar(p, hits, bar, cells, this.ws.drawHeld, true);
     return bar.y - 4;
   }
 
@@ -297,7 +287,7 @@ export class Player {
     const lenX = r.x + r.w - 40;
     const barX = lenX - 6 - LOAD_W;
     p.fill(r.x, r.y, r.w, 13, C.csurf);
-    p.text(RV, r.x + 3, r.y + 3, `Playlist: /${this.dir ? this.dir + '/' : ''}`, C.bright);
+    p.text(RV, r.x + 3, r.y + 3, fitText(RV, `Playlist: ${folderName(this)}`, lenX - 6 - (r.x + 3)), C.bright);
     p.text(RV, lenX, r.y + 3, 'Len.', C.bright);
     this.set.forEach((entry, i) => {
       const row = { x: r.x, y: r.y + 14 + i * 12, w: r.w - 14, h: 12 };
@@ -314,32 +304,14 @@ export class Player {
     });
   }
 
-  // Video layout: the transport, the view buttons (Fit, 1x, 2x and Loop), then the frame, the foot panel 4 px above
-  // the key bar (`name · 00:00 / 01:12`, the load bar, `Keyboard: —`) and the key bar.
+  // Video layout: the transport, then the frame down to the key bar. The frame always fits; no view buttons.
   drawVideo(p, r, hits) {
     const bottom = this.keys(p, hits, r);
     const end = this.transport(p, hits, r);
-    const y = end + 4;
-    let x = r.x + PAD;
-    for (const s of SPEEDS) {
-      const b = { x, y, w: 30, h: 16 };
-      button(p, hits, b, s === 'fit' ? 'Fit' : s, { on: this.speed === s, click: () => { this.speed = s; this.ws.requestDraw(); } });
-      x += 33;
-    }
-    x += 6;
-    const cb = { x, y: y + 3, w: 10, h: 10 };
-    box(p, cb, false, C.inset);
-    if (this.loop) p.fill(cb.x + 3, cb.y + 3, 4, 4, C.sel);
-    p.text(RV, cb.x + 14, y + 4, 'Loop', C.text);
-    hits.add({ x: cb.x, y, w: 60, h: 16 }, { click: () => this.toggleLoop() });
-
-    const foot = { x: r.x, y: bottom - FOOT_H, w: r.w, h: FOOT_H };
-    const frame = { x: r.x + PAD, y: y + 22, w: r.w - 2 * PAD, h: Math.max(0, foot.y - 4 - (y + 22)) };
+    const frame = { x: r.x + PAD, y: end + 6, w: r.w - 2 * PAD, h: Math.max(0, bottom - (end + 6)) };
     this.frameRect = frame;     // a double click on it toggles the fullscreen (Workspace.doubleClick)
     p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
     this.drawFrame(p, frame);
-    const line = `${this.entry.name} · ${timeText(this.element.currentTime)} / ${timeText(this.duration())}`;
-    footBar(p, foot, line, this.downloads.peek(this.path(this.index)) || null, false);
   }
 
   videoSize() {
@@ -347,16 +319,15 @@ export class Player {
     return v.videoWidth ? `${v.videoWidth}×${v.videoHeight}` : '—';
   }
 
-  // The frame is drawn from the element: fitted, or at 1x or 2x of its own pixels, clipped to the frame.
-  // The fullscreen always fits it.
-  drawFrame(p, frame, speed = this.speed) {
+  // The frame is drawn from the element, always fitted into the frame.
+  drawFrame(p, frame) {
     const v = this.element;
     if (!v.videoWidth) {
       const t = 'video frame';
       p.text(RV, frame.x + Math.floor((frame.w - textWidth(RV, t)) / 2), frame.y + Math.floor(frame.h / 2) - 4, t, C.cov);
       return;
     }
-    const s = speed === 'fit' ? Math.min(frame.w / v.videoWidth, frame.h / v.videoHeight) : Number(speed[0]);
+    const s = Math.min(frame.w / v.videoWidth, frame.h / v.videoHeight);
     const w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
     p.clip(frame);
     p.image(v, frame.x + Math.floor((frame.w - w) / 2), frame.y + Math.floor((frame.h - h) / 2), w, h);
@@ -368,6 +339,40 @@ export class Player {
     if (this.kind === 'video') this.drawVideo(p, r, hits);
     else this.drawAudio(p, r, hits);
   }
+}
+
+// The folder's name only (the last part of its path); the root is `/`.
+const folderName = (pl) => (pl.dir ? pl.dir.split('/').pop() : '/');
+
+// The format line: whole when it fits, else two lines (type and length; folder, number, size). `phone`: each line is
+// wrapped by words; otherwise cut.
+function metaLines(pl, tw, phone) {
+  const a = `${pl.entry.name.split('.').pop().toUpperCase()} · ${timeText(pl.duration())}`;
+  const b = `${folderName(pl)} · ${pl.index + 1} of ${pl.set.length}${pl.kind === 'video' ? ` · ${pl.videoSize()}` : ''}`;
+  const whole = `${a} · ${b}`;
+  if (textWidth(RV, whole) <= tw) return [whole];
+  return [a, b].flatMap((s) => (phone ? wrapText(RV, s, tw) : [fitText(RV, s, tw)]));
+}
+
+// The now-playing well from r.y, across r.w: the title (2x), the artist line and the format line, no clock. Its height
+// follows its lines and is returned. `phone`: the lines wrap by words instead of being cut. `bar`: the load bar of the
+// current file stands at the right end of the format line.
+export function nowWell(p, pl, r, { phone = false, bar = false } = {}) {
+  const head = headerOf(pl.entry.name, pl.tags.get(pl.path(pl.index)));
+  const tx = r.x + 8;
+  const tw = r.w - 16;
+  const title = phone ? wrapText(RV, head.name, tw, 2) : [fitText(RV, head.name, tw, 2)];
+  const art = !head.art ? [] : phone ? wrapText(RV, head.art, tw) : [fitText(RV, head.art, tw)];
+  const meta = metaLines(pl, bar ? tw - LOAD_W - 6 : tw, phone);
+  const artY = 10 + title.length * 18;
+  const metaY = art.length ? artY + art.length * 12 : artY + 2;
+  const h = metaY + (meta.length - 1) * 12 + 16;
+  p.fill(r.x, r.y, r.w, h, C.cb);
+  title.forEach((s, i) => p.text(RV, tx, r.y + 10 + i * 18, s, C.ct, 2));
+  art.forEach((s, i) => p.text(RV, tx, r.y + artY + i * 12, s, phone ? C.cs : C.ct));
+  meta.forEach((s, i) => p.text(RV, tx, r.y + metaY + i * 12, s, C.cs));
+  if (bar) loadBar(p, r.x + r.w - 8 - LOAD_W, r.y + metaY + (meta.length - 1) * 12 - 2, pl.downloads.peek(pl.path(pl.index)) || null);
+  return h;
 }
 
 // The header: with tags, the title large and "Artist — Album (Year)" under it, missing parts left out; without tags,

@@ -84,7 +84,8 @@ export const PMC_KEYS = [
   { key: 'Letters', label: 'Search' },
 ];
 
-// The key bar of the player: the key as shown and the name after it. Loop is the video's only.
+// The key bar of the player: the key as shown and the name after it. Space is one cell, Play or Pause by the state
+// (play and pause stay for the design system's sheet); Loop and Full are the video's only.
 export const PLAYER_KEYS = {
   prev: { key: 'P', label: 'Prev' },
   play: { key: 'Space', label: 'Play' },
@@ -93,8 +94,9 @@ export const PLAYER_KEYS = {
   next: { key: 'N', label: 'Next' },
   mute: { key: 'M', label: 'Mute' },
   loop: { key: 'L', label: 'Loop' },
-  seek: { key: 'L/R', label: 'Seek' },
-  volume: { key: 'U/D', label: 'Volume' },
+  seek: { key: '<- ->', label: 'Seek' },
+  volume: { key: '^ v', label: 'Volume' },
+  full: { key: 'Shift+F', label: 'Full' },
 };
 
 // The key bars of the picture and of the note.
