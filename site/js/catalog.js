@@ -57,7 +57,7 @@ export function known(path) {
 async function fetchList(path) {
   const dir = path ? path.replace(/\/?$/, '/') : '';
   const response = await fetch(urlOf(dir), { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`${response.status} ${dir}`);
+  if (!response.ok) throw Object.assign(new Error(`${response.status} ${dir}`), { status: response.status });
   const raw = await response.json();
   const items = raw
     .filter((e) => !e.name.startsWith('.'))
@@ -69,6 +69,40 @@ async function fetchList(path) {
     }));
   items.sort((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name) : a.dir ? -1 : 1));
   return items;
+}
+
+// ---- links: /?open=<path under the content root> ---------------------------------------------------------------------
+
+// The link in a query string: null without `open`, { path } for a good one, { code: 400 } for a broken one. This is the
+// trust boundary of links: a path is split into segments and every one must be a plain name, so a link can only name
+// something under the content root. One trailing slash is accepted and dropped.
+export function linkPath(search) {
+  const raw = new URLSearchParams(search).get('open');
+  if (raw === null) return null;
+  const path = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+  const bad = path.split('/').some((s) => s === '' || s === '.' || s === '..' || /[\\:]/.test(s));
+  return bad ? { code: 400 } : { path };
+}
+
+// The address of a path: `/` for the root, else `/?open=` and the segments, each encoded, the slashes literal.
+export function linkOf(path) {
+  return path ? '/?open=' + path.split('/').map(encodeURIComponent).join('/') : '/';
+}
+
+// What a link names, from the listing of its parent folder: { kind, dir, entry } (`dir` is the folder the viewer works
+// in: the path itself for a folder, else the parent), or { code, name } for a link that cannot open: 404 (not in the
+// listing, or the listing failed), 403 (the listing was refused), 415 (a file the site has no viewer for).
+export async function resolveLink(path) {
+  const cut = path.lastIndexOf('/');
+  const dir = path.slice(0, Math.max(cut, 0));
+  const name = path.slice(cut + 1);
+  let entries;
+  try { entries = await list(dir); } catch (err) { return { code: err.status === 403 ? 403 : 404, name }; }
+  const entry = entries.find((e) => e.name === name);
+  if (!entry) return { code: 404, name };
+  const kind = kindOf(entry);
+  if (kind === 'folder') return { kind, dir: path, entry };
+  return kind === 'other' ? { code: 415, name } : { kind, dir, entry };
 }
 
 // The kind of an entry, from its name and whether it is a folder.

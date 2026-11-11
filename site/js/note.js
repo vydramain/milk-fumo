@@ -23,6 +23,9 @@ export class NoteBody {
     this.download = new Download(urlOf(path), () => this.changed());
   }
 
+  // The content path the address shows while this tile is focused.
+  get address() { return this.path; }
+
   // On done the Blob is parsed; the bar and the foot follow the bytes.
   async changed() {
     const d = this.download;

@@ -4,11 +4,11 @@ import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from
 import * as L from './layout.js';
 import { C } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box, NO_KEYS, keyRows } from './widgets.js';
-import { ENV_CELLS, T, TUTORIAL_ACTIONS } from './texts.js';
+import { Hits, box, NO_KEYS, keyRows, errorScreen } from './widgets.js';
+import { ENV_CELLS, T, TUTORIAL_ACTIONS, ERRORS, LINK_LINES } from './texts.js';
 import { view } from './view.js';
 import { HOME_NOTE } from './config.js';
-import { setOf, list, kindOf } from './catalog.js';
+import { setOf, list, kindOf, linkOf, resolveLink } from './catalog.js';
 import { PmcPane } from './pmc.js';
 import { NoteBody } from './note.js';
 import { Player } from './media.js';
@@ -34,8 +34,9 @@ export class LoadingBody {
   dispose() {}
 }
 
+// `address`: the content path the address shows while this tile is focused (none: the address stays as it is).
 export class MessageBody {
-  constructor(text) { this.text = text; this.minimum = TILE_MIN; }
+  constructor(text, address) { this.text = text; this.address = address; this.minimum = TILE_MIN; }
   draw(p, r) { p.fill(r.x, r.y, r.w, r.h, C.cb); p.text(RV, r.x + 6, r.y + 6, this.text, C.ct); }
   key() { return false; }
   dispose() {}
@@ -48,8 +49,14 @@ function makeTile(body, label, tab) {
 }
 
 export class Workspace {
-  constructor(requestDraw) {
+  // `link`: the content path of a link, which opens exactly one tile. `stub`: { code, line }, the error screen in place
+  // of every tile. `history`: the focused tile's file is written into the address (the site; not the design system).
+  constructor(requestDraw, { link = null, stub = null, history = false } = {}) {
     this.requestDraw = requestDraw;
+    this.link = link;
+    this.stub = stub;
+    this.history = history;
+    this.linkAt = null;        // { dir, name }: where the first pmc opens after a link, once
     this.panes = new Map();
     this.root = null;
     this.L = L.newLayout(null);
@@ -73,8 +80,11 @@ export class Workspace {
     this.setup();
   }
 
-  // Start: the readme note on the left and pmc on the right, focused, 1:1.
+  // Start: the readme note on the left and pmc on the right, focused, 1:1. A link starts with its one tile, an error
+  // stub with none.
   setup() {
+    if (this.stub) return;
+    if (this.link) { this.openLink(this.link); return; }
     const note = makeTile(new NoteBody(this, HOME_NOTE), T.tile.Note, 'Note');
     this.panes.set(note.id, note);
     const pmc = this.newPmcTile();
@@ -164,11 +174,50 @@ export class Workspace {
     this.focusByUser(next.tabs[next.active]);
   }
 
-  newPmcTile() {
+  // pmc in a new tile; it starts in `dir` with the cursor on `name` when they are given.
+  newPmcTile(dir, name) {
     const tile = makeTile(null, T.tile.pmc, 'pmc');
     this.panes.set(tile.id, tile);
-    this.fillTile(tile, new PmcPane(this), 'pmc');
+    this.fillTile(tile, new PmcPane(this, dir, name), 'pmc');
     return tile;
+  }
+
+  // A link: one tile, the whole layout, focused. It loads until the link is resolved, then takes the viewer of what the
+  // link names (a folder: pmc; an .exe folder: the app). A link that cannot open gives the stub.
+  openLink(path) {
+    const tile = makeTile(new LoadingBody(this), T.tile.File, 'File');
+    this.panes.set(tile.id, tile);
+    this.L = L.newLayout(L.leaf([tile.id]));
+    this.setFocus(tile.id);
+    resolveLink(path).then((r) => {
+      // The tile can be closed while the folder is listed (Shift+Enter opened pmc beside it): then nothing is made.
+      if (!this.panes.has(tile.id)) return;
+      if (r.code) { this.showStub(r.code, r.name); return; }
+      if (r.kind === 'folder') {
+        tile.label = T.tile.pmc;
+        this.fillTile(tile, new PmcPane(this, path), 'pmc');
+        return;
+      }
+      this.linkAt = { dir: r.dir, name: r.entry.name };
+      if (r.kind === 'app') {
+        tile.label = r.entry.name;
+        this.fillTile(tile, new AppPane(this, r.dir, r.entry.name), 'App');
+        return;
+      }
+      const type = TYPE_OF[r.kind];
+      Object.assign(tile, { label: T.tile[type], tab: type });
+      this.showFile(tile, type, r.kind, r.dir, r.entry, true);
+    });
+  }
+
+  // Replaces every tile with the error stub of a link that cannot open; the link's 404 and 415 name its file.
+  showStub(code, name) {
+    for (const t of this.panes.values()) if (t.body.dispose) t.body.dispose();
+    this.panes.clear();
+    this.L = L.newLayout(null);
+    this.focus = null;
+    this.stub = { code, line: LINK_LINES[code] ? LINK_LINES[code](name) : ERRORS[code].line };
+    this.requestDraw();
   }
 
   // Shift+Enter: the focus goes to pmc, or pmc opens in a new tile beside the focused one when there is none.
@@ -178,7 +227,10 @@ export class Workspace {
       this.reveal(pmc.id);
     } else {
       if (this.L.max) { this.msg = T.maximized; return; }
-      const tile = this.newPmcTile();
+      // After a link, pmc opens in the linked file's folder with the cursor on the file; later it starts as usual.
+      const at = this.linkAt;
+      this.linkAt = null;
+      const tile = this.newPmcTile(at && at.dir, at && at.name);
       L.addBeside(this.L, L.leafOf(this.L.root, this.focus), 'h', L.leaf([tile.id]), true);
       this.setFocus(tile.id);
     }
@@ -341,11 +393,21 @@ export class Workspace {
     if (tile) { this.focus = tile.id; this.closeFocus(); this.requestDraw(); }
   }
 
+  // A new tile goes to the right of pmc's tile; with no pmc tile (nor a focused one) it is the whole layout.
+  placeTile(pmc, tile) {
+    const at = this.L.root && (L.leafOf(this.L.root, pmc.id) || L.leafOf(this.L.root, this.focus));
+    if (at) {
+      L.addBeside(this.L, at, 'h', L.leaf([tile.id]), true);
+    } else {
+      this.L = L.newLayout(L.leaf([tile.id]));
+      this.setFocus(tile.id);
+    }
+  }
+
   // Opens a file in the tile of its type: an open one is focused and shows the file, else a new tile opens to the
   // right of pmc's tile. A viewer with open(dir, set, index) keeps its body; any other gets a new one.
   openFile(pmc, dir, item) {
     const kind = kindOf(item);
-    const path = (dir ? dir + '/' : '') + item.name;
     const type = TYPE_OF[kind] || 'File';
     let tile = TYPE_OF[kind] && this.tileOfType(type);
     if (tile) {
@@ -353,9 +415,15 @@ export class Workspace {
     } else {
       tile = makeTile(new LoadingBody(this), T.tile[type], type);
       this.panes.set(tile.id, tile);
-      L.addBeside(this.L, L.leafOf(this.L.root, pmc.id), 'h', L.leaf([tile.id]), true);
+      this.placeTile(pmc, tile);
     }
     this.requestDraw();
+    this.showFile(tile, type, kind, dir, item);
+  }
+
+  // Puts the viewer of a file into its tile. `play`: a track or a video starts at once, if the browser allows it.
+  showFile(tile, type, kind, dir, item, play = false) {
+    const path = (dir ? dir + '/' : '') + item.name;
     if (kind === 'audio' || kind === 'video' || kind === 'image') {
       list(dir).then((entries) => {
         // A listing can arrive after the tile was closed: then nothing is made.
@@ -364,11 +432,12 @@ export class Workspace {
         const index = Math.max(0, set.indexOf(item));
         if (tile.body.open) tile.body.open(dir, set, index);
         else this.fillTile(tile, kind === 'image' ? new ImageView(this, dir, set, index) : new Player(this, kind, dir, set, index), type);
+        if (play && kind !== 'image') tile.body.play();
       }).catch(() => { if (this.panes.has(tile.id)) this.fillTile(tile, new MessageBody(T.loadError + path), type); });
     } else if (kind === 'note') {
       this.fillTile(tile, new NoteBody(this, path), type);
     } else {
-      this.fillTile(tile, new MessageBody(T.noViewer), type);
+      this.fillTile(tile, new MessageBody(T.noViewer, path), type);
     }
   }
 
@@ -378,7 +447,7 @@ export class Workspace {
     if (open) { this.reveal(open.id); this.requestDraw(); return; }
     const tile = makeTile(new AppPane(this, dir, name), name, 'App');
     this.panes.set(tile.id, tile);
-    L.addBeside(this.L, L.leafOf(this.L.root, pmc.id), 'h', L.leaf([tile.id]), true);
+    this.placeTile(pmc, tile);
     this.requestDraw();
   }
 
@@ -439,7 +508,7 @@ export class Workspace {
 
   // The smallest window the current layout fits in: the layout's minimum plus the margins and the bars.
   minimum() {
-    const m = L.minSize(this.L.root, (id) => this.minOf(id)) || { w: 0, h: 0 };
+    const m = (this.L.root && L.minSize(this.L.root, (id) => this.minOf(id))) || { w: 0, h: 0 };
     return {
       w: Math.max(VIEWPORT_MIN.w, m.w + 2 * MARGIN),
       h: Math.max(VIEWPORT_MIN.h, m.h + 3 * MARGIN + MSG_H + ENV_H + 2 * MARGIN),
@@ -451,6 +520,12 @@ export class Workspace {
   // Returns true if the key was used. Shift combinations are the environment's; the rest go to the focused tile.
   key(e) {
     const k = e.code;
+    // The stub has one key: Enter returns to the start screen.
+    if (this.stub) {
+      if (k !== 'Enter') return false;
+      if (!e.repeat) location.assign('/');
+      return true;
+    }
     // While a title bar is held, the only key is Escape, which cancels the drag; other keys wait for the drop.
     if (this.drag) {
       if (k === 'Escape') { this.drag = null; this.dropAt = null; this.msg = ''; }
@@ -606,17 +681,32 @@ export class Workspace {
     this.tiles = [];
     this.frame++;
     this.screen = { w: W, h: H };
-    if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
-    else this.renderTiles(p, W, H);
-    if (!this.fullVideo) this.drawBars(p, W, H);
+    if (this.stub) {
+      errorScreen(p, this.hits, this.screen, this.stub, this.held, () => location.assign('/'));
+    } else {
+      if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
+      else this.renderTiles(p, W, H);
+      if (!this.fullVideo) this.drawBars(p, W, H);
+    }
     // Every clickable thing looks pressed the same way while the pointer is down on it.
     const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
     if (held) p.bevel(held.r, 2, false);
     // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
     for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
+    // The stub leaves the browser tab's title and the address as they are.
+    if (this.stub) return;
     // The browser tab shows the focused tile's title; it follows focus changes and closing.
     const t = this.titleOf(this.focus);
     if (document.title !== t) document.title = t;
+    // The address shows the focused tile's file (pmc: its active panel's folder); a body without an address leaves it
+    // as it is. The wanted address is resolved first, so the browser's own encoding of it does not count as a change.
+    const address = this.history ? this.panes.get(this.focus)?.body.address : undefined;
+    if (address !== undefined) {
+      const want = new URL(linkOf(address), location.href);
+      if (want.pathname + want.search !== location.pathname + location.search) {
+        history.replaceState(history.state, '', want.pathname + want.search);
+      }
+    }
   }
 
   // Only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.

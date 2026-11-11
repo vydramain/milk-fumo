@@ -41,6 +41,25 @@ export const P = {
   again: (name) => `Tap again to open ${name}.`,
   appRunning: (name) => `Running ${name}. Back closes it.`,
   lastTile: 'The last tile cannot be closed.',
+  stubHint: 'Tap [ppmc] to return to /.',
+};
+
+// The error stub (a bad link, or an error page of nginx): the name and the line of each code. The 404 line here is the
+// address's; a link's 404 and 415 name the file (LINK_LINES). A 415 comes from a link only, so its line is the
+// viewer's own.
+export const ERRORS = {
+  400: { name: 'Bad Request', line: 'This link is broken.' },
+  403: { name: 'Forbidden', line: 'This file cannot be read.' },
+  404: { name: 'Not Found', line: 'Nothing is at this address.' },
+  405: { name: 'Method Not Allowed', line: 'The site only reads.' },
+  414: { name: 'URI Too Long', line: 'The address is too long.' },
+  415: { name: 'Unsupported Media Type', line: 'There is no viewer for this file type.' },
+  500: { name: 'Internal Server Error', line: 'The server failed. Try again later.' },
+  503: { name: 'Service Unavailable', line: 'The server is busy. Try again later.' },
+};
+export const LINK_LINES = {
+  404: (name) => `${name} is not here.`,
+  415: (name) => `${name}: no viewer for this file type.`,
 };
 
 export const T = {
@@ -50,6 +69,7 @@ export const T = {
   tooSmallHint: 'Open the site on a larger screen.',
   loading: 'Loading…',
   noViewer: 'There is no viewer for this file type.',
+  returnTo: 'Return to /',
   appNoIndex: 'This app has no index.html.',
   appLoading: 'Loading the app…',
   appRunning: 'Running. Keys go to the app — click another tile to take them back.',

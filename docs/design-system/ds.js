@@ -14,9 +14,9 @@ import { NoteBody } from '../../site/js/note.js';
 import { Player } from '../../site/js/media.js';
 import { ImageView } from '../../site/js/image.js';
 import { AppPane } from '../../site/js/app.js';
-import { KIND, list, setOf, urlOf } from '../../site/js/catalog.js';
+import { KIND, list, setOf, urlOf, linkPath, linkOf } from '../../site/js/catalog.js';
 import { view } from '../../site/js/view.js';
-import { T, PMC_KEYS, PLAYER_KEYS, IMAGE_KEYS, NOTE_KEYS, APP_KEYS } from '../../site/js/texts.js';
+import { T, ERRORS, PMC_KEYS, PLAYER_KEYS, IMAGE_KEYS, NOTE_KEYS, APP_KEYS } from '../../site/js/texts.js';
 import { NET, params } from './net.js';
 
 // ---- the network: net.js ------------------------------------------------------------------------------------------
@@ -635,6 +635,19 @@ const metrics = document.querySelector('[data-metrics]');
 if (metrics) {
   metrics.innerHTML = '<tr><th>Constant</th><th>Value</th></tr>' + Object.entries(M)
     .map(([k, v]) => `<tr><td><code>${k}</code></td><td><code>${JSON.stringify(v)}</code></td></tr>`).join('');
+}
+
+// The links table runs the site's own link check over the inputs of the acceptance criteria.
+const links = document.querySelector('[data-links]');
+if (links) {
+  const inputs = ['?open=music/ambient/track_01.mp3', '?open=video/teaser.webm', '?open=images/poster.jpg', '?open=games/plug-run.exe',
+    '?open=music', '?open=about.md', '?open=music/01%20brass-hum.mp3', '?open=../etc/passwd', '?open=a//b', '?open=./x',
+    '?open=a%5Cb', '?open=a:b', '?open=', '?open=music/', ''];
+  const result = (r) => (r === null ? 'no open parameter: the start screen' : r.code ? `${r.code} ${ERRORS[r.code].name}: ${ERRORS[r.code].line}` : `opens ${JSON.stringify(r.path)}`);
+  links.innerHTML = '<tr><th>Query string</th><th>Result</th><th>Address written</th></tr>' + inputs.map((q) => {
+    const r = linkPath(q);
+    return `<tr><td><code>${q || '(none)'}</code></td><td>${result(r)}</td><td><code>${r && r.path ? linkOf(r.path) : ''}</code></td></tr>`;
+  }).join('');
 }
 
 for (const el of document.querySelectorAll('[data-demo]')) {

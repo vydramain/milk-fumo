@@ -159,6 +159,10 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <p>The favicon <code>Mf</code> is the M button of the title bar, made by <code>tools/favicon.js</code>. The tab's title follows the focused tile: its app name.</p>
 <div class="scroll"><div class="stage" data-demo="favicon"></div></div>
 
+<h3>Share links</h3>
+<p>A link is <code>/?open=&lt;path under the content root&gt;</code>. Each row runs the site's own <code>catalog.js: linkPath</code> on a query string, and <code>linkOf</code> on a good path: the path it opens, or the code of the error stub; and the address the tile then writes. A broken link sends no request.</p>
+<table data-links></table>
+
 <h2 id="tiles">Tiles</h2>
 <p>Each tile body alone, as the workspace draws it inside a tile.</p>
 

@@ -59,6 +59,9 @@ export class Player {
 
   path(i) { return (this.dir ? this.dir + '/' : '') + this.set[i].name; }
 
+  // The content path the address shows while this tile is focused: the current file.
+  get address() { return this.path(this.index); }
+
   // A playing video needs a frame at every animation frame; a playing audio only needs its clock redrawn.
   animated() { return this.playing && this.kind === 'video'; }
 

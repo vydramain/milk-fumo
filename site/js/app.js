@@ -56,6 +56,9 @@ export class AppPane {
 
   get minimum() { return PANE_MIN.app; }
 
+  // The content path the address shows while this tile is focused: the app's folder.
+  get address() { return this.path; }
+
   // A message from the app's window, checked against this app's own frame.
   message(event) {
     if (event.source !== this.frame.contentWindow) return;

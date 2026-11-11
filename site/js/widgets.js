@@ -1,8 +1,8 @@
 // Widgets of the immediate-mode UI. A widget draws itself and, in the same call, registers its rectangle
 // with the frame's hit list. A click is checked against the list from the top down.
 import { C } from './theme.js';
-import { RV, textWidth, fitText } from './font.js';
-import { T } from './texts.js';
+import { RV, VGA, textWidth, fitText } from './font.js';
+import { T, ERRORS } from './texts.js';
 import { TITLE_H } from './metrics.js';
 
 // The hits of one frame. A later hit is on top of an earlier one, so a widget is added after its container.
@@ -231,6 +231,30 @@ export function messageScreen(p, size, title, lines) {
   const body = { x: frame.x + 7, y: frame.y + 7 + head, w: frame.w - 14, h: h - 14 - head };
   p.fill(body.x, body.y, body.w, body.h, C.inset);
   lineList.forEach((s, i) => p.text(RV, body.x + 8, body.y + 8 + i * 12, s, C.text));
+}
+
+// The desktop error stub, centered on the darkest surface: a 360 px box with the code's name on its title plate, the code
+// in VGA 2x and the line in the body, and a key bar of one cell, `Enter Return to /`, whose `click` leaves the stub.
+// `stub` is { code, line }. The cell is drawn sunken while Enter is in `held`.
+export function errorScreen(p, hits, size, { code, line }, held, click) {
+  p.fill(0, 0, size.w, size.h, C.dark);
+  const bodyH = 48;
+  const w = 360, h = 7 + 20 + bodyH + 2 + 14 + 7;
+  const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
+  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
+  p.bevel(frame, 2, true);
+  const name = ERRORS[code].name;
+  const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
+  p.dither(tr, C.win, C.lo);
+  p.fill(tr.x + 14, tr.y, textWidth(RV, name) + 12, tr.h, C.win);
+  p.text(RV, tr.x + 20, tr.y + 3, name, C.bright);
+  const body = { x: frame.x + 7, y: frame.y + 27, w: frame.w - 14, h: bodyH };
+  p.fill(body.x, body.y, body.w, body.h, C.inset);
+  p.text(VGA, body.x + 10, body.y + 8, String(code), C.sel, 2);
+  const lx = body.x + 10 + 54 + 12;
+  p.text(RV, lx, body.y + 20, fitText(RV, line, body.x + body.w - 8 - lx), C.text);
+  const cell = { x: body.x, y: body.y + body.h + 2, w: body.w, h: 14 };
+  keyBar(p, hits, cell, [{ key: 'Enter', label: T.returnTo, codes: ['Enter'], click }], held);
 }
 
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),
