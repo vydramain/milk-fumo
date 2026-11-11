@@ -4,16 +4,16 @@
 // and foot panels, so this module draws their pocket layout from their parts, and its own chrome: the title bar,
 // a key bar of touch cells, the message line and the tab strip with ppmc.
 import { C } from './theme.js';
-import { RV, textWidth, fitText } from './font.js';
+import { RV, VGA, textWidth, fitText, wrapText } from './font.js';
 import { Hits, box, centerText, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
-import { KIND, kindOf, list, setOf, formatSize, isApp } from './catalog.js';
+import { KIND, kindOf, list, setOf, formatSize, isApp, linkOf, resolveLink } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
 import { Player, nowWell } from './media.js';
 import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 import { HOME_NOTE, START_DIR } from './config.js';
-import { POCKET_ACTIONS, P, T } from './texts.js';
+import { POCKET_ACTIONS, P, T, ERRORS, LINK_LINES } from './texts.js';
 import { view } from './view.js';
 
 export const POCKET_W = 240;   // the layout width of a Pocket PC screen; the scale is the largest whole one that fits
@@ -35,7 +35,8 @@ const TILE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' 
 
 export class Pocket {
   // `history`: Back and the system back gesture go through the browser history (the site; one screen on the page).
-  constructor(requestDraw, { history = false } = {}) {
+  // `link`: a content path to open as the only tile; `stub`: { code, line } to show instead of any tile (main.js).
+  constructor(requestDraw, { history = false, link = null, stub = null } = {}) {
     this.requestDraw = requestDraw;
     this.useHistory = history;
     // What the desktop bodies read from their workspace.
@@ -43,20 +44,24 @@ export class Pocket {
     this.fullVideo = null;
     this.frame = 0;
 
-    this.tiles = ['Note'];     // the open tiles, in tab order
-    this.recent = ['Note'];    // the same, the most recently active last: Back returns to the one before
-    this.active = 'Note';
+    // A link or a stub starts with no tiles: the loading screen or the stub is drawn until a tile opens.
+    const bare = !!(link || stub);
+    this.tiles = bare ? [] : ['Note'];     // the open tiles, in tab order
+    this.recent = [...this.tiles];         // the same, the most recently active last: Back returns to the one before
+    this.active = bare ? null : 'Note';
+    this.stub = stub;
+    this.loading = !!link && !stub;
     this.progress = new Set();
-    this.msg = P.start;
+    this.msg = bare ? T.loading : P.start;
     this.full = false;         // the video or the game fills the screen
-    this.note = new NoteBody(this, HOME_NOTE);
+    this.note = bare ? null : new NoteBody(this, HOME_NOTE);
     this.pmc = { dir: START_DIR, entries: null, error: false, load: null, cursor: 0, top: 0, view: 1 };
     this.players = { audio: null, video: null };
     this.image = null;
     this.app = null;
     this.hits = new Hits();
     this.down = null;
-    this.changeDir(START_DIR);
+    if (!bare) this.changeDir(START_DIR);
 
     if (history) {
       // The history lives one page load: after a reload the page stands on an old tile's entry, so it goes back to
@@ -67,13 +72,35 @@ export class Pocket {
       // The system back leaves the fullscreen first and gives the history entry back, as the Back cell does.
       window.addEventListener('popstate', (e) => {
         // Forward (an entry with as many tiles or more) opens nothing back; only going back closes.
-        if ((e.state?.pocket ?? 1) >= this.tiles.length) return;
-        if (this.full) { this.fullscreen(false); window.history.pushState({ pocket: this.tiles.length }, ''); }
-        else if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); window.history.pushState({ pocket: this.tiles.length }, ''); }
-        else if (this.tiles.length > 1) this.closeActive();
+        if ((e.state?.pocket ?? 1) < this.tiles.length) {
+          if (this.full) { this.fullscreen(false); window.history.pushState({ pocket: this.tiles.length }, ''); }
+          else if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); window.history.pushState({ pocket: this.tiles.length }, ''); }
+          else if (this.tiles.length > 1) this.closeActive();
+        }
         this.requestDraw();
       });
     }
+    if (this.loading) this.openLink(link);
+  }
+
+  // A share link: the folder is listed first, so pmc opened later starts there with the cursor on the file, then
+  // exactly the linked tile opens (a folder: pmc).
+  async openLink(link) {
+    const r = await resolveLink(link);
+    if (r.code) { this.showStub(r.code, r.name); return; }
+    await this.changeDir(r.dir, r.kind === 'folder' ? undefined : r.entry.name);
+    const row = r.kind === 'folder' ? null : this.rows().find((e) => e.name === r.entry.name);
+    if (r.kind !== 'folder' && !row) { this.showStub(404, r.entry.name); return; }
+    this.loading = false;
+    this.msg = '';
+    if (row) this.openRow(row); else this.open('pmc');
+    this.requestDraw();
+  }
+
+  showStub(code, name) {
+    this.loading = false;
+    this.stub = { code, line: LINK_LINES[code] ? LINK_LINES[code](name) : ERRORS[code].line };
+    this.requestDraw();
   }
 
   // ---- tiles ----
@@ -86,14 +113,17 @@ export class Pocket {
 
   open(id) {
     if (!this.tiles.includes(id)) {
+      // The first tile takes the page's own history entry; the next ones push.
+      const first = !this.tiles.length;
       this.tiles.push(id);
-      if (this.useHistory) window.history.pushState({ pocket: this.tiles.length }, '');
+      if (this.useHistory) window.history[first ? 'replaceState' : 'pushState']({ pocket: this.tiles.length }, '');
     }
     this.activate(id);
   }
 
   // Back: through the history when this screen owns it, so the cell and the system gesture are one action.
   back() {
+    if (!this.tiles.length) return;
     if (this.full) { this.fullscreen(false); return; }
     // In a folder, pmc's Back goes up, as Open on `..`; at the root it closes pmc.
     if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); return; }
@@ -103,13 +133,14 @@ export class Pocket {
   }
 
   closeActive() {
+    if (!this.tiles.length) return;
     if (this.tiles.length === 1) { this.msg = P.lastTile; return; }
     const id = this.active;
     const kind = id === 'Player' ? 'audio' : id === 'Video' ? 'video' : null;
     if (kind && this.players[kind]) { this.players[kind].element.remove(); this.players[kind].dispose(); this.players[kind] = null; }
     if (id === 'Image' && this.image) { this.image.dispose(); this.image = null; }
     if (id === 'App' && this.app) { this.app.dispose(); this.app = null; }
-    if (id === 'Note') this.note.dispose();
+    if (id === 'Note') this.note?.dispose();
     this.tiles =this.tiles.filter((x) => x !== id);
     this.recent = this.recent.filter((x) => x !== id);
     this.active = this.recent.at(-1);
@@ -200,7 +231,7 @@ export class Pocket {
     this.progress.add('play');
     this.msg = '';
     if (kind === 'note') {
-      this.note.dispose();
+      this.note?.dispose();
       this.note = new NoteBody(this, join(pm.dir, e.name));
     } else {
       const set = setOf(pm.entries, kind);
@@ -264,7 +295,8 @@ export class Pocket {
     p.bevel({ x: 0, y: 0, w: W, h: H }, 2, true);
     this.titleBar(p, { x: 4, y: 4, w: W - 8, h: 14 });
 
-    const keys = this.keysOf(this.active);
+    const start = this.stub || this.loading;   // no tile yet: the stub, or the screen of a link that loads
+    const keys = start ? [] : this.keysOf(this.active);
     const tabsY = H - 4 - 14;
     const msgY = tabsY - 2 - 14;
     // Landscape (W > H): the key cells are a column on the right, from under the title bar, Back at its bottom.
@@ -272,7 +304,9 @@ export class Pocket {
     // place on every tile.
     const cells = [];   // [cell, rect]
     let body;
-    if (W > H) {
+    if (start) {
+      body = { x: 4, y: 20, w: W - 8, h: msgY - 2 - 20 };
+    } else if (W > H) {
       body = { x: 4, y: 20, w: W - 8 - KEYCOL - 2, h: msgY - 2 - 20 };
       const x = W - 4 - KEYCOL;
       keys.slice(0, -1).filter(Boolean).forEach((c, i) => cells.push([c, { x, y: 20 + i * BAR, w: KEYCOL, h: 14 }]));
@@ -288,7 +322,8 @@ export class Pocket {
 
     p.clip(body);
     hits.clip(body);
-    if (this.active === 'Note') this.drawNote(p, hits, body);
+    if (start) this.drawStart(p, body);
+    else if (this.active === 'Note') this.drawNote(p, hits, body);
     else if (this.active === 'pmc') this.drawPmc(p, hits, body);
     else if (this.active === 'Player') this.drawMedia(p, hits, body, this.players.audio);
     else if (video) this.drawMedia(p, hits, body, video);
@@ -302,14 +337,52 @@ export class Pocket {
     const msg = { x: 4, y: msgY, w: W - 8, h: 14 };
     p.fill(msg.x, msg.y, msg.w, msg.h, C.inset);
     p.bevel(msg, 1, false);
-    p.text(RV, msg.x + 4, msg.y + 3, fitText(RV, this.msg.replace(/[[\]]/g, ''), msg.w - 8), C.bright);
-    this.tabStrip(p, hits, { x: 4, y: tabsY, w: W - 8, h: 14 });
+    if (this.stub) this.drawHint(p, msg);
+    else p.text(RV, msg.x + 4, msg.y + 3, fitText(RV, this.msg.replace(/[[\]]/g, ''), msg.w - 8), C.bright);
+    // While a link loads nothing is tappable: the strip is drawn into a throwaway hit list.
+    this.tabStrip(p, this.loading ? new Hits() : hits, { x: 4, y: tabsY, w: W - 8, h: 14 });
     // Every tappable thing looks pressed while the finger is on it, as on the desktop (workspace.js).
     const pr = this.down && !this.down.moved && this.down.pressed;
     const held = pr && hits.list.find((h) => h.on.click && h.r.x === pr.x && h.r.y === pr.y && h.r.w === pr.w && h.r.h === pr.h);
     const shape = held && this.shapes.find((q) => q.r.x === held.r.x && q.r.y === held.r.y && q.r.w === held.r.w && q.r.h === held.r.h);
     if (shape) shape.sunk(p);
     else if (held) p.bevel(held.r, 2, false);
+
+    // The address follows the current tile (the stub and the loading screen leave it). The wanted address is resolved
+    // first, so the browser's own encoding of it does not count as a change.
+    if (this.useHistory && !start) {
+      const a = this.active;
+      const path = a === 'pmc' ? this.pmc.dir : a === 'Note' ? this.note.address : a === 'Image' ? this.image?.address
+        : a === 'App' ? this.app?.address : this.players[a === 'Player' ? 'audio' : 'video']?.address;
+      const want = path === undefined ? null : new URL(linkOf(path), location.href);
+      if (want && want.pathname + want.search !== location.pathname + location.search) {
+        history.replaceState(history.state, '', want.pathname + want.search);
+      }
+    }
+  }
+
+  // The body of the stub (a well with the code and its line) or, while a link loads, an empty well.
+  drawStart(p, r) {
+    const well = wellFrame(p, r, C.inset);
+    if (!this.stub) return;
+    p.text(VGA, well.x + 8, well.y + 8, String(this.stub.code), C.sel, 2);
+    wrapText(RV, this.stub.line, well.w - 16).forEach((s, i) => p.text(RV, well.x + 8, well.y + 48 + i * 12, s, C.text));
+  }
+
+  // The stub's message line: P.stubHint with each [word] as a keycap, as markdown.js draws them.
+  drawHint(p, msg) {
+    let x = msg.x + 4;
+    for (const s of P.stubHint.split(/(\[[^\]]*\])/)) {
+      const cap = s.startsWith('[');
+      const t = cap ? s.slice(1, -1) : s;
+      const w = textWidth(RV, t) + (cap ? 6 : 0);
+      if (cap) {
+        p.fill(x, msg.y + 2, w, 10, C.btn);
+        p.bevel({ x, y: msg.y + 2, w, h: 10 }, 1, true);
+      }
+      p.text(RV, x + (cap ? 3 : 0), msg.y + 3, t, C.bright);
+      x += w;
+    }
   }
 
   // The video is shown by its own element over the frame, as app.js shows an app's iframe: a phone's browser gave the
@@ -327,6 +400,8 @@ export class Pocket {
   }
 
   title() {
+    if (this.stub) return `${this.stub.code} ${ERRORS[this.stub.code].name}`;
+    if (this.loading) return T.tile.File;
     const a = this.active;
     if (a === 'Note') return T.tile.Note + ' · ' + this.note.path.split('/').pop();
     if (a === 'Image' && this.image) return T.tile.Image + ' · ' + this.image.entry.name;
@@ -389,6 +464,8 @@ export class Pocket {
     if (!here) {
       const hit = { x: cell.x - 2, y: cell.y - 4, w: cell.w + 4, h: cell.h + 6 };
       hits.add(hit, { click: () => {
+        // From the stub: it goes, pmc opens at the root as the only tile.
+        if (this.stub) { this.stub = null; this.changeDir(START_DIR); }
         this.open('pmc');
         this.progress.add('open');
         this.msg = P.pmcHint;
