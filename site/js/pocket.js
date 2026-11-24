@@ -3,9 +3,9 @@
 // The tiles' bodies are the desktop's (note.js, media.js, image.js, app.js). Their draw() lays out keyboard key bars
 // and foot panels, so this module draws their pocket layout from their parts, and its own chrome: the title bar,
 // a key bar of touch cells, the message line and the tab strip with ppmc.
-import { C } from './theme.js';
+import { C, theme } from './theme.js';
 import { RV, VGA, textWidth, fitText, wrapText } from './font.js';
-import { Hits, box, centerText, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
+import { Hits, box, button, centerText, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
 import { KIND, kindOf, list, setOf, formatSize, isApp, linkOf, resolveLink } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
@@ -36,8 +36,9 @@ const TILE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' 
 export class Pocket {
   // `history`: Back and the system back gesture go through the browser history (the site; one screen on the page).
   // `link`: a content path to open as the only tile; `stub`: { code, line } to show instead of any tile (main.js).
-  constructor(requestDraw, { history = false, link = null, stub = null } = {}) {
+  constructor(requestDraw, { history = false, link = null, stub = null, toggleTheme = null } = {}) {
     this.requestDraw = requestDraw;
+    this.toggleTheme = toggleTheme;
     this.useHistory = history;
     // What the desktop bodies read from their workspace.
     this.drawHeld = NO_KEYS;
@@ -410,15 +411,19 @@ export class Pocket {
     return T.tile[a] || a;
   }
 
-  // The title bar: the tile's title on a plate over the dither, the clock on the right. No X: Back closes.
+  // The title bar: the tile's title on a plate over the dither, the theme button and clock on the right.
   titleBar(p, r) {
     p.dither(r, C.win, C.lo);
     const now = new Date();
     const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-    const label = fitText(RV, this.title(), r.w - textWidth(RV, time) - 30);
+    const tw = textWidth(RV, time) + 8;
+    const w = this.toggleTheme ? textWidth(RV, T.theme.default) + 12 : 0;
+    const label = fitText(RV, this.title(), r.w - tw - 22 - w);
     p.fill(r.x + 2, r.y, textWidth(RV, label) + 12, r.h, C.win);
     p.text(RV, r.x + 8, r.y + 3, label, C.bright);
-    const tw = textWidth(RV, time) + 8;
+    if (this.toggleTheme) {
+      button(p, this.hits, { x: r.x + r.w - tw - w - 2, y: r.y, w, h: r.h }, T.theme[theme], { click: this.toggleTheme });
+    }
     p.fill(r.x + r.w - tw, r.y, tw, r.h, C.win);
     p.text(RV, r.x + r.w - tw + 4, r.y + 3, time, C.text);
   }

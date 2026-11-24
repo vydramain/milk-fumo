@@ -8,6 +8,7 @@ import { T, ERRORS } from './texts.js';
 import { linkPath } from './catalog.js';
 import { SCREEN_MIN, VIEWPORT_MIN } from './metrics.js';
 import { view } from './view.js';
+import { theme, setTheme } from './theme.js';
 
 // The mode is chosen once, at load: a touch-first device gets the pocket version, any other the workspace. A device
 // that changes its primary input keeps its mode until the page is reloaded.
@@ -18,6 +19,7 @@ let ws = null;
 let pocket = null;
 let queued = false;
 let started = false;
+const THEME_KEY = 'milk-fumo-theme';
 
 // The layout's unit is a UI pixel: view.ui device pixels, 1, 1.5 or 2 by Shift+S. The canvas buffer is the window in
 // device pixels and nothing is smoothed: a font pixel is a whole number of device pixels at 1x and 2x, and 1 or 2 at
@@ -81,6 +83,12 @@ function requestDraw() {
   if (queued) return;
   queued = true;
   requestAnimationFrame(draw);
+}
+
+function toggleTheme() {
+  setTheme(theme === 'default' ? 'win-55' : 'default');
+  try { localStorage.setItem(THEME_KEY, theme); } catch { /* the theme still changes when storage is unavailable */ }
+  requestDraw();
 }
 
 // The pointer in the layout's units.
@@ -177,7 +185,8 @@ document.getElementById('fallback')?.remove();
 const link = linkPath(location.search);
 const served = Number(document.querySelector('meta[name="error"]')?.content);
 const code = ERRORS[served] ? served : link && link.code;
-const start = { history: true, link: link && link.path, stub: code ? { code, line: ERRORS[code].line } : null };
+try { setTheme(localStorage.getItem(THEME_KEY)); } catch { /* use the default when storage is unavailable */ }
+const start = { history: true, link: link && link.path, stub: code ? { code, line: ERRORS[code].line } : null, toggleTheme };
 if (MOBILE) pocket = new Pocket(requestDraw, start);
 else ws = new Workspace(requestDraw, start);
 requestDraw();

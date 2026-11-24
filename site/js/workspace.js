@@ -2,9 +2,9 @@
 // bar. Keys, pointers and the bar's cells all lead to the same commands here.
 import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from './metrics.js';
 import * as L from './layout.js';
-import { C } from './theme.js';
+import { C, theme } from './theme.js';
 import { RV, textWidth, fitText } from './font.js';
-import { Hits, box, NO_KEYS, keyRows, errorScreen } from './widgets.js';
+import { Hits, box, button, NO_KEYS, keyRows, errorScreen } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS, ERRORS, LINK_LINES } from './texts.js';
 import { view } from './view.js';
 import { HOME_NOTE } from './config.js';
@@ -19,7 +19,7 @@ import { AppPane } from './app.js';
 export const SCALES = [1, 1.5, 2];
 const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
+const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale', F2: 'theme' };
 const TILE_MIN = PANE_MIN.generic;
 const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4; 16 more per extra key row
 const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without movement or a player key
@@ -51,8 +51,9 @@ function makeTile(body, label, tab) {
 export class Workspace {
   // `link`: the content path of a link, which opens exactly one tile. `stub`: { code, line }, the error screen in place
   // of every tile. `history`: the focused tile's file is written into the address (the site; not the design system).
-  constructor(requestDraw, { link = null, stub = null, history = false } = {}) {
+  constructor(requestDraw, { link = null, stub = null, history = false, toggleTheme = null } = {}) {
     this.requestDraw = requestDraw;
+    this.toggleTheme = toggleTheme;
     this.link = link;
     this.stub = stub;
     this.history = history;
@@ -591,6 +592,7 @@ export class Workspace {
       'focus': () => this.focusNext(),
       'move': () => this.startMove(),
       'scale': () => this.cycleScale(),
+      'theme': () => this.toggleTheme?.(),
     };
     if (actions[name]) actions[name]();
     this.requestDraw();
@@ -827,9 +829,15 @@ export class Workspace {
     const envY = H - MARGIN - ENV_H;
     const msgY = envY - MARGIN - MSG_H;
     const msg = { x: MARGIN, y: msgY, w: W - 2 * MARGIN, h: MSG_H };
+    if (this.toggleTheme) {
+      const label = T.themeWithShortcut(T.theme[theme]);
+      const w = textWidth(RV, T.themeWithShortcut(T.theme.default)) + 12;
+      msg.w -= w + 2;
+      button(p, this.hits, { x: W - MARGIN - w, y: msgY, w, h: MSG_H }, label, { click: () => this.command('theme') });
+    }
     p.fill(msg.x, msg.y, msg.w, msg.h, C.inset);
     p.bevel(msg, 1, false);
-    if (this.msg) p.text(RV, msg.x + 6, msg.y + 3, this.msg, C.bright);
+    if (this.msg) p.text(RV, msg.x + 6, msg.y + 3, fitText(RV, this.msg, msg.w - 12), C.bright);
     const cells = ENV_CELLS;
     const has = (...codes) => codes.some((c) => this.held.has(c));
     const gap = 2;

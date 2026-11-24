@@ -63,6 +63,8 @@ export const LINK_LINES = {
 };
 
 export const T = {
+  theme: { default: 'Theme: Default', 'win-55': 'Theme: Win-55' },
+  themeWithShortcut: (label) => `${label} (Shift+F2)`,
   tooSmallTitle: 'Screen too small',
   tooSmallNeeds: 'Needs at least',
   tooSmallNow: 'This screen',

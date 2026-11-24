@@ -1,3 +1,9 @@
+export let theme = 'default';
+
+export function setTheme(name) {
+  theme = name === 'win-55' ? 'win-55' : 'default';
+}
+
 // The palette: the editor's tokens and vgui2-deck's states (README, Palette), and Catppuccin Mocha for the wells.
 export const C = {
   win: '#4C5844',      // main surface
