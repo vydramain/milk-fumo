@@ -690,9 +690,13 @@ export class Workspace {
       else this.renderTiles(p, W, H);
       if (!this.fullVideo) this.drawBars(p, W, H);
     }
-    // Every clickable thing looks pressed the same way while the pointer is down on it.
+    // Repaint the held control with its pressed appearance.
     const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
-    if (held) p.bevel(held.r, 2, false);
+    if (held?.on.drawPressed) {
+      p.clip(held.r);
+      held.on.drawPressed(p);
+      p.unclip();
+    } else if (held) p.bevel(held.r, 2, false);
     // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
     for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
     // The stub leaves the browser tab's title and the address as they are.

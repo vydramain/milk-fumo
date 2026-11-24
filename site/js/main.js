@@ -9,6 +9,7 @@ import { linkPath } from './catalog.js';
 import { SCREEN_MIN, VIEWPORT_MIN } from './metrics.js';
 import { view } from './view.js';
 import { theme, setTheme } from './theme.js';
+import { win55FontReady } from './font.js';
 
 // The mode is chosen once, at load: a touch-first device gets the pocket version, any other the workspace. A device
 // that changes its primary input keeps its mode until the page is reloaded.
@@ -190,3 +191,6 @@ const start = { history: true, link: link && link.path, stub: code ? { code, lin
 if (MOBILE) pocket = new Pocket(requestDraw, start);
 else ws = new Workspace(requestDraw, start);
 requestDraw();
+win55FontReady.then((loaded) => {
+  if (loaded && theme === 'win-55') requestDraw();
+});

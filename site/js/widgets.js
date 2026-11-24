@@ -1,7 +1,7 @@
 // Widgets of the immediate-mode UI. A widget draws itself and, in the same call, registers its rectangle
 // with the frame's hit list. A click is checked against the list from the top down.
-import { C } from './theme.js';
-import { RV, VGA, textWidth, fitText } from './font.js';
+import { C, theme } from './theme.js';
+import { RV, VGA, uiFont, textWidth, fitText } from './font.js';
 import { T, ERRORS } from './texts.js';
 import { TITLE_H } from './metrics.js';
 
@@ -14,7 +14,7 @@ export class Hits {
   clip(r) { this.clips.push(r); }
   unclip() { this.clips.pop(); }
 
-  // on: { click(x, y), wheel(dy), press(x, y) -> { move, up } | move | undefined }
+  // on: { click(x, y), drawPressed(p), wheel(dy), press(x, y) -> { move, up } | move | undefined }
   add(r, on) {
     const c = this.clips.at(-1);
     if (c) {
@@ -54,12 +54,18 @@ export function box(p, r, raised, color = C.btn, width = 1) {
 // The panel frame: a 1 px dark line on the top and left, a light line inside it, and a light
 // shadow outside on the right and bottom. Returns the inside, which is 1 px border and 4 px padding in.
 export function panelFrame(p, r) {
-  p.fill(r.x, r.y, r.w, 1, C.lo);
-  p.fill(r.x, r.y, 1, r.h, C.lo);
-  p.fill(r.x + 1, r.y + 1, r.w - 2, 1, C.hi);
-  p.fill(r.x + 1, r.y + 1, 1, r.h - 2, C.hi);
-  p.fill(r.x + r.w, r.y + 1, 1, r.h, C.hi);
-  p.fill(r.x + 1, r.y + r.h, r.w, 1, C.hi);
+  if (theme === 'win-55') {
+    p.fill(r.x, r.y, r.w, r.h, C.win);
+    p.edge(r, 1, C.win, C.blue);
+    p.edge({ x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 }, 1, C.hi, C.lo);
+  } else {
+    p.fill(r.x, r.y, r.w, 1, C.lo);
+    p.fill(r.x, r.y, 1, r.h, C.lo);
+    p.fill(r.x + 1, r.y + 1, r.w - 2, 1, C.hi);
+    p.fill(r.x + 1, r.y + 1, 1, r.h - 2, C.hi);
+    p.fill(r.x + r.w, r.y + 1, 1, r.h, C.hi);
+    p.fill(r.x + 1, r.y + r.h, r.w, 1, C.hi);
+  }
   return { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 };
 }
 
@@ -80,9 +86,12 @@ export function centerText(font, r, s, scale = 1) {
 
 // A button: a raised box with a label. `on` makes it pressed.
 export function button(p, hits, r, label, { on = false, color = C.text, click } = {}) {
-  box(p, r, !on, on ? C.inset : C.btn, 2);
-  const at = centerText(RV, r, label);
-  p.text(RV, at.x, at.y, label, on ? C.bright : color);
+  const win55 = theme === 'win-55';
+  box(p, r, !on, on && !win55 ? C.inset : C.btn, 2);
+  const font = uiFont();
+  const at = centerText(font, r, label);
+  const offset = on && win55 ? 1 : 0;
+  p.text(font, at.x + offset, at.y + offset, label, on ? C.bright : color);
   if (click) hits.add(r, { click });
 }
 
@@ -91,21 +100,43 @@ export function button(p, hits, r, label, { on = false, color = C.text, click } 
 export function scrollbar(p, hits, r, { top, view, total, onTop }) {
   const w = 14;
   const x = r.x + r.w - w;
-  p.dither({ x, y: r.y, w, h: r.h }, C.inset, C.lo);
+  const win55 = theme === 'win-55';
+  const track = { x, y: r.y + 14, w, h: r.h - 28 };
+  if (!win55) p.dither({ x, y: r.y, w, h: r.h }, C.inset, C.lo);
+  else if (track.h > 0) {
+    p.fill(x, track.y, w, track.h, C.track);
+    p.edge(track, 1, C.blue, C.dark);
+    if (track.h > 2) {
+      p.edge({ x: x + 1, y: track.y + 1, w: w - 2, h: track.h - 2 }, 1, C.text, null);
+      p.fill(x + w - 2, track.y + 1, 1, 1, C.lo);
+      p.fill(x + 1, track.y + track.h - 2, 1, 1, C.lo);
+    }
+  }
   const up = { x, y: r.y, w, h: 14 }, dn = { x, y: r.y + r.h - 14, w, h: 14 };
-  box(p, up, true);
-  box(p, dn, true);
+  if (!win55) {
+    box(p, up, true);
+    box(p, dn, true);
+  }
   arrow(p, up, true);
   arrow(p, dn, false);
-  const track = { x, y: r.y + 14, w, h: r.h - 28 };
-  if (total > view && track.h > 0) {
-    const th = Math.max(8, Math.floor(track.h * view / total));
+  if (total > view && track.h > (win55 ? 2 : 0)) {
+    const idealHeight = Math.max(8, Math.floor(track.h * view / total));
+    const th = win55 ? Math.min(track.h, idealHeight) : idealHeight;
     const max = total - view;
     const ty = track.y + Math.floor((track.h - th) * top / max);
-    box(p, { x, y: ty, w, h: th }, true);
+    if (win55) {
+      panelFrame(p, { x: x + 2, y: ty + 1, w: w - 3, h: th - 2 });
+      p.fill(x + w - 2, ty + 1, 1, 1, C.win);
+    } else box(p, { x, y: ty, w, h: th }, true);
   }
-  hits.add(up, { click: () => onTop(Math.max(0, top - 1)) });
-  hits.add(dn, { click: () => onTop(Math.min(Math.max(0, total - view), top + 1)) });
+  hits.add(up, {
+    click: () => onTop(Math.max(0, top - 1)),
+    drawPressed: win55 ? (paint) => arrow(paint, up, true, true) : undefined,
+  });
+  hits.add(dn, {
+    click: () => onTop(Math.min(Math.max(0, total - view), top + 1)),
+    drawPressed: win55 ? (paint) => arrow(paint, dn, false, true) : undefined,
+  });
   hits.add(track, {
     press: (px, py) => {
       const pos = (py - track.y) / track.h;
@@ -117,11 +148,25 @@ export function scrollbar(p, hits, r, { top, view, total, onTop }) {
 }
 
 // A 7-pixel triangle in a 14-pixel button: the apex is up or down.
-function arrow(p, r, upward) {
+function arrow(p, r, upward, pressed = false) {
+  const win55 = theme === 'win-55';
+  if (win55) {
+    box(p, r, !pressed, C.btn, 2);
+    if (pressed) {
+      p.fill(r.x + r.w - 2, r.y + 1, 1, 1, C.lo);
+      p.fill(r.x + 1, r.y + r.h - 2, 1, 1, C.lo);
+    } else {
+      p.fill(r.x + r.w - 2, r.y, 1, 1, C.btn);
+      p.fill(r.x, r.y + r.h - 2, 1, 1, C.btn);
+      p.fill(r.x + r.w - 1, r.y, 1, 1, C.lo);
+      p.fill(r.x, r.y + r.h - 1, 1, 1, C.lo);
+    }
+  }
+  const x = r.x + (win55 ? -1 : 0) + Number(pressed);
+  const y = r.y + (win55 && upward ? 4 : 5) + Number(pressed);
   for (let i = 0; i < 4; i++) {
-    const y = r.y + 5 + i;
-    if (upward) p.fill(r.x + 7 - i, y, 1 + 2 * i, 1, C.bright);
-    else p.fill(r.x + 4 + i, y, 7 - 2 * i, 1, C.bright);
+    if (upward) p.fill(x + 7 - i, y + i, 1 + 2 * i, 1, C.bright);
+    else p.fill(x + 4 + i, y + i, 7 - 2 * i, 1, C.bright);
   }
 }
 
