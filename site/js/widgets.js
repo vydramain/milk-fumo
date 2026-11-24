@@ -149,11 +149,11 @@ export function panelFrame(p, r) {
   return { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 };
 }
 
-// A sunken well with a 2 px frame. Returns the inside.
-export function wellFrame(p, r, color = C.inset) {
+// A sunken well with a 2 px frame by default. Returns the inside.
+export function wellFrame(p, r, color = C.inset, width = 2) {
   p.fill(r.x, r.y, r.w, r.h, color);
-  p.bevel(r, 2, false);
-  return { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 };
+  if (width) p.bevel(r, width, false);
+  return { x: r.x + width, y: r.y + width, w: r.w - 2 * width, h: r.h - 2 * width };
 }
 
 // Text centered in a rectangle: x and y of the text.
@@ -294,7 +294,10 @@ export const NO_KEYS = Object.freeze(new Set());
 // name it may switch to, so the rows stay put when it does). Cells are equal and 2 px apart in a row of w px.
 export function keyRows(cells, w) {
   const n = cells.length;
-  const need = Math.max(...cells.map((k) => textWidth(RV, k.key) + textWidth(RV, k.wide || k.label) + 10));
+  const font = uiFont();
+  const padding = theme === 'win-55' ? 12 : 10;
+  const need = Math.max(...cells.map((k) =>
+    textWidth(font, k.key) + Math.max(textWidth(font, k.label), textWidth(font, k.wide || k.label)) + padding));
   for (let rows = 1; rows < n; rows++) {
     const cols = Math.ceil(n / rows);
     if (Math.floor((w - 2 * (cols - 1)) / cols) >= need) return rows;
@@ -327,7 +330,7 @@ export function keyBar(p, hits, r, cells, held, whole = false) {
       p.fill(cell.x + 3, cell.y + 2, kw + 4, 10, C.dark);
       p.text(font, cell.x + 5, y, key, C.bright);
       const nx = cell.x + 3 + kw + 4 + 3;
-      p.text(font, nx, y, fitText(font, k.label, cell.x + w - nx), C.text);
+      p.text(font, nx, y, fitText(font, k.label, cell.x + w - nx - (win55 ? 2 : 0)), C.text);
     } else {
       // A name that does not fit whole is cut to its first two letters, and the key gives way to them, down to one letter.
       let key = fitText(font, k.key, w - 14);
@@ -398,15 +401,17 @@ export function errorScreen(p, hits, size, { code, line }, held, click) {
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),
 // then the keyboard field: `Keyboard: app` in C.sel when `appKeys`, `Keyboard: —` in C.cov otherwise.
 export function footBar(p, r, text, load, appKeys) {
-  const kw = textWidth(RV, T.keyboardApp) + 12;
+  const font = uiFont();
+  const y = r.y + (theme === 'win-55' ? Math.floor((r.h - font.rows) / 2) : 4);
+  const kw = textWidth(font, T.keyboardApp) + 12;
   const kx = r.x + r.w - kw;
   const bx = kx - 2 - LOAD_W;
   const addr = { x: r.x, y: r.y, w: (load ? bx : kx) - 2 - r.x, h: r.h };
   p.fill(addr.x, addr.y, addr.w, addr.h, C.inset);
   p.bevel(addr, 1, false);
-  p.text(RV, addr.x + 4, addr.y + 4, fitText(RV, text, addr.w - 8), C.bright);
+  p.text(font, addr.x + 4, y, fitText(font, text, addr.w - 8), C.bright);
   loadBar(p, bx, r.y + 1, load);
   p.fill(kx, r.y, kw, r.h, C.inset);
   p.bevel({ x: kx, y: r.y, w: kw, h: r.h }, 1, false);
-  p.text(RV, kx + 6, r.y + 4, appKeys ? T.keyboardApp : T.keyboardNone, appKeys ? C.sel : C.cov);
+  p.text(font, kx + 6, y, appKeys ? T.keyboardApp : T.keyboardNone, appKeys ? C.sel : C.cov);
 }

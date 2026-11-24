@@ -2,8 +2,8 @@
 // coordinates, so scrolling is one offset. Supported: #, ## and ### headings, paragraphs, lists, quotes, rules,
 // fenced code, **bold**, *italic*, [key] keycaps, [text](address) links, and the {{actions}} line: the tutorial's table.
 import { CODE_LINE } from './metrics.js';
-import { RV, VGA, textWidth } from './font.js';
-import { C } from './theme.js';
+import { VGA, uiFont, textWidth } from './font.js';
+import { C, theme } from './theme.js';
 import { TUTORIAL_ACTIONS } from './texts.js';
 
 const LINE = 12;
@@ -70,21 +70,21 @@ export function tokens(text, style) {
   return out;
 }
 
-function tokenWidth(t) {
-  if (t.kind === 'space') return RV.advance;
-  if (t.kind === 'key') return textWidth(RV, t.text) + 6;
-  return textWidth(RV, t.text);
+function tokenWidth(font, t) {
+  if (t.kind === 'space') return textWidth(font, ' ');
+  return textWidth(font, t.text) + (t.kind === 'key' ? 6 : 0);
 }
 
 // Greedy fill of tokens into lines of a width. Leading and trailing spaces are dropped.
 export function fill(toks, width) {
+  const font = uiFont();
   const lines = [];
   let cur = [], w = 0;
   for (const t of toks) {
     if (t.kind === 'space' && cur.length === 0) continue;
-    const tw = tokenWidth(t);
+    const tw = tokenWidth(font, t);
     if (w + tw > width && cur.length) {
-      while (cur.length && cur.at(-1).kind === 'space') { cur.pop(); w -= RV.advance; }
+      while (cur.length && cur.at(-1).kind === 'space') cur.pop();
       lines.push(cur);
       cur = [];
       w = 0;
@@ -101,35 +101,39 @@ export function fill(toks, width) {
 // Draws one line of tokens at (x, y). Keycaps are raised boxes; links are bright with a dotted underline;
 // bold words are bright and one pixel thicker; italic words lean.
 // A heading's lines: whole words that fit `width` at `scale`; a word wider than that stands on its own line.
-function wrapWords(text, width, scale = 1) {
+function wrapWords(font, text, width, scale = 1) {
   const lines = [];
   for (const word of text.split(' ')) {
     const joined = lines.length ? lines.at(-1) + ' ' + word : word;
-    if (lines.length && textWidth(RV, joined, scale) <= width) lines[lines.length - 1] = joined;
+    if (lines.length && textWidth(font, joined, scale) <= width) lines[lines.length - 1] = joined;
     else lines.push(word);
   }
   return lines;
 }
 
 function emitLine(L, line, x, y, color) {
+  const font = uiFont();
+  const win55 = theme === 'win-55';
+  const lineH = font.lineHeight ?? LINE;
+  const textY = y + (font.lineTop ?? 0);
   let cx = x;
   for (const t of line) {
-    if (t.kind === 'space') { cx += RV.advance; continue; }
+    const w = tokenWidth(font, t);
+    if (t.kind === 'space') { cx += w; continue; }
     if (t.kind === 'key') {
-      const w = textWidth(RV, t.text) + 6;
-      L.ops.push({ op: 'rect', x: cx, y, w, h: KEYCAP_H, color: C.btn });
-      L.ops.push({ op: 'bevel', x: cx, y, w, h: KEYCAP_H, width: 1, raised: true });
-      L.ops.push({ op: 'text', x: cx + 3, y: y + 1, font: RV, scale: 1, color: C.bright, s: t.text });
+      const h = font.lineHeight ?? KEYCAP_H;
+      L.ops.push({ op: 'rect', x: cx, y, w, h, color: C.btn });
+      L.ops.push({ op: 'bevel', x: cx, y, w, h, width: 1, raised: true });
+      L.ops.push({ op: 'text', x: cx + 3, y: y + (font.lineTop ?? 1), font, scale: 1, color: C.bright, s: t.text });
       cx += w;
       continue;
     }
-    const w = textWidth(RV, t.text);
     const link = !!t.href;
     const bold = t.style === 'b', italic = t.style === 'i';
-    L.ops.push({ op: 'text', x: cx, y, font: RV, scale: 1, color: link || bold ? C.bright : color, s: t.text, bold, italic });
+    L.ops.push({ op: 'text', x: cx, y: textY, font, scale: 1, color: link && win55 ? C.blue : link || bold ? C.bright : color, s: t.text, bold, italic });
     if (link) {
-      for (let i = 0; i < w; i += 2) L.ops.push({ op: 'rect', x: cx + i, y: y + 9, w: 1, h: 1, color: C.sel });
-      L.hits.push({ x: cx, y, w, h: LINE, href: t.href });
+      for (let i = 0; i < w; i += 2) L.ops.push({ op: 'rect', x: cx + i, y: y + (font.lineHeight ? lineH - 1 : 9), w: 1, h: 1, color: C.sel });
+      L.hits.push({ x: cx, y, w, h: lineH, href: t.href });
     }
     cx += w;
   }
@@ -143,45 +147,52 @@ const ICON_ARROW = [0b10000, 0b11000, 0b11100, 0b11000, 0b10000];
 // Returns { ops, hits, height }.
 export function layout(blocks, width, progress = () => 'none', actions = TUTORIAL_ACTIONS) {
   const L = { ops: [], hits: [] };
+  const font = uiFont();
+  const win55 = theme === 'win-55';
+  const lineH = font.lineHeight ?? LINE;
+  const lineTop = font.lineTop ?? 0;
+  const headingLine = font.lineHeight ? 2 * lineH : 18;
+  const headingRule = headingLine + 3;
   let y = 0;
   for (const b of blocks) {
     if (b.type === 'h1') {
-      const lines = wrapWords(b.text, width, 2);
-      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + i * 18, font: RV, scale: 2, color: C.bright, s }));
-      y += (lines.length - 1) * 18;
-      L.ops.push({ op: 'rect', x: 0, y: y + 21, w: width, h: 1, color: C.lo });
-      L.ops.push({ op: 'rect', x: 0, y: y + 22, w: width, h: 1, color: C.hi });
-      y += 31;
+      const lines = wrapWords(font, b.text, width, 2);
+      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + 2 * lineTop + i * headingLine, font, scale: 2, color: C.bright, s }));
+      y += (lines.length - 1) * headingLine;
+      L.ops.push({ op: 'rect', x: 0, y: y + headingRule, w: width, h: 1, color: C.lo });
+      L.ops.push({ op: 'rect', x: 0, y: y + headingRule + 1, w: width, h: 1, color: C.hi });
+      y += headingRule + 10;
     } else if (b.type === 'h2') {
       y += 12;
-      const lines = wrapWords(b.text, width);
-      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + i * LINE, font: RV, scale: 1, color: C.bright, s }));
-      y += (lines.length - 1) * LINE;
-      const x = textWidth(RV, lines.at(-1)) + 6;
-      L.ops.push({ op: 'dither', x, y: y + 4, w: Math.max(0, width - x), h: 4, a: C.lo, b: C.inset });
-      y += 14;
+      const lines = wrapWords(font, b.text, width);
+      lines.forEach((s, i) => L.ops.push({ op: 'text', x: 0, y: y + lineTop + i * lineH, font, scale: 1, color: C.bright, s }));
+      y += (lines.length - 1) * lineH;
+      const x = textWidth(font, lines.at(-1)) + 6;
+      if (win55) L.ops.push({ op: 'rect', x, y: y + 6, w: Math.max(0, width - x), h: 1, color: C.lo });
+      else L.ops.push({ op: 'dither', x, y: y + 4, w: Math.max(0, width - x), h: 4, a: C.lo, b: C.inset });
+      y += lineH + 2;
     } else if (b.type === 'h3') {
       y += 4;
-      for (const s of wrapWords(b.text, width)) {
-        L.ops.push({ op: 'text', x: 0, y, font: RV, scale: 1, color: C.bright, s, bold: true });
-        y += 14;
+      for (const s of wrapWords(font, b.text, width)) {
+        L.ops.push({ op: 'text', x: 0, y: y + lineTop, font, scale: 1, color: C.bright, s, bold: true });
+        y += lineH + 2;
       }
     } else if (b.type === 'p') {
-      for (const line of fill(tokens(b.text), width)) { emitLine(L, line, 0, y, C.text); y += LINE; }
+      for (const line of fill(tokens(b.text), width)) { emitLine(L, line, 0, y, C.text); y += lineH; }
       y += 7;
     } else if (b.type === 'ul') {
       for (const item of b.items) {
         fill(tokens(item), width - 12).forEach((line, i) => {
           if (i === 0) L.ops.push({ op: 'rect', x: 2, y: y + 4, w: 4, h: 4, color: C.sel });
           emitLine(L, line, 12, y, C.text);
-          y += LINE;
+          y += lineH;
         });
         y += 2;
       }
       y += 5;
     } else if (b.type === 'quote') {
       const top = y;
-      for (const line of fill(tokens(b.text), width - 10)) { emitLine(L, line, 10, y, C.text); y += LINE; }
+      for (const line of fill(tokens(b.text), width - 10)) { emitLine(L, line, 10, y, C.text); y += lineH; }
       L.ops.push({ op: 'rect', x: 0, y: top, w: 2, h: y - top, color: C.sel });
       y += 8;
     } else if (b.type === 'hr') {
@@ -191,7 +202,7 @@ export function layout(blocks, width, progress = () => 'none', actions = TUTORIA
       y += 10;
     } else if (b.type === 'code') {
       const h = b.lines.length * CODE_LINE + 8;
-      L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: C.cb });
+      L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: win55 ? C.win : C.cb });
       b.lines.forEach((s, i) => L.ops.push({ op: 'text', x: 6, y: y + 4 + i * CODE_LINE, font: VGA, scale: 1, color: C.ct, s }));
       y += h + 8;
     } else if (b.type === 'actions') {
@@ -207,18 +218,22 @@ const MIN_COLUMN = 90;
 
 // The tutorial's table: a mark column, the action, the mouse way and the keyboard way.
 function layoutActions(L, width, y0, progress) {
+  const font = uiFont();
+  const lineH = font.lineHeight ?? LINE;
+  const headH = font.lineHeight ?? 13;
   const mark = 14;
-  const todo = Math.max(...TUTORIAL_ACTIONS.map((a) => textWidth(RV, a.todo))) + 10;
+  const todo = Math.max(...TUTORIAL_ACTIONS.map((a) => textWidth(font, a.todo))) + 10;
   const mouse = Math.floor((width - mark - todo) * 0.45);
   const keys = width - mark - todo - mouse;
   if (mouse < MIN_COLUMN || keys < MIN_COLUMN) return layoutActionsStacked(L, width, y0, progress);
   const at = { todo: mark, mouse: mark + todo, keys: mark + todo + mouse };
   let y = y0;
-  L.ops.push({ op: 'rect', x: 0, y, w: width, h: 13, color: C.win });
-  L.ops.push({ op: 'text', x: at.todo + 3, y: y + 3, font: RV, scale: 1, color: C.bright, s: 'To do' });
-  L.ops.push({ op: 'text', x: at.mouse + 3, y: y + 3, font: RV, scale: 1, color: C.bright, s: 'Mouse' });
-  L.ops.push({ op: 'text', x: at.keys + 3, y: y + 3, font: RV, scale: 1, color: C.bright, s: 'Keyboard' });
-  y += 14;
+  L.ops.push({ op: 'rect', x: 0, y, w: width, h: headH, color: C.win });
+  const hy = y + (font.lineTop ?? 3);
+  L.ops.push({ op: 'text', x: at.todo + 3, y: hy, font, scale: 1, color: C.bright, s: 'To do' });
+  L.ops.push({ op: 'text', x: at.mouse + 3, y: hy, font, scale: 1, color: C.bright, s: 'Mouse' });
+  L.ops.push({ op: 'text', x: at.keys + 3, y: hy, font, scale: 1, color: C.bright, s: 'Keyboard' });
+  y += headH + 1;
   for (const action of TUTORIAL_ACTIONS) {
     const state = progress(action);
     const cols = [
@@ -226,14 +241,14 @@ function layoutActions(L, width, y0, progress) {
       fill(tokens(action.mouse), mouse - 6),
       fill(tokens(action.keys), keys - 6),
     ];
-    const h = Math.max(...cols.map((c) => c.length)) * LINE + 6;
+    const h = Math.max(...cols.map((c) => c.length)) * lineH + 6;
     const color = state === 'next' ? C.bright : C.text;
-    if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: C.inset });
+    if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: theme === 'win-55' ? C.cur : C.inset });
     if (state === 'done') L.ops.push({ op: 'icon', x: 3, y: y + 3, rows: ICON_CHECK, color: C.sel });
     if (state === 'next') L.ops.push({ op: 'icon', x: 3, y: y + 3, rows: ICON_ARROW, color: C.sel });
-    cols[0].forEach((line, i) => emitLine(L, line, at.todo + 3, y + 3 + i * LINE, color));
-    cols[1].forEach((line, i) => emitLine(L, line, at.mouse + 3, y + 3 + i * LINE, color));
-    cols[2].forEach((line, i) => emitLine(L, line, at.keys + 3, y + 3 + i * LINE, color));
+    cols[0].forEach((line, i) => emitLine(L, line, at.todo + 3, y + 3 + i * lineH, color));
+    cols[1].forEach((line, i) => emitLine(L, line, at.mouse + 3, y + 3 + i * lineH, color));
+    cols[2].forEach((line, i) => emitLine(L, line, at.keys + 3, y + 3 + i * lineH, color));
     L.ops.push({ op: 'rect', x: 0, y: y + h - 1, w: width, h: 1, color: C.lo });
     y += h;
   }
@@ -244,18 +259,19 @@ function layoutActions(L, width, y0, progress) {
 const DESK_WAYS = (a) => ['Mouse: ' + a.mouse, 'Keyboard: ' + a.keys];
 function layoutActionsStacked(L, width, y0, progress, actions = TUTORIAL_ACTIONS, waysOf = DESK_WAYS) {
   const mark = 14, indent = 14;
+  const lineH = uiFont().lineHeight ?? LINE;
   let y = y0;
   for (const action of actions) {
     const state = progress(action);
     const todo = fill(tokens(action.todo), width - mark - 6);
     const ways = waysOf(action).flatMap((w) => fill(tokens(w), width - mark - indent - 6));
     const color = state === 'next' ? C.bright : C.text;
-    const h = (todo.length + ways.length) * LINE + 6;
-    if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: C.inset });
+    const h = (todo.length + ways.length) * lineH + 6;
+    if (state === 'next') L.ops.push({ op: 'rect', x: 0, y, w: width, h, color: theme === 'win-55' ? C.cur : C.inset });
     if (state === 'done') L.ops.push({ op: 'icon', x: 3, y: y + 3, rows: ICON_CHECK, color: C.sel });
     if (state === 'next') L.ops.push({ op: 'icon', x: 3, y: y + 3, rows: ICON_ARROW, color: C.sel });
-    todo.forEach((line, i) => emitLine(L, line, mark + 3, y + 3 + i * LINE, color));
-    ways.forEach((line, i) => emitLine(L, line, mark + indent + 3, y + 3 + (todo.length + i) * LINE, color));
+    todo.forEach((line, i) => emitLine(L, line, mark + 3, y + 3 + i * lineH, color));
+    ways.forEach((line, i) => emitLine(L, line, mark + indent + 3, y + 3 + (todo.length + i) * lineH, color));
     L.ops.push({ op: 'rect', x: 0, y: y + h - 1, w: width, h: 1, color: C.lo });
     y += h;
   }

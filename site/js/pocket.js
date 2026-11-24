@@ -400,11 +400,11 @@ export class Pocket {
     if (!el) return;
     if (!r) { el.style.display = 'none'; return; }
     if (!el.parentNode) {
-      el.style.cssText = `position:absolute;object-fit:contain;pointer-events:none;background:${C.crust};`;
+      el.style.cssText = 'position:absolute;object-fit:contain;pointer-events:none;';
       document.body.append(el);
     }
     const k = view.ui / view.dpr;
-    Object.assign(el.style, { display: 'block', left: `${r.x * k}px`, top: `${r.y * k}px`, width: `${r.w * k}px`, height: `${r.h * k}px` });
+    Object.assign(el.style, { display: 'block', backgroundColor: C.crust, left: `${r.x * k}px`, top: `${r.y * k}px`, width: `${r.w * k}px`, height: `${r.h * k}px` });
   }
 
   title() {
@@ -521,7 +521,11 @@ export class Pocket {
     const well = wellFrame(p, r, C.inset);
     const n = this.note;
     const view = { x: well.x + 6, y: well.y + 6, w: well.w - 12, h: well.h - 12 };
-    if (n.error) { p.text(RV, view.x, view.y, fitText(RV, T.loadError + n.path, view.w), C.red); return; }
+    if (n.error) {
+      const font = uiFont();
+      p.text(font, view.x, view.y, fitText(font, T.loadError + n.path, view.w), C.red);
+      return;
+    }
     if (!n.blocks) { loadBar(p, view.x, view.y, n.download); return; }
     const lay = layout(n.blocks, view.w, (a) => this.progressOf(a), POCKET_ACTIONS);
     n.top = Math.max(0, Math.min(n.top, lay.height - view.h));
@@ -539,27 +543,36 @@ export class Pocket {
   // pmc: the path, the list well with its columns, the status line with the folder's load bar.
   drawPmc(p, hits, r) {
     const pm = this.pmc;
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    const rowH = font.lineHeight ?? ROW;
+    const headH = font.lineHeight ?? 12;
+    const rowTop = font.lineTop ?? 4;
     const field = { x: r.x, y: r.y, w: r.w, h: 14 };
-    p.fill(field.x, field.y, field.w, field.h, C.inset);
-    p.bevel(field, 1, false);
-    p.text(RV, field.x + 4, field.y + 3, fitText(RV, '/' + (pm.dir ? pm.dir + '/' : ''), field.w - 8), C.sel);
+    box(p, field, false, C.inset, win55 ? 2 : 1);
+    p.text(font, field.x + 4, field.y + (win55 ? 1 : 3),
+      fitText(font, '/' + (pm.dir ? pm.dir + '/' : ''), field.w - 8), C.sel);
 
     const well = wellFrame(p, { x: r.x, y: r.y + 16, w: r.w, h: r.h - 32 }, C.inset);
     const sizeX = well.x + well.w - 6 * 7 - 4;
-    p.fill(well.x, well.y, well.w, 11, C.win);
-    p.text(RV, well.x + 4, well.y + 2, 'Name', C.bright);
-    p.text(RV, sizeX, well.y + 2, 'Size', C.bright);
+    p.fill(well.x, well.y, well.w, font.lineHeight ?? 11, C.win);
+    const hy = well.y + (font.lineTop ?? 2);
+    p.text(font, well.x + 4, hy, 'Name', C.bright);
+    p.text(font, sizeX, hy, 'Size', C.bright);
     const all = this.rows();
-    const view = pm.view = Math.max(1, Math.floor((well.h - 12) / ROW));
+    const view = pm.view = Math.max(1, Math.floor((well.h - headH) / rowH));
     pm.top = Math.max(0, Math.min(pm.top, all.length - view));
     for (let i = 0; i < view && pm.top + i < all.length; i++) {
       const n = pm.top + i, e = all[n], kd = KIND[kindOf(e)];
-      const row = { x: well.x, y: well.y + 12 + i * ROW, w: well.w, h: ROW };
+      const row = { x: well.x, y: well.y + headH + i * rowH, w: well.w, h: rowH };
       const cur = n === pm.cursor;
+      const ink = cur ? (win55 ? C.hi : C.dark) : null;
+      const y = row.y + rowTop;
       if (cur) p.fill(row.x, row.y, row.w, row.h, C.sel);
-      p.text(RV, row.x + 4, row.y + 4, kd.code, cur ? C.dark : C[kd.color]);
-      p.text(RV, row.x + 20, row.y + 4, fitText(RV, e.name + (e.dir && !isApp(e.name) ? '/' : ''), sizeX - row.x - 24), cur ? C.dark : C.text);
-      p.text(RV, sizeX, row.y + 4, e.up ? 'UP--DIR' : e.dir ? 'SUB-DIR' : formatSize(e.size), cur ? C.dark : e.dir || e.up ? C.dim : C.text);
+      p.text(font, row.x + 4, y, kd.code, ink || C[kd.color]);
+      p.text(font, row.x + 20, y, fitText(font, e.name + (e.dir && !isApp(e.name) ? '/' : ''), sizeX - row.x - 24), ink || C.text);
+      const size = e.up ? 'UP--DIR' : e.dir ? 'SUB-DIR' : formatSize(e.size);
+      p.text(font, sizeX, y, win55 ? fitText(font, size, 6 * 7) : size, ink || (e.dir || e.up ? C.dim : C.text));
       // A tap on a row puts the cursor there; a tap on the cursor opens it.
       hits.add(row, { click: () => {
         if (cur) this.openRow(e);
@@ -567,24 +580,23 @@ export class Pocket {
       } });
     }
     // Under the rows drawn: under `..` while a folder loads or fails.
-    const listY = well.y + 12 + (all.length - pm.top) * ROW;
-    if (pm.error) p.text(RV, well.x + 4, listY + 4, T.folderError, C.red);
-    else if (!pm.entries) p.text(RV, well.x + 4, listY + 4, T.loading, C.dim);
+    const listY = well.y + headH + (all.length - pm.top) * rowH;
+    if (pm.error) p.text(font, well.x + 4, listY + rowTop, T.folderError, C.red);
+    else if (!pm.entries) p.text(font, well.x + 4, listY + rowTop, T.loading, C.dim);
     // A drag comes in steps of a few pixels: they add up until they make a whole row.
     hits.add(well, { scroll: (dy) => {
       pm.drag = (pm.drag || 0) + dy;
-      const n = Math.trunc(pm.drag / ROW);
+      const n = Math.trunc(pm.drag / rowH);
       pm.top -= n;
-      pm.drag -= n * ROW;
+      pm.drag -= n * rowH;
     } });
 
     const status = { x: r.x, y: r.y + r.h - 14, w: r.w, h: 14 };
-    p.fill(status.x, status.y, status.w, status.h, C.inset);
-    p.bevel(status, 1, false);
+    box(p, status, false, C.inset, win55 ? 2 : 1);
     const e = all[pm.cursor];
     const files = (pm.entries || []).filter((x) => !x.dir).length;
     const info = e ? e.name + (e.dir || e.up ? '' : ' · ' + formatSize(e.size)) : '';
-    p.text(RV, status.x + 4, status.y + 3, fitText(RV, [info, files + ' files'].filter(Boolean).join(' · '), status.w - 8 - 39), C.text);
+    p.text(font, status.x + 4, status.y + (win55 ? 1 : 3), fitText(font, [info, files + ' files'].filter(Boolean).join(' · '), status.w - 8 - 39), C.text);
     const state = pm.error ? 'errr' : pm.entries ? 'done' : 'load';
     loadBar(p, status.x + status.w - 38, status.y + 1, { state, share: state === 'done' ? 1 : 0 });
   }
@@ -593,7 +605,11 @@ export class Pocket {
   // transport row (four big buttons: Prev, Play/Pause, Stop, Next), then the playlist (audio) or the fitted frame
   // (video). The volume is left out: the phone has volume buttons.
   drawMedia(p, hits, r, pl) {
-    const h = nowWell(p, pl, r, { phone: true });
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    // Reserve 80 px for the controls and three playlist lines plus its frame and separator.
+    const maxHeight = win55 && pl.kind === 'audio' ? r.h - 80 - (3 * font.lineHeight + 5) : Infinity;
+    const h = nowWell(p, pl, r, { phone: true, maxHeight });
     const below = pl.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 }, true);
     const ty = below + 6;
     const cw = Math.floor((r.w - 6) / 4);
@@ -602,21 +618,21 @@ export class Pocket {
     act.forEach(([sym, click], i) => {
       const b = { x: r.x + i * (cw + 2), y: ty, w: cw, h: 28 };
       box(p, b, true, C.btn, 2);
-      const at = centerText(RV, b, sym, 2);
-      p.text(RV, at.x, at.y, sym, C.text, 2);
+      const at = centerText(font, b, sym, 2);
+      p.text(font, at.x, at.y, sym, C.text, 2);
       hits.add(b, { click });
     });
     const rest = { x: r.x, y: ty + 34, w: r.w, h: Math.max(0, r.y + r.h - (ty + 34)) };
     if (pl.kind === 'audio') { pl.playlist(p, hits, rest); return; }
-    p.fill(rest.x, rest.y, rest.w, rest.h, C.crust);
-    this.placeVideo(rest.h > 0 ? rest : null);
+    const frame = wellFrame(p, rest, C.crust, win55 ? 2 : 0);
+    this.placeVideo(frame.h > 0 ? frame : null);
   }
 
   // The picture: fitted into the navy area and never enlarged, as image.js draws it; its name is in the title.
   // ponytail: the lines of ImageView.draw without its key bar and foot panel.
   drawImage(p, r) {
     const im = this.image;
-    p.fill(r.x, r.y, r.w, r.h, C.cb);
+    r = wellFrame(p, r, C.cb, theme === 'win-55' ? 2 : 0);
     const path = im.path(im.index);
     const d = im.downloads.peek(path);
     const img = im.img;
@@ -625,7 +641,8 @@ export class Pocket {
       const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
       p.image(img, r.x + Math.floor((r.w - w) / 2), r.y + Math.floor((r.h - h) / 2), w, h);
     } else if (d.state === 'errr' || (im.shown === path && img.complete)) {
-      p.text(RV, r.x + 6, r.y + 6, fitText(RV, T.loadError + im.entry.name, r.w - 12), C.red);
+      const font = uiFont();
+      p.text(font, r.x + 6, r.y + 6, fitText(font, T.loadError + im.entry.name, r.w - 12), C.red);
     } else {
       loadBar(p, r.x + 6, r.y + 6, d);
     }
@@ -634,15 +651,16 @@ export class Pocket {
   // The app: a navy well with a status line, the app's frame over the rest (app.js places it).
   drawApp(p, r) {
     const app = this.app;
-    p.fill(r.x, r.y, r.w, r.h, C.cb);
-    p.bevel(r, 1, false);
-    const inner = { x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 };
+    const win55 = theme === 'win-55';
+    const inner = wellFrame(p, r, C.cb, win55 ? 2 : 1);
+    const font = uiFont();
+    const y = inner.y + (win55 ? 1 : 3);
     if (app.status === 'error') {
-      p.text(RV, inner.x + 6, inner.y + 3, fitText(RV, app.error || T.appNoIndex, inner.w - 12), C.red);
+      p.text(font, inner.x + 6, y, fitText(font, app.error || T.appNoIndex, inner.w - 12), C.red);
       app.hide();
       return;
     }
-    if (app.status === 'loading') p.text(RV, inner.x + 6, inner.y + 3, T.appLoading, C.ct);
+    if (app.status === 'loading') p.text(font, inner.x + 6, y, T.appLoading, C.ct);
     app.place(app.status === 'loading' ? { x: inner.x, y: inner.y + 14, w: inner.w, h: inner.h - 14 } : inner);
   }
 
@@ -683,7 +701,8 @@ export class Pocket {
   wheel(x, y, dy) {
     const h = this.hits.find(x, y, 'scroll');
     if (!h) return false;
-    h.on.scroll(-Math.sign(dy) * ROW * 3);
+    const rowH = this.active === 'pmc' ? (uiFont().lineHeight ?? ROW) : ROW;
+    h.on.scroll(-Math.sign(dy) * rowH * 3);
     return true;
   }
 }

@@ -2,9 +2,9 @@
 // The same view serves a note tile, the start notes and the quick view of pmc.
 import { parse, layout } from './markdown.js';
 import { urlOf, formatSize } from './catalog.js';
-import { RV } from './font.js';
-import { C } from './theme.js';
-import { bitmap, scrollbar, footBar, keyBar } from './widgets.js';
+import { uiFont, fitText } from './font.js';
+import { C, theme } from './theme.js';
+import { bitmap, scrollbar, footBar, keyBar, wellFrame } from './widgets.js';
 import { Download } from './download.js';
 import { NOTE_KEYS as K, T } from './texts.js';
 
@@ -74,11 +74,11 @@ export class NoteBody {
     const name = this.path.split('/').pop();
     footBar(p, foot, [name, T.noteType, size ? formatSize(size) : ''].filter(Boolean).join(' · '), d, false);
     r = { x: r.x, y: r.y, w: r.w, h: Math.max(0, foot.y - 4 - r.y) };
-    p.fill(r.x, r.y, r.w, r.h, C.inset);
-    p.bevel(r, 2, false);
-    const well = { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 };
+    const well = wellFrame(p, r);
     if (this.error) {
-      p.text(RV, well.x + PAD_X, well.y + PAD_Y, `${T.loadError}${this.path}`, C.red);
+      const font = uiFont();
+      const error = T.loadError + this.path;
+      p.text(font, well.x + PAD_X, well.y + PAD_Y, theme === 'win-55' ? fitText(font, error, well.w - 2 * PAD_X) : error, C.red);
       return;
     }
     if (!this.blocks) return;
@@ -109,7 +109,10 @@ export class NoteBody {
   drawOp(p, op, view, top) {
     const y = view.y + op.y - top;
     const x = view.x + op.x;
-    if (y + (op.h || 16) < view.y || y > view.y + view.h) return;
+    const height = op.op === 'text' ? op.font.rows * op.scale : op.h || 16;
+    // Accents and descenders can extend past the proportional font's nominal rows.
+    const overhang = (op.font?.lineTop ?? 0) * (op.scale ?? 1);
+    if (y + height + overhang < view.y || y - overhang > view.y + view.h) return;
     if (op.op === 'text') p.text(op.font, x, y, op.s, op.color, op.scale, op.bold, op.italic);
     else if (op.op === 'rect') p.fill(x, y, op.w, op.h, op.color);
     else if (op.op === 'bevel') p.bevel({ x, y, w: op.w, h: op.h }, op.width, op.raised);

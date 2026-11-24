@@ -4,11 +4,11 @@
 // (video), and the key bar at the bottom; the key bar wraps into rows (widgets.js keyRows).
 // Files are downloaded with a byte counter (download.js): the current one and the next; every started download runs to
 // its end. The element streams the file meanwhile, or plays the Blob once it is done.
-import { C } from './theme.js';
+import { C, theme } from './theme.js';
 import { PANE_MIN } from './metrics.js';
-import { RV, textWidth, fitText, wrapText } from './font.js';
+import { uiFont, textWidth, fitText, wrapText } from './font.js';
 import { urlOf } from './catalog.js';
-import { box, keyBar, keyRows, loadBar, LOAD_W } from './widgets.js';
+import { box, wellFrame, keyBar, keyRows, loadBar, LOAD_W } from './widgets.js';
 import { Downloads } from './download.js';
 import { readTags } from './tags.js';
 import { PLAYER_KEYS as K } from './texts.js';
@@ -233,11 +233,15 @@ export class Player {
     const end = this.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 });
 
     const vol = { x: r.x + PAD, y: end + 6, w: r.w - 2 * PAD - 66, h: VOLUME_H };
-    p.dither(vol, C.inset, C.lo);
-    p.bevel(vol, 1, false);
+    const win55 = theme === 'win-55';
+    if (win55) box(p, vol, false, C.track, 2);
+    else {
+      p.dither(vol, C.inset, C.lo);
+      p.bevel(vol, 1, false);
+    }
     const level = Math.round((vol.w - 4) * (e.muted ? 0 : e.volume));
     p.fill(vol.x + 2, vol.y + 4, level, 6, C.sel);
-    p.text(RV, vol.x + vol.w + 6, vol.y + 3, `Vol. ${Math.round(e.volume * 100)}%`, C.text);
+    p.text(uiFont(), vol.x + vol.w + 6, vol.y + (win55 ? 1 : 3), `Vol. ${Math.round(e.volume * 100)}%`, C.text);
     hits.add(vol, { press: (x) => { this.setVolume((x - vol.x) / vol.w); return (qx) => this.setVolume((qx - vol.x) / vol.w); } });
     return vol.y + vol.h;
   }
@@ -250,9 +254,9 @@ export class Player {
     const th = big ? 14 : 10;
     const seek = { x: r.x, y: r.y, w: r.w, h: th };
     const frac = this.duration() ? e.currentTime / this.duration() : 0;
-    p.fill(seek.x, seek.y, seek.w, seek.h, C.inset);
-    p.bevel(seek, 1, false);
-    p.fill(seek.x + 1, seek.y + 1, Math.round((seek.w - 2) * frac), seek.h - 2, C.sel);
+    const win55 = theme === 'win-55';
+    const track = wellFrame(p, seek, win55 ? C.track : C.inset, win55 ? 2 : 1);
+    p.fill(track.x, track.y, Math.round(track.w * frac), track.h, C.sel);
     const kx = seek.x + Math.round((seek.w - 2) * frac);
     box(p, big ? { x: kx - 3, y: seek.y - 2, w: 6, h: 18 } : { x: kx - 2, y: seek.y - 2, w: 4, h: 14 }, true, C.btn);
     const go = (x) => this.seek((x - seek.x) / seek.w);
@@ -260,10 +264,11 @@ export class Player {
     const ruler = { x: seek.x, y: seek.y + th + 3, w: seek.w, h: 8 };
     for (let x = 0; x < ruler.w; x += 6) p.fill(ruler.x + x, ruler.y + (x % 30 ? 4 : 0), 1, x % 30 ? 4 : 8, C.dim);
     const caption = { x: seek.x, y: ruler.y + 9, w: seek.w, h: 8 };
-    p.text(RV, caption.x, caption.y, timeText(e.currentTime), C.text);
-    p.text(RV, caption.x + Math.floor((caption.w - textWidth(RV, 'Position')) / 2), caption.y, 'Position', C.dim);
+    const font = uiFont();
+    p.text(font, caption.x, caption.y, timeText(e.currentTime), C.text);
+    p.text(font, caption.x + Math.floor((caption.w - textWidth(font, 'Position')) / 2), caption.y, 'Position', C.dim);
     const dur = timeText(this.duration());
-    p.text(RV, caption.x + caption.w - textWidth(RV, dur), caption.y, dur, C.text);
+    p.text(font, caption.x + caption.w - textWidth(font, dur), caption.y, dur, C.text);
     return caption.y + caption.h;
   }
 
@@ -286,23 +291,31 @@ export class Player {
 
   // A row: its number, `Artist — Title` once its download is under way, its load bar, its length.
   playlist(p, hits, r) {
-    p.fill(r.x, r.y, r.w, r.h, C.cb);
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    r = wellFrame(p, r, C.cb, win55 ? 2 : 0);
     const lenX = r.x + r.w - 40;
     const barX = lenX - 6 - LOAD_W;
-    p.fill(r.x, r.y, r.w, 13, C.csurf);
-    p.text(RV, r.x + 3, r.y + 3, fitText(RV, `Playlist: ${folderName(this)}`, lenX - 6 - (r.x + 3)), C.bright);
-    p.text(RV, lenX, r.y + 3, 'Len.', C.bright);
+    const rowH = font.lineHeight ?? 12;
+    const headH = font.lineHeight ?? 13;
+    p.fill(r.x, r.y, r.w, headH, C.csurf);
+    const hy = r.y + (font.lineTop ?? 3);
+    p.text(font, r.x + 3, hy, fitText(font, `Playlist: ${folderName(this)}`, lenX - 6 - (r.x + 3)), C.bright);
+    p.text(font, lenX, hy, 'Len.', C.bright);
     this.set.forEach((entry, i) => {
-      const row = { x: r.x, y: r.y + 14 + i * 12, w: r.w - 14, h: 12 };
+      const row = { x: r.x, y: r.y + headH + 1 + i * rowH, w: r.w - 14, h: rowH };
       if (row.y + row.h > r.y + r.h) return;
       const path = this.path(i);
       const d = this.downloads.peek(path);
-      if (i === this.index) p.fill(row.x, row.y, row.w, row.h, C.cur);
-      p.text(RV, r.x + 3, row.y + 2, i === this.index ? '>' : String(i + 1), i === this.index ? C.green : C.cov);
+      const current = i === this.index;
+      const selected = current && win55;
+      if (current) p.fill(row.x, row.y, selected ? r.w : row.w, row.h, selected ? C.sel : C.cur);
+      const y = row.y + (font.lineTop ?? 2);
+      p.text(font, r.x + 3, y, current ? '>' : String(i + 1), selected ? C.hi : current ? C.green : C.cov);
       const name = d && d.state !== 'errr' ? rowOf(entry.name, this.tags.get(path)) : entry.name;
-      p.text(RV, r.x + 14, row.y + 2, fitText(RV, name, barX - 4 - (r.x + 14)), C.ct);
-      loadBar(p, barX, row.y, d || null);
-      p.text(RV, lenX, row.y + 2, timeText(this.durations.get(path)), C.cs);
+      p.text(font, r.x + 14, y, fitText(font, name, barX - 4 - (r.x + 14)), selected ? C.hi : C.ct);
+      loadBar(p, barX, row.y + (font.lineTop ?? 0), d || null);
+      p.text(font, lenX, y, timeText(this.durations.get(path)), selected ? C.hi : C.cs);
       hits.add(row, { click: () => this.load(i, this.playing) });
     });
   }
@@ -313,8 +326,7 @@ export class Player {
     const end = this.transport(p, hits, r);
     const frame = { x: r.x + PAD, y: end + 6, w: r.w - 2 * PAD, h: Math.max(0, bottom - (end + 6)) };
     this.frameRect = frame;     // a double click on it toggles the fullscreen (Workspace.doubleClick)
-    p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
-    this.drawFrame(p, frame);
+    this.drawFrame(p, wellFrame(p, frame, C.crust, theme === 'win-55' ? 2 : 0));
   }
 
   videoSize() {
@@ -325,9 +337,12 @@ export class Player {
   // The frame is drawn from the element, always fitted into the frame.
   drawFrame(p, frame) {
     const v = this.element;
+    if (frame.w <= 0 || frame.h <= 0) return;
     if (!v.videoWidth) {
+      const font = uiFont();
       const t = 'video frame';
-      p.text(RV, frame.x + Math.floor((frame.w - textWidth(RV, t)) / 2), frame.y + Math.floor(frame.h / 2) - 4, t, C.cov);
+      p.text(font, frame.x + Math.floor((frame.w - textWidth(font, t)) / 2),
+        frame.y + Math.floor((frame.h - font.rows) / 2), t, theme === 'win-55' ? C.text : C.cov);
       return;
     }
     const s = Math.min(frame.w / v.videoWidth, frame.h / v.videoHeight);
@@ -349,32 +364,46 @@ const folderName = (pl) => (pl.dir ? pl.dir.split('/').pop() : '/');
 
 // The format line: whole when it fits, else two lines (type and length; folder, number, size). `phone`: each line is
 // wrapped by words; otherwise cut.
-function metaLines(pl, tw, phone) {
+function metaLines(pl, font, tw, phone, compact = false) {
   const a = `${pl.entry.name.split('.').pop().toUpperCase()} · ${timeText(pl.duration())}`;
   const b = `${folderName(pl)} · ${pl.index + 1} of ${pl.set.length}${pl.kind === 'video' ? ` · ${pl.videoSize()}` : ''}`;
   const whole = `${a} · ${b}`;
-  if (textWidth(RV, whole) <= tw) return [whole];
-  return [a, b].flatMap((s) => (phone ? wrapText(RV, s, tw) : [fitText(RV, s, tw)]));
+  if (compact) return [fitText(font, whole, tw)];
+  if (textWidth(font, whole) <= tw) return [whole];
+  return [a, b].flatMap((s) => (phone ? wrapText(font, s, tw) : [fitText(font, s, tw)]));
 }
 
 // The now-playing well from r.y, across r.w: the title (2x), the artist line and the format line, no clock. Its height
 // follows its lines and is returned. `phone`: the lines wrap by words instead of being cut. `bar`: the load bar of the
 // current file stands at the right end of the format line.
-export function nowWell(p, pl, r, { phone = false, bar = false } = {}) {
+export function nowWell(p, pl, r, { phone = false, bar = false, maxHeight = Infinity } = {}) {
   const head = headerOf(pl.entry.name, pl.tags.get(pl.path(pl.index)));
+  const font = uiFont();
   const tx = r.x + 8;
   const tw = r.w - 16;
-  const title = phone ? wrapText(RV, head.name, tw, 2) : [fitText(RV, head.name, tw, 2)];
-  const art = !head.art ? [] : phone ? wrapText(RV, head.art, tw) : [fitText(RV, head.art, tw)];
-  const meta = metaLines(pl, bar ? tw - LOAD_W - 6 : tw, phone);
-  const artY = 10 + title.length * 18;
-  const metaY = art.length ? artY + art.length * 12 : artY + 2;
-  const h = metaY + (meta.length - 1) * 12 + 16;
-  p.fill(r.x, r.y, r.w, h, C.cb);
-  title.forEach((s, i) => p.text(RV, tx, r.y + 10 + i * 18, s, C.ct, 2));
-  art.forEach((s, i) => p.text(RV, tx, r.y + artY + i * 12, s, phone ? C.cs : C.ct));
-  meta.forEach((s, i) => p.text(RV, tx, r.y + metaY + i * 12, s, C.cs));
-  if (bar) loadBar(p, r.x + r.w - 8 - LOAD_W, r.y + metaY + (meta.length - 1) * 12 - 2, pl.downloads.peek(pl.path(pl.index)) || null);
+  const title = phone ? wrapText(font, head.name, tw, 2) : [fitText(font, head.name, tw, 2)];
+  const art = !head.art ? [] : phone ? wrapText(font, head.art, tw) : [fitText(font, head.art, tw)];
+  const meta = metaLines(pl, font, bar ? tw - LOAD_W - 6 : tw, phone);
+  const lineH = font.lineHeight ?? 12;
+  const titleLine = font.lineHeight ? lineH * 2 : 18;
+  const lineTop = font.lineTop ?? 0;
+  const artY = 10 + title.length * titleLine;
+  const metaY = art.length ? artY + art.length * lineH : artY + 2;
+  const h = metaY + meta.length * lineH + 4;
+  if (h > maxHeight) {
+    const compactHeight = 2 * lineH + 4;
+    const y = r.y + 2 + lineTop;
+    const name = head.art ? head.name + ' · ' + head.art : head.name;
+    wellFrame(p, { ...r, h: compactHeight }, C.cb);
+    p.text(font, tx, y, fitText(font, name, tw), C.ct);
+    p.text(font, tx, y + lineH, metaLines(pl, font, tw, false, true)[0], C.cs);
+    return compactHeight;
+  }
+  wellFrame(p, { ...r, h }, C.cb, theme === 'win-55' ? 2 : 0);
+  title.forEach((s, i) => p.text(font, tx, r.y + 10 + 2 * lineTop + i * titleLine, s, C.ct, 2));
+  art.forEach((s, i) => p.text(font, tx, r.y + artY + lineTop + i * lineH, s, phone ? C.cs : C.ct));
+  meta.forEach((s, i) => p.text(font, tx, r.y + metaY + lineTop + i * lineH, s, C.cs));
+  if (bar) loadBar(p, r.x + r.w - 8 - LOAD_W, r.y + metaY + (meta.length - 1) * lineH + lineTop - 2, pl.downloads.peek(pl.path(pl.index)) || null);
   return h;
 }
 

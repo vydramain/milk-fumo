@@ -7,7 +7,8 @@ export const RV = { glyphs: RV_FONT, cols: 8, rows: 8, advance: 6, bit: (row, c)
 // PxPlus IBM VGA 9x16: 9 columns, advance 9. Row bit 8 is the leftmost column.
 export const VGA = { glyphs: VGA_9X16, cols: 9, rows: 16, advance: 9, bit: (row, c) => (row >> (8 - c)) & 1 };
 
-const win55 = { family: '"Win55 UI Bitmap", sans-serif', rows: 12, ascent: 10 };
+// The line box leaves room for accents, descenders and an underline.
+const win55 = { lineHeight: 18, lineTop: 3, family: '"Win55 UI Bitmap", sans-serif', rows: 12, ascent: 10 };
 const measure = document.createElement('canvas').getContext('2d');
 let win55Font = RV;
 
