@@ -4,8 +4,8 @@
 // and foot panels, so this module draws their pocket layout from their parts, and its own chrome: the title bar,
 // a key bar of touch cells, the message line and the tab strip with ppmc.
 import { C, theme } from './theme.js';
-import { RV, VGA, textWidth, fitText, wrapText } from './font.js';
-import { Hits, box, button, centerText, wellFrame, keyBar, loadBar, NO_KEYS } from './widgets.js';
+import { RV, VGA, uiFont, textWidth, fitText, wrapText } from './font.js';
+import { Hits, box, button, centerText, wellFrame, keyBar, loadBar, NO_KEYS, titleBackdrop, titleLabel, tileTab } from './widgets.js';
 import { KIND, kindOf, list, setOf, formatSize, isApp, linkOf, resolveLink } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
@@ -292,8 +292,7 @@ export class Pocket {
     if (!video) this.placeVideo(null);
 
     // The one tile: a raised frame over the whole screen, as a maximized tile.
-    p.fill(0, 0, W, H, C.win);
-    p.bevel({ x: 0, y: 0, w: W, h: H }, 2, true);
+    box(p, { x: 0, y: 0, w: W, h: H }, true, C.win, 2);
     this.titleBar(p, { x: 4, y: 4, w: W - 8, h: 14 });
 
     const start = this.stub || this.loading;   // no tile yet: the stub, or the screen of a link that loads
@@ -336,10 +335,17 @@ export class Pocket {
 
     for (const [cell, r] of cells) keyBar(p, hits, r, [cell], NO_KEYS);
     const msg = { x: 4, y: msgY, w: W - 8, h: 14 };
-    p.fill(msg.x, msg.y, msg.w, msg.h, C.inset);
-    p.bevel(msg, 1, false);
-    if (this.stub) this.drawHint(p, msg);
-    else p.text(RV, msg.x + 4, msg.y + 3, fitText(RV, this.msg.replace(/[[\]]/g, ''), msg.w - 8), C.bright);
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    box(p, msg, false, C.inset, win55 ? 2 : 1);
+    if (this.stub) {
+      if (win55) p.clip(msg);
+      this.drawHint(p, msg);
+      if (win55) p.unclip();
+    } else {
+      const label = fitText(font, this.msg.replace(/[[\]]/g, ''), msg.w - 8);
+      p.text(font, msg.x + 4, msg.y + Math.floor((msg.h - font.rows) / 2), label, C.bright);
+    }
     // While a link loads nothing is tappable: the strip is drawn into a throwaway hit list.
     this.tabStrip(p, this.loading ? new Hits() : hits, { x: 4, y: tabsY, w: W - 8, h: 14 });
     // Every tappable thing looks pressed while the finger is on it, as on the desktop (workspace.js).
@@ -347,6 +353,7 @@ export class Pocket {
     const held = pr && hits.list.find((h) => h.on.click && h.r.x === pr.x && h.r.y === pr.y && h.r.w === pr.w && h.r.h === pr.h);
     const shape = held && this.shapes.find((q) => q.r.x === held.r.x && q.r.y === held.r.y && q.r.w === held.r.w && q.r.h === held.r.h);
     if (shape) shape.sunk(p);
+    else if (held?.on.drawPressed) held.on.drawPressed(p);
     else if (held) p.bevel(held.r, 2, false);
 
     // The address follows the current tile (the stub and the loading screen leave it). The wanted address is resolved
@@ -367,21 +374,21 @@ export class Pocket {
     const well = wellFrame(p, r, C.inset);
     if (!this.stub) return;
     p.text(VGA, well.x + 8, well.y + 8, String(this.stub.code), C.sel, 2);
-    wrapText(RV, this.stub.line, well.w - 16).forEach((s, i) => p.text(RV, well.x + 8, well.y + 48 + i * 12, s, C.text));
+    const font = uiFont();
+    wrapText(font, this.stub.line, well.w - 16).forEach((s, i) => p.text(font, well.x + 8, well.y + 48 + i * 12, s, C.text));
   }
 
   // The stub's message line: P.stubHint with each [word] as a keycap, as markdown.js draws them.
   drawHint(p, msg) {
+    const font = uiFont();
+    const y = msg.y + Math.floor((msg.h - font.rows) / 2);
     let x = msg.x + 4;
     for (const s of P.stubHint.split(/(\[[^\]]*\])/)) {
       const cap = s.startsWith('[');
       const t = cap ? s.slice(1, -1) : s;
-      const w = textWidth(RV, t) + (cap ? 6 : 0);
-      if (cap) {
-        p.fill(x, msg.y + 2, w, 10, C.btn);
-        p.bevel({ x, y: msg.y + 2, w, h: 10 }, 1, true);
-      }
-      p.text(RV, x + (cap ? 3 : 0), msg.y + 3, t, C.bright);
+      const w = textWidth(font, t) + (cap ? 6 : 0);
+      if (cap) box(p, { x, y: msg.y + 2, w, h: 10 }, true);
+      p.text(font, x + (cap ? 3 : 0), y, t, C.bright);
       x += w;
     }
   }
@@ -413,24 +420,27 @@ export class Pocket {
 
   // The title bar: the tile's title on a plate over the dither, the theme button and clock on the right.
   titleBar(p, r) {
-    p.dither(r, C.win, C.lo);
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    titleBackdrop(p, r);
     const now = new Date();
     const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-    const tw = textWidth(RV, time) + 8;
+    const tw = textWidth(font, time) + 8;
     const w = this.toggleTheme ? textWidth(RV, T.theme.default) + 12 : 0;
-    const label = fitText(RV, this.title(), r.w - tw - 22 - w);
-    p.fill(r.x + 2, r.y, textWidth(RV, label) + 12, r.h, C.win);
-    p.text(RV, r.x + 8, r.y + 3, label, C.bright);
+    titleLabel(p, r, this.title(), 8, r.w - tw - 22 - w);
     if (this.toggleTheme) {
       button(p, this.hits, { x: r.x + r.w - tw - w - 2, y: r.y, w, h: r.h }, T.theme[theme], { click: this.toggleTheme });
     }
-    p.fill(r.x + r.w - tw, r.y, tw, r.h, C.win);
-    p.text(RV, r.x + r.w - tw + 4, r.y + 3, time, C.text);
+    const clock = { x: r.x + r.w - tw, y: r.y, w: tw, h: r.h };
+    if (win55) box(p, clock, false, C.win);
+    else p.fill(clock.x, clock.y, clock.w, clock.h, C.win);
+    p.text(font, clock.x + 4, r.y + Math.floor((r.h - font.rows) / 2), time, C.text);
   }
 
-  // The tab strip: slanted folder tabs, the active one brass, and the ppmc cell at the right. ppmc opens pmc; while
+  // The tab strip and the ppmc cell at the right. ppmc opens pmc; while
   // pmc is the current tile the cell is sunken and takes no tap.
   tabStrip(p, hits, r) {
+    const win55 = theme === 'win-55';
     const cell = { x: r.x + r.w - 44, y: r.y, w: 44, h: r.h };
     // The sunken look of each tappable thing, found by its hit rectangle: a pressed tab or the ppmc cell is drawn
     // sunken by its own shape, not by its (larger) hit rectangle.
@@ -442,30 +452,25 @@ export class Pocket {
     const full = names.reduce((s, n) => s + textWidth(RV, n) + 22, 0) <= cell.x - 6 - x;
     for (const [i, id] of this.tiles.entries()) {
       const w = full ? textWidth(RV, names[i]) + 18 : fit;
-      const label = fitText(RV, names[i], w - 18);
       const active = id === this.active;
-      const tx = x;
-      const rows = p.slant(tx, r.y, w, r.h, 6, active ? C.sel : C.win);
-      if (!active) rows.forEach((rx, i) => { p.fill(rx + w - 1, r.y + i, 1, 1, C.lo); p.fill(rx + w, r.y + i, 2, 1, C.hi); });
-      p.text(RV, tx + 9, r.y + 3, label, active ? C.dark : C.text);
-      const hit = { x: tx, y: r.y - 2, w: w + 6, h: r.h + 4 };
+      const tab = { x, y: r.y, w, h: r.h };
+      tileTab(p, tab, names[i], active);
+      const hit = { x, y: r.y - 2, w: w + 6, h: r.h + 4 };
       hits.add(hit, { click: () => {
         if (id !== this.active) this.progress.add('switch');
         this.activate(id);
         this.msg = '';
       } });
-      this.shapes.push({ r: hit, sunk: (q) => {
-        const sr = q.slant(tx, r.y, w, r.h, 6, C.inset);
-        sr.forEach((rx, j) => { q.fill(rx, r.y + j, 1, 1, C.lo); q.fill(rx + w - 1, r.y + j, 1, 1, C.lo); });
-        q.fill(sr[0], r.y, w, 1, C.lo);
-        q.text(RV, tx + 10, r.y + 4, label, active ? C.dark : C.text);
-      } });
+      this.shapes.push({ r: hit, sunk: (q) => tileTab(q, tab, names[i], active, true) });
       x += w + 4;
     }
     const here = this.active === 'pmc';
-    box(p, cell, !here, here ? C.inset : C.btn, 1);
-    p.fill(cell.x + 3, cell.y + 2, textWidth(RV, P.ppmc) + 6, 10, C.dark);
-    p.text(RV, cell.x + 6, cell.y + 3, P.ppmc, here ? C.dim : this.progress.has('open') ? C.bright : C.sel);
+    if (win55) button(p, hits, cell, P.ppmc, { on: here });
+    else {
+      box(p, cell, !here, here ? C.inset : C.btn, 1);
+      p.fill(cell.x + 3, cell.y + 2, textWidth(RV, P.ppmc) + 6, 10, C.dark);
+      p.text(RV, cell.x + 6, cell.y + 3, P.ppmc, here ? C.dim : this.progress.has('open') ? C.bright : C.sel);
+    }
     if (!here) {
       const hit = { x: cell.x - 2, y: cell.y - 4, w: cell.w + 4, h: cell.h + 6 };
       hits.add(hit, { click: () => {
@@ -475,7 +480,10 @@ export class Pocket {
         this.progress.add('open');
         this.msg = P.pmcHint;
       } });
-      this.shapes.push({ r: hit, sunk: (q) => q.bevel(cell, 2, false) });
+      this.shapes.push({ r: hit, sunk: (q) => {
+        if (win55) button(q, hits, cell, P.ppmc, { on: true });
+        else q.bevel(cell, 2, false);
+      } });
     }
   }
 
