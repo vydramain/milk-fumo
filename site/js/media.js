@@ -391,12 +391,13 @@ export function nowWell(p, pl, r, { phone = false, bar = false, maxHeight = Infi
   const metaY = art.length ? artY + art.length * lineH : artY + 2;
   const h = metaY + meta.length * lineH + 4;
   if (h > maxHeight) {
-    const compactHeight = 2 * lineH + 4;
+    const showMeta = 2 * lineH + 4 <= maxHeight;
+    const compactHeight = (showMeta ? 2 : 1) * lineH + 4;
     const y = r.y + 2 + lineTop;
     const name = head.art ? head.name + ' · ' + head.art : head.name;
     wellFrame(p, { ...r, h: compactHeight }, C.cb);
     p.text(font, tx, y, fitText(font, name, tw), C.ct);
-    p.text(font, tx, y + lineH, metaLines(pl, font, tw, false, true)[0], C.cs);
+    if (showMeta) p.text(font, tx, y + lineH, metaLines(pl, font, tw, false, true)[0], C.cs);
     return compactHeight;
   }
   wellFrame(p, { ...r, h }, C.cb, theme === 'win-55' ? 2 : 0);

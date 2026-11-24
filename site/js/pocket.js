@@ -607,8 +607,10 @@ export class Pocket {
   drawMedia(p, hits, r, pl) {
     const win55 = theme === 'win-55';
     const font = uiFont();
-    // Reserve 80 px for the controls and three playlist lines plus its frame and separator.
-    const maxHeight = win55 && pl.kind === 'audio' ? r.h - 80 - (3 * font.lineHeight + 5) : Infinity;
+    const lineH = font.lineHeight ?? 12;
+    // Reserve 80 px for controls, then the playlist header, two rows, frame and separator.
+    const playlistH = (font.lineHeight ?? 13) + 2 * lineH + 5;
+    const maxHeight = win55 && pl.kind === 'audio' ? r.h - 80 - playlistH : Infinity;
     const h = nowWell(p, pl, r, { phone: true, maxHeight });
     const below = pl.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 }, true);
     const ty = below + 6;
