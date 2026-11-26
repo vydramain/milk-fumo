@@ -1,6 +1,6 @@
 # win-55-ui
 
-Milk Fumo adapts the palette and control borders from [win-55-ui beta-0.8.0, commit 37620e5c50044291e0c5cafd755677770a102362](https://github.com/OmskGameJam/win-55-ui/tree/37620e5c50044291e0c5cafd755677770a102362). The Canvas borders follow `panel-d-1.png`, `panel-d-2.png`, `indent.png`, `indent-dark.png` and the vertical scrollbar graphics. The [font source and notices](../third_party/win-55-font/ORIGIN.md) accompany the font.
+Milk Fumo adapts the palette and control borders from [win-55-ui beta-0.8.0, commit 37620e5c50044291e0c5cafd755677770a102362](https://github.com/OmskGameJam/win-55-ui/tree/37620e5c50044291e0c5cafd755677770a102362). The Canvas borders follow `panel-d-1.png`, `panel-d-2.png`, `indent.png`, `indent-dark.png` and the vertical scrollbar graphics. The [font source and notices](../win-55-font/ORIGIN.md) accompany the font.
 
 ## MIT License
 

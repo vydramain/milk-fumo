@@ -103,7 +103,7 @@ The code is MIT, see [LICENSE](LICENSE).
 
 The `VGA_9X16` table (PxPlus IBM VGA 9x16) and the Cyrillic block of the `RV_FONT` table (rv_font) in [`site/js/font_data.js`](site/js/font_data.js) are CC BY-SA 4.0. The full license text of PxPlus IBM VGA is [third_party/pxplus-ibm-vga/LICENSE](third_party/pxplus-ibm-vga/LICENSE); the origin of both fonts is in [third_party/pxplus-ibm-vga/ORIGIN.md](third_party/pxplus-ibm-vga/ORIGIN.md) and [third_party/rv_font/ORIGIN.md](third_party/rv_font/ORIGIN.md).
 
-The Win-55 theme adapts the palette and control styling from win-55-ui. [Win-55 UI attribution and license](LICENSES/win-55-ui.md)
+The Win-55 theme adapts the palette and control styling from win-55-ui. [Win-55 UI attribution and license](third_party/win-55-ui/win-55-ui.md)
 
 The bundled Win-55 font ships with its [source and conversion notes](third_party/win-55-font/ORIGIN.md), [font license and exceptions](third_party/win-55-font/License.txt) and [GPL v2 text](third_party/win-55-font/GPL-2.0.txt).
 
