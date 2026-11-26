@@ -173,7 +173,7 @@ window.addEventListener('message', (e) => {
 
 // Leaving the browser's fullscreen (Esc, or the browser's own controls) returns the video to its tile.
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) { if (pocket) pocket.full = false; else ws.fullVideo = null; }
+  if (!document.fullscreenElement) { if (pocket) pocket.fullscreen(false); else ws.fullVideo = null; }
   requestDraw();
 });
 

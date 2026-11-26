@@ -41,6 +41,10 @@ class Element extends EventTarget {
   style = {};
   contentWindow = new EventTarget();
   paused = true;
+  srcWrites = [];
+
+  get src() { return this.srcWrites.at(-1); }
+  set src(value) { this.srcWrites.push(value); }
 
   getAttribute(name) { return this[name] ?? null; }
   setPointerCapture() {}
@@ -49,7 +53,49 @@ class Element extends EventTarget {
   async play() {}
 }
 
-async function openPocket(t, filename) {
+const previousPage = 'http://localhost/?open=about.md';
+
+function browserHistory(win, url) {
+  const entry = (state, href = globalThis.location.href) => ({
+    state: structuredClone(state),
+    url: new URL(href, url),
+  });
+  const entries = [{ ...entry(null, previousPage), external: true }, entry(null, url)];
+  let index = 1;
+  return {
+    get state() { return entries[index].state; },
+    get length() { return entries.length; },
+    replaceState(state, _title, href) {
+      entries[index] = entry(state, href);
+      globalThis.location = entries[index].url;
+    },
+    pushState(state, _title, href) {
+      entries.splice(index + 1, entries.length, entry(state, href));
+      index++;
+      globalThis.location = entries[index].url;
+    },
+    navigate(href) {
+      this.pushState(null, '', href);
+      entries[index].external = true;
+    },
+    back() { this.go(-1); },
+    forward() { this.go(1); },
+    go(delta) {
+      queueMicrotask(() => {
+        const next = index + delta;
+        if (next < 0 || next >= entries.length) return;
+        const restored = entries[index].external;
+        index = next;
+        globalThis.location = entries[index].url;
+        if (entries[index].external) return;
+        if (restored) win.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+        else win.dispatchEvent(Object.assign(new Event('popstate'), { state: this.state }));
+      });
+    },
+  };
+}
+
+async function openPocket(t, filename, { nativeFull = true } = {}) {
   const canvas = new Element();
   const ctx = {
     canvas,
@@ -69,7 +115,9 @@ async function openPocket(t, filename) {
   let pending;
   const overlays = [];
   const win = new EventTarget();
-  const history = { replaceState() {} };
+  const folder = filename.endsWith('.exe') ? 'games' : 'video';
+  const url = new URL(`http://localhost/?open=${folder}/${filename}`);
+  const history = browserHistory(win, url);
   Object.assign(win, { devicePixelRatio: 3, history });
   const document = new EventTarget();
   Object.assign(document, {
@@ -77,6 +125,7 @@ async function openPocket(t, filename) {
     querySelector: () => null,
     documentElement: {
       async requestFullscreen() {
+        if (!nativeFull) throw new TypeError('Fullscreen request was denied');
         document.fullscreenElement = this;
         document.dispatchEvent(new Event('fullscreenchange'));
       },
@@ -91,16 +140,22 @@ async function openPocket(t, filename) {
       appendChild(child) { this.child = child; },
     }),
     body: {
-      append(element) { overlays.push(element); element.parentNode = this; },
+      append(element) {
+        overlays.push(element);
+        element.parentNode = this;
+        element.remove = () => {
+          overlays.splice(overlays.indexOf(element), 1);
+          element.parentNode = null;
+        };
+      },
       appendChild(element) { this.append(element); },
     },
   });
-  const folder = filename.endsWith('.exe') ? 'games' : 'video';
   Object.assign(globalThis, {
     window: win, document, history,
     devicePixelRatio: 3, innerWidth: 393, innerHeight: 852,
     matchMedia: () => ({ matches: true }),
-    location: new URL(`http://localhost/?open=${folder}/${filename}`),
+    location: url,
     requestAnimationFrame: (callback) => { pending = callback; },
   });
 
@@ -126,24 +181,29 @@ async function openPocket(t, filename) {
     ctx.fills.length = 0;
     callback();
   };
+  const settle = async () => {
+    await setImmediate();
+    if (pending) draw();
+  };
   const tap = (clientX, clientY) => {
     for (const type of ['pointerdown', 'pointerup']) {
       canvas.dispatchEvent(Object.assign(new Event(type), { clientX, clientY }));
     }
     draw();
   };
-  const tapFull = () => {
-    assert.ok(labels.has('Full'), 'Full is visible');
-    tap(...labels.get('Full'));
+  const tapLabel = (label) => {
+    assert.ok(labels.has(label), `${label} is visible`);
+    tap(...labels.get(label));
   };
+  const tapFull = () => tapLabel('Full');
 
-  await import('../site/js/main.js?open=' + filename);
+  await import(`../site/js/main.js?test=${encodeURIComponent(t.name)}`);
   await setImmediate();
   overlays[0]?.child?.dispatchEvent(new Event('load'));
   draw();
   const overlay = overlays[0];
   assert.ok(overlay, 'the content link opens the overlay');
-  return { canvas, ctx, overlay, draw, tap, tapFull, win, document };
+  return { canvas, ctx, overlay, overlays, draw, settle, tap, tapFull, tapLabel, win, document, history };
 }
 
 function size({ width, height }) {
@@ -153,12 +213,19 @@ function size({ width, height }) {
 
 for (const filename of ['clip.webm', 'demo.exe']) {
   test(`Pocket ${filename} fills the viewport in Full before and after rotation`, async (t) => {
-    const { canvas, ctx, overlay, draw, tap, tapFull, win, document } = await openPocket(t, filename);
+    const nativeFull = filename.endsWith('.exe');
+    const { canvas, ctx, overlay, draw, settle, tap, tapFull, win, document, history } = await openPocket(t, filename, { nativeFull });
+    const startLength = history.length;
     const paintedCorner = () => ctx.fills.some(([x, y, w, h]) => x + w >= canvas.width && y + h >= canvas.height);
     const portraitTile = size(overlay.style);
     const portraitTileCorner = paintedCorner();
 
     tapFull();
+    await settle();
+    if (nativeFull) {
+      assert.ok(document.fullscreenElement, 'the browser entered native Full');
+      assert.equal(history.length, startLength, 'native Full needs no extra history entry');
+    }
     const portraitFull = size(overlay.style);
     const portraitFullCorner = paintedCorner();
 
@@ -170,6 +237,7 @@ for (const filename of ['clip.webm', 'demo.exe']) {
 
     if (filename.endsWith('.webm')) {
       tap(851.5, 392.5);
+      await settle();
     } else {
       await document.exitFullscreen();
       draw();
@@ -189,5 +257,89 @@ for (const filename of ['clip.webm', 'demo.exe']) {
       portraitTileVisible: true,
       landscapeTileRestored: true,
     });
+
+    history.back();
+    await setImmediate();
+    assert.equal(location.href, previousPage, 'one Back leaves the direct link after exiting Full');
   });
 }
+
+test('Pocket Back restores the direct-linked game and its iframe after native Full is denied', async (t) => {
+  const { overlay, overlays, document, tapFull, settle, history } = await openPocket(t, 'demo.exe', { nativeFull: false });
+  const tileSize = size(overlay.style);
+  const iframe = overlay.child;
+  const srcWrites = [...iframe.srcWrites];
+  const gameUrl = location.href;
+  assert.ok(iframe.src, 'the game is loaded');
+
+  tapFull();
+  await settle();
+  assert.ok(!document.fullscreenElement, 'the native request was refused');
+  assert.deepEqual(size(overlay.style), [393, 852], 'the game fills the viewport in CSS Full');
+
+  history.back();
+  await settle();
+  assert.equal(location.href, gameUrl, 'the first Back stays on the direct-linked game');
+  assert.deepEqual(size(overlay.style), tileSize, 'Back restores the game tile');
+  assert.equal(overlay.style.display, 'block', 'the game is visible in the tile');
+  assert.equal(overlays.length, 1, 'there is one game overlay');
+  assert.equal(overlays[0], overlay, 'the original overlay is still mounted');
+  assert.equal(overlay.child, iframe, 'the original iframe is still mounted');
+  assert.deepEqual(iframe.srcWrites, srcWrites, 'Back does not reload the game');
+
+  history.back();
+  await setImmediate();
+  assert.equal(location.href, previousPage, 'the next Back reaches the preceding page');
+});
+
+test('Pocket Forward traverses a stale CSS Full entry and reaches the later page', async (t) => {
+  const { overlay, overlays, tapFull, settle, history } = await openPocket(t, 'demo.exe', { nativeFull: false });
+  const gameUrl = location.href;
+  const laterPage = 'http://localhost/later';
+  const tileSize = size(overlay.style);
+  const iframe = overlay.child;
+
+  tapFull();
+  await settle();
+  assert.deepEqual(size(overlay.style), [393, 852], 'the game entered CSS Full');
+
+  history.navigate(laterPage);
+  history.back();
+  await settle();
+  assert.equal(location.href, gameUrl, 'Back returns to the game document');
+  history.back();
+  await settle();
+  assert.deepEqual(size(overlay.style), tileSize, 'Back returns to the game tile');
+
+  history.forward();
+  await settle();
+  assert.equal(location.href, gameUrl, 'the first Forward stays on the direct-linked game');
+  assert.deepEqual(size(overlay.style), tileSize, 'the stale Full entry keeps the game in its tile');
+  assert.equal(overlays[0], overlay, 'the original overlay is still mounted');
+  assert.equal(overlay.child, iframe, 'the original iframe is still mounted');
+
+  history.forward();
+  await settle();
+  assert.equal(location.href, laterPage, 'the second Forward reaches the later page');
+});
+
+test('Pocket opening ppmc from a stale CSS Full entry keeps tile history one step deep', async (t) => {
+  const { overlay, tapFull, tapLabel, settle, history } = await openPocket(t, 'demo.exe', { nativeFull: false });
+  const tileSize = size(overlay.style);
+
+  tapFull();
+  await settle();
+  assert.deepEqual(size(overlay.style), [393, 852], 'the game entered CSS Full');
+  const fullLength = history.length;
+
+  history.back();
+  await settle();
+  assert.deepEqual(size(overlay.style), tileSize, 'Back restores the game tile');
+  history.forward();
+  await settle();
+  assert.deepEqual(size(overlay.style), tileSize, 'Forward leaves the game in its tile');
+
+  tapLabel('ppmc');
+  assert.equal(overlay.style.display, 'none', 'ppmc is open');
+  assert.equal(history.length, fullLength, 'ppmc reuses the inactive Full entry to keep one history step from the game');
+});

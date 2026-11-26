@@ -55,6 +55,7 @@ export class Pocket {
     this.progress = new Set();
     this.msg = bare ? T.loading : P.start;
     this.full = false;         // the video or the game fills the screen
+    this.fullInHistory = false;
     this.note = bare ? null : new NoteBody(this, HOME_NOTE);
     this.pmc = { dir: START_DIR, entries: null, error: false, load: null, cursor: 0, top: 0, view: 1 };
     this.players = { audio: null, video: null };
@@ -67,13 +68,16 @@ export class Pocket {
     if (history) {
       // The history lives one page load: after a reload the page stands on an old tile's entry, so it goes back to
       // the entry of the first tile, and the next system back leaves the site.
-      const n = window.history.state?.pocket || 1;
+      const state = window.history.state;
+      const n = (state?.pocket || 1) + Number(!!state?.pocketFull);
       if (n > 1) window.history.go(1 - n);
       else window.history.replaceState({ pocket: 1 }, '');
-      // The system back leaves the fullscreen first and gives the history entry back, as the Back cell does.
       window.addEventListener('popstate', (e) => {
         // Forward (an entry with as many tiles or more) opens nothing back; only going back closes.
-        if ((e.state?.pocket ?? 1) < this.tiles.length) {
+        if (this.fullInHistory) {
+          this.fullInHistory = false;
+          this.full = false;
+        } else if ((e.state?.pocket ?? 1) < this.tiles.length) {
           if (this.full) { this.fullscreen(false); window.history.pushState({ pocket: this.tiles.length }, ''); }
           else if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); window.history.pushState({ pocket: this.tiles.length }, ''); }
           else if (this.tiles.length > 1) this.closeActive();
@@ -114,10 +118,16 @@ export class Pocket {
 
   open(id) {
     if (!this.tiles.includes(id)) {
-      // The first tile takes the page's own history entry; the next ones push.
       const first = !this.tiles.length;
       this.tiles.push(id);
-      if (this.useHistory) window.history[first ? 'replaceState' : 'pushState']({ pocket: this.tiles.length }, '');
+      if (this.useHistory) {
+        const fullEntry = window.history.state?.pocketFull;
+        // Leave the Full entry in place while the first tile loads and history returns to the page entry.
+        if (!first || !fullEntry) {
+          const replace = first || (fullEntry && !this.fullInHistory);
+          window.history[replace ? 'replaceState' : 'pushState']({ pocket: this.tiles.length }, '');
+        }
+      }
     }
     this.activate(id);
   }
@@ -171,10 +181,25 @@ export class Pocket {
   // Full, for a video or a game: the frame fills the screen, Back (a tap on a video) leaves it. The browser's
   // fullscreen is asked for on the site only; an iPhone refuses it for a page, and the frame still fills the screen.
   fullscreen(on) {
+    if (this.full === on || (on && this.fullInHistory)) return;
     this.full = on;
     if (!this.useHistory) return;
-    if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
-    if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    if (!on) {
+      if (this.fullInHistory) window.history.back();
+      else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      return;
+    }
+    const fallback = () => {
+      if (this.full && !this.fullInHistory && !document.fullscreenElement) {
+        // Forward can leave the browser on an inactive Full entry. Reuse it for the next fallback.
+        if (!window.history.state?.pocketFull) {
+          window.history.pushState({ ...window.history.state, pocketFull: true }, '');
+        }
+        this.fullInHistory = true;
+      }
+    };
+    if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(fallback);
+    else fallback();
   }
 
   // ---- pmc: one panel ----
