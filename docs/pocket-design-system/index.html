@@ -113,13 +113,15 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 
 <script type="module">
 import { NET, params } from '../design-system/net.js';
-import { C } from '../../site/js/theme.js';
+import { C, theme, setTheme } from '../../site/js/theme.js';
+import { win55FontReady } from '../../site/js/font.js';
 import { Paint } from '../../site/js/paint.js';
 import { view } from '../../site/js/view.js';
 import { P, ERRORS, LINK_LINES } from '../../site/js/texts.js';
 import { Pocket, layoutOf, POCKET_W, ROW, BAR, SLOTS } from '../../site/js/pocket.js';
 
 NET.mode = params.get('net') || 'fast';
+setTheme(params.get('theme'));
 const dpr = window.devicePixelRatio || 1;
 const K = Math.max(1, Math.round(2 * dpr));   // device px per layout px: about 2 CSS px, a whole number of device px
 const PHONE = layoutOf(393 * 3, 852 * 3);     // iPhone 15
@@ -151,6 +153,8 @@ for (const d of DEVICES) {
   const T = layoutOf(Math.round(d.h * d.dpr), Math.round(d.w * d.dpr));
   dt.insertAdjacentHTML('beforeend', `<tr><td>${d.name}</td><td>${d.w}×${d.h} @${d.dpr}</td><td>${Math.round(d.w * d.dpr)}×${Math.round(d.h * d.dpr)}</td><td>${L.k}</td><td>${L.w}×${L.h}</td><td>${T.w}×${T.h}</td></tr>`);
 }
+
+const draws = [];
 
 // A stage: a live pocket screen of w x h layout px, set up into a state, with a caption. It draws as main.js does on a
 // phone: a layout px is K device px, view.ui is K while it draws, an app's frame goes into the stage.
@@ -186,6 +190,7 @@ function stage(parent, caption, setup, w = PHONE.w, h = 440, opts) {
     });
   };
   const pk = new Pocket(draw, opts);
+  draws.push(draw);
   const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr / K, (e.clientY - r.top) * dpr / K]; };
   cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pk.pointerDown(...at(e)); draw(); });
   cv.addEventListener('pointermove', (e) => pk.pointerMove(...at(e)));
@@ -245,6 +250,9 @@ stage('s-stub', '400 for a broken link: the same screen, only the ppmc cell in t
 stage('s-stub', 'The 404 turned (iPhone 15): the same, the well wider.', null, PHONE_T.w, PHONE_T.h, { stub: { code: 404, line: LINK_LINES[404]('track_09.mp3') } });
 stage('s-link-net', 'A link to a name that is not on the server: the Pocket asks for it and draws the 404 screen.', null, PHONE.w, 440, { link: 'music/track_09.mp3' });
 stage('s-link-net', 'A link into a folder that cannot be listed: the 403 screen.', null, PHONE.w, 440, { link: 'locked/x.mp3' });
+win55FontReady.then((loaded) => {
+  if (loaded && theme === 'win-55') for (const draw of draws) draw();
+});
 </script>
 </body>
 </html>

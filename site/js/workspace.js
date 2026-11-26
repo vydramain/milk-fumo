@@ -1,6 +1,6 @@
 // The workspace: the tiles, their focus, the resize and move modes, dragging, the message line and the environment
 // bar. Keys, pointers and the bar's cells all lead to the same commands here.
-import { FRAME, PANE_MIN, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from './metrics.js';
+import { FRAME, PANE_MIN, DRAG_START, ENV_H, MSG_H, TABS_LEFT, VIEWPORT_MIN } from './metrics.js';
 import * as L from './layout.js';
 import { C, theme } from './theme.js';
 import { RV, uiFont, textWidth, fitText } from './font.js';
@@ -810,10 +810,10 @@ export class Workspace {
   tabStrip(p, node, rect) {
     const strip = L.tabsRect(rect);
     const win55 = theme === 'win-55';
-    let x = strip.x + 6;
+    let x = strip.x + TABS_LEFT;
     const labels = node.tabs.map((id) => this.tabLabel(id));
     const widths = labels.map((label) => textWidth(RV, label) + 18);
-    const available = strip.w - 6;
+    const available = strip.w - TABS_LEFT;
     const packed = win55 && widths.reduce((sum, w) => sum + w + 4, 0) > available;
     node.tabs.forEach((id, i) => {
       const label = labels[i];
