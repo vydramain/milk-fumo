@@ -1,7 +1,7 @@
 // A web app: a folder whose name ends in .exe and that holds index.html. It runs in an iframe that lies over
 // the canvas, in the rectangle of its tile. The iframe is created once; a rearranged tile only moves or hides
 // its wrapper, and the wrapper never moves in the page, so the app keeps its state.
-// The app talks to the site by postMessage: APP_READY, TITLE and ERROR, from its own address only. An app that
+// The app talks to the site by postMessage: APP_READY and ERROR, from its own address only. An app that
 // sends nothing is running once its page has loaded.
 import { PANE_MIN } from './metrics.js';
 import { C, theme } from './theme.js';
@@ -13,7 +13,7 @@ import { keyBar, footBar, wellFrame } from './widgets.js';
 import { Download } from './download.js';
 
 const BAR = 14, STATUS = 14;
-const MESSAGES = new Set(['APP_READY', 'TITLE', 'ERROR']);
+const MESSAGES = new Set(['APP_READY', 'ERROR']);
 
 // Reads a message from an app. Anything else is ignored; text is cut to a sane length.
 export function parseMessage(data) {

@@ -15,7 +15,6 @@ html, body { margin: 0; background: #11111b; color: #fab387; font: 16px monospac
 var n = 0;
 function tick() { n++; document.getElementById('t').textContent = 'frames: ' + n; requestAnimationFrame(tick); }
 requestAnimationFrame(tick);
-window.parent.postMessage({ type: 'TITLE', text: 'plug-run' }, location.origin);
 window.parent.postMessage({ type: 'APP_READY' }, location.origin);
 </script>
 <h1 style="position:absolute;left:0;right:0;top:70px;text-align:center;margin:0;">PLUG RUN</h1>
