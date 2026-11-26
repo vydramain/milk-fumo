@@ -5,7 +5,7 @@
 // a key bar of touch cells, the message line and the tab strip with ppmc.
 import { C, theme } from './theme.js';
 import { RV, VGA, uiFont, textWidth, fitText, wrapText } from './font.js';
-import { Hits, box, button, centerText, wellFrame, keyBar, loadBar, NO_KEYS, titleBackdrop, titleLabel, tileTab } from './widgets.js';
+import { Hits, box, button, wellFrame, keyBar, loadBar, NO_KEYS, titleBackdrop, titleLabel, tileTab } from './widgets.js';
 import { KIND, kindOf, list, setOf, formatSize, isApp, linkOf, resolveLink } from './catalog.js';
 import { layout } from './markdown.js';
 import { NoteBody } from './note.js';
@@ -489,8 +489,7 @@ export class Pocket {
 
   // The key bars, SLOTS a row, null for an empty slot. The key is a symbol: a phone has no keyboard.
   // No volume and no seek cells: the phone has volume buttons, and the position slider seeks under the finger.
-  // The players keep Mute, Full (video) and Back in one row; Prev, Play/Pause, Stop and Next are the transport row
-  // that drawMedia draws.
+  // The players put their transport keys above Mute, Full (video) and Back.
   keysOf(id) {
     const c = (key, label, click) => ({ key, label, codes: [], click: () => { click(); this.requestDraw(); } });
     const BACK = c('<', 'Back', () => this.back());
@@ -502,7 +501,14 @@ export class Pocket {
     if ((id === 'Player' || id === 'Video') && this.players[id === 'Player' ? 'audio' : 'video']) {
       const pl = this.players[id === 'Player' ? 'audio' : 'video'];
       const mute = c('M', pl.element.muted ? 'Unmute' : 'Mute', () => pl.toggleMute());
-      return id === 'Player' ? [mute, null, null, BACK] : [mute, c('F', 'Full', () => this.fullscreen(true)), null, BACK];
+      const full = id === 'Video' ? c('F', 'Full', () => this.fullscreen(true)) : null;
+      return [
+        c('|<', 'Prev', () => pl.load(pl.index - 1, pl.playing)),
+        c(pl.playing ? '|' : '>', pl.playing ? 'Pause' : 'Play', () => pl.toggle()),
+        c('[]', 'Stop', () => pl.stop()),
+        c('>|', 'Next', () => pl.load(pl.index + 1, pl.playing)),
+        mute, full, null, BACK,
+      ];
     }
     if (id === 'Image' && this.image) {
       return [c('<', 'Prev', () => this.image.load(this.image.index - 1)), c('>', 'Next', () => this.image.load(this.image.index + 1)), null, BACK];
@@ -601,30 +607,18 @@ export class Pocket {
     loadBar(p, status.x + status.w - 38, status.y + 1, { state, share: state === 'done' ? 1 : 0 });
   }
 
-  // The Player and Video tiles on the olive tile: media.js's phone now-playing well, the big Position slider, the
-  // transport row (four big buttons: Prev, Play/Pause, Stop, Next), then the playlist (audio) or the fitted frame
-  // (video). The volume is left out: the phone has volume buttons.
+  // The phone's now-playing well and Position slider sit above the playlist or fitted video frame.
   drawMedia(p, hits, r, pl) {
     const win55 = theme === 'win-55';
     const font = uiFont();
     const lineH = font.lineHeight ?? 12;
-    // Reserve 80 px for controls, then the playlist header, two rows, frame and separator.
+    // Reserve 46 px for the Position slider and its margins, then the playlist header, two rows, frame and separator.
     const playlistH = (font.lineHeight ?? 13) + 2 * lineH + 5;
-    const maxHeight = win55 && pl.kind === 'audio' ? r.h - 80 - playlistH : Infinity;
+    const maxHeight = win55 && pl.kind === 'audio' ? r.h - 46 - playlistH : Infinity;
     const h = nowWell(p, pl, r, { phone: true, maxHeight });
     const below = pl.seekBar(p, hits, { x: r.x + 2, y: r.y + h + 6, w: r.w - 4 }, true);
-    const ty = below + 6;
-    const cw = Math.floor((r.w - 6) / 4);
-    const act = [['|<', () => pl.load(pl.index - 1, pl.playing)], [pl.playing ? '||' : '>', () => pl.toggle()],
-      ['[]', () => pl.stop()], ['>|', () => pl.load(pl.index + 1, pl.playing)]];
-    act.forEach(([sym, click], i) => {
-      const b = { x: r.x + i * (cw + 2), y: ty, w: cw, h: 28 };
-      box(p, b, true, C.btn, 2);
-      const at = centerText(font, b, sym, 2);
-      p.text(font, at.x, at.y, sym, C.text, 2);
-      hits.add(b, { click });
-    });
-    const rest = { x: r.x, y: ty + 34, w: r.w, h: Math.max(0, r.y + r.h - (ty + 34)) };
+    const y = below + 6;
+    const rest = { x: r.x, y, w: r.w, h: Math.max(0, r.y + r.h - y) };
     if (pl.kind === 'audio') { pl.playlist(p, hits, rest); return; }
     const frame = wellFrame(p, rest, C.crust, win55 ? 2 : 0);
     this.placeVideo(frame.h > 0 ? frame : null);
