@@ -78,6 +78,7 @@ export class Player {
     const path = this.path(this.index);
     const d = this.want(path);
     if (this.index + 1 < this.set.length) this.want(this.path(this.index + 1));
+    this.playRequested = false;
     this.element.src = d.state === 'done' ? d.href : urlOf(path);
     this.element.load();
     if (play) this.play();
@@ -117,17 +118,29 @@ export class Player {
   }
 
   play() {
+    this.playRequested = true;
     this.element.play().catch(() => this.ws.requestDraw());
     this.ws.requestDraw();
   }
 
-  pause() { this.element.pause(); this.ws.requestDraw(); }
+  pause() {
+    this.playRequested = false;
+    this.element.pause();
+    this.ws.requestDraw();
+  }
 
   toggle() { if (this.playing) this.pause(); else this.play(); }
 
-  stop() { this.element.pause(); this.element.currentTime = 0; this.ws.requestDraw(); }
+  stop() {
+    this.playRequested = false;
+    this.element.pause();
+    this.element.currentTime = 0;
+    this.ws.requestDraw();
+  }
 
   ended() {
+    // The element may already be paused when the queued ended event arrives.
+    if (!this.playRequested || !this.element.ended) return;
     if (this.index < this.set.length - 1) this.load(this.index + 1, true);
     else if (this.loop) this.load(0, true);
     else this.ws.requestDraw();
@@ -181,6 +194,7 @@ export class Player {
   // Closing the tile stops the element and aborts and frees its downloads; a fullscreen video leaves the fullscreen.
   dispose() {
     if (this.ws.fullVideo === this) this.fullscreen();
+    this.playRequested = false;
     this.element.pause();
     this.element.removeAttribute('src');
     this.element.load();

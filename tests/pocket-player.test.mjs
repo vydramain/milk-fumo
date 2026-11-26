@@ -8,6 +8,8 @@ class MediaElement extends EventTarget {
   style = {};
   parentNode = {};
 
+  get ended() { return this.currentTime >= this.duration; }
+
   load() { this.pause(); this.currentTime = 0; }
   async play() { this.paused = false; }
   pause() { this.paused = true; }
@@ -62,7 +64,7 @@ function openPlayer(t, kind, w, h) {
     pocket.pointerDown(x + w / 2, y + h / 2);
     pocket.pointerUp(x + w / 2, y + h / 2);
   };
-  return { player, draw, button, tap };
+  return { pocket, player, draw, button, tap };
 }
 
 function styleOf(frame, { x, y, w, h, text }) {
@@ -159,4 +161,32 @@ for (const kind of ['audio', 'video']) {
         y === position.y && x < position.x && label === '00:00'), 'Position is reset to 00:00');
     });
   }
+}
+
+for (const action of ['pause', 'stop']) {
+  test(`audio: pending track completion respects manual ${action}`, (t) => {
+    const { pocket, player, tap } = openPlayer(t, 'audio', 393, 852);
+    const media = player.element;
+
+    tap('Prev');
+    tap('Play');
+    pocket.open('pmc');
+    assert.equal(player.playing, true);
+    media.currentTime = media.duration;
+    media.pause();
+    media.dispatchEvent(new Event('ended'));
+    assert.equal(player.entry.name, 'Second.mp3');
+    assert.equal(player.playing, true);
+    pocket.activate('Player');
+
+    // Chromium pauses the finished element before notifying the ended listeners.
+    media.currentTime = media.duration;
+    media.pause();
+    player[action]();
+    media.dispatchEvent(new Event('ended'));
+
+    assert.equal(player.playing, false, `pending ended restarted playback after ${action}`);
+    assert.equal(player.entry.name, 'Second.mp3');
+    assert.equal(media.currentTime, action === 'pause' ? media.duration : 0);
+  });
 }
