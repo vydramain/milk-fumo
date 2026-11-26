@@ -34,7 +34,7 @@ export class Player {
     this.element = kind === 'video' ? document.createElement('video') : new Audio();
     this.element.preload = 'auto';
     this.element.playsInline = true;
-    this.element.volume = 0.82;
+    this.element.volume = 0.80;
     this.loop = false;
     this.tags = new Map();        // path -> tags ({} when there are none)
     this.durations = new Map();   // path -> seconds
@@ -169,7 +169,7 @@ export class Player {
     if (this.kind !== 'video') return false;
     if (this.ws.fullVideo === this) {
       this.ws.fullVideo = null;
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
     } else {
       this.ws.fullVideo = this;
       document.documentElement.requestFullscreen().catch(() => { this.ws.fullVideo = null; this.ws.requestDraw(); });
