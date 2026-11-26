@@ -1,7 +1,8 @@
-// Drawing on the canvas. Coordinates are CSS pixels; every rectangle is snapped to whole device pixels,
-// so nothing is smoothed. Text is drawn from the bitmap tables in font.js, pixel by pixel.
-import { C } from './theme.js';
-import { glyphOf } from './font.js';
+// Drawing on the canvas. Coordinates are layout pixels. Rectangles snap to whole device pixels.
+// Text uses the bitmap tables or the browser font from font.js.
+import { C, theme } from './theme.js';
+import { glyphOf, textWidth } from './font.js';
+import { rasterRect } from './view.js';
 
 export class Paint {
   constructor(ctx, dpr) {
@@ -10,33 +11,50 @@ export class Paint {
     this.patterns = new Map();
   }
 
+  bounds() {
+    const { width, height } = this.ctx.canvas;
+    return { x: 0, y: 0, w: width / this.dpr, h: height / this.dpr };
+  }
+
   fill(x, y, w, h, color) {
-    const d = this.dpr;
-    const x0 = Math.round(x * d), y0 = Math.round(y * d);
-    const x1 = Math.round((x + w) * d), y1 = Math.round((y + h) * d);
-    if (x1 <= x0 || y1 <= y0) return;
+    const [left, top, width, height] = rasterRect(x, y, w, h, this.dpr);
+    if (width <= 0 || height <= 0) return;
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    this.ctx.fillRect(left, top, width, height);
   }
 
   // A bevel `width` px wide: light on the top and left, dark on the bottom and right; sunken swaps them.
   bevel(r, width, raised) {
+    if (theme === 'win-55') {
+      this.edge(r, 1, raised ? C.hi : C.blue, raised ? C.blue : C.hi);
+      if (width > 1) {
+        const inner = { x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 };
+        this.edge(inner, width - 1, raised ? null : C.text, raised ? C.lo : null);
+      }
+      return;
+    }
     const hi = raised ? C.hi : C.lo;
     const lo = raised ? C.lo : C.hi;
-    this.fill(r.x, r.y, r.w, width, hi);
-    this.fill(r.x, r.y, width, r.h, hi);
-    this.fill(r.x, r.y + r.h - width, r.w, width, lo);
-    this.fill(r.x + r.w - width, r.y, width, r.h, lo);
+    this.edge(r, width, hi, lo);
+  }
+
+  edge(r, width, topLeft, bottomRight) {
+    if (topLeft) {
+      this.fill(r.x, r.y, r.w, width, topLeft);
+      this.fill(r.x, r.y, width, r.h, topLeft);
+    }
+    if (bottomRight) {
+      this.fill(r.x, r.y + r.h - width, r.w, width, bottomRight);
+      this.fill(r.x + r.w - width, r.y, width, r.h, bottomRight);
+    }
   }
 
   // A checkerboard of two colors, one pixel per cell: the dither of the title bars and the scroll tracks.
   dither(r, a, b) {
-    const d = this.dpr;
-    const x0 = Math.round(r.x * d), y0 = Math.round(r.y * d);
-    const x1 = Math.round((r.x + r.w) * d), y1 = Math.round((r.y + r.h) * d);
-    if (x1 <= x0 || y1 <= y0) return;
+    const [left, top, width, height] = rasterRect(r.x, r.y, r.w, r.h, this.dpr);
+    if (width <= 0 || height <= 0) return;
     this.ctx.fillStyle = this.pattern(a, b);
-    this.ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    this.ctx.fillRect(left, top, width, height);
   }
 
   pattern(a, b) {
@@ -57,9 +75,23 @@ export class Paint {
     return this.patterns.get(key);
   }
 
-  // Text at a top-left corner, at an integer scale: a font pixel is `scale` CSS pixels. Bold widens every run by one
+  // Text at a top-left corner uses `scale` layout pixels per font pixel. Bold widens every run by one
   // font pixel; italic shifts the upper half of the cell one font pixel right.
   text(font, x, y, s, color, scale = 1, bold = false, italic = false) {
+    if (font.family) {
+      const d = this.dpr;
+      this.ctx.save();
+      this.ctx.translate(Math.round(x * d), Math.round(y * d));
+      this.ctx.scale(scale * d, scale * d);
+      this.ctx.font = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${font.rows}px ${font.family}`;
+      this.ctx.fontKerning = 'none';
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'alphabetic';
+      this.ctx.fillStyle = color;
+      this.ctx.fillText(s, 0, font.ascent);
+      this.ctx.restore();
+      return x + textWidth(font, s, scale);
+    }
     let cx = x;
     for (const ch of s) {
       const rows = glyphOf(font, ch);
@@ -94,16 +126,14 @@ export class Paint {
 
   // A picture or a video frame, scaled to a rectangle without smoothing.
   image(src, x, y, w, h) {
-    const d = this.dpr;
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.drawImage(src, Math.round(x * d), Math.round(y * d), Math.round(w * d), Math.round(h * d));
+    this.ctx.drawImage(src, ...rasterRect(x, y, w, h, this.dpr));
   }
 
-  clip(r) {
-    const d = this.dpr;
+  clip({ x, y, w, h }) {
     this.ctx.save();
     this.ctx.beginPath();
-    this.ctx.rect(Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d));
+    this.ctx.rect(...rasterRect(x, y, w, h, this.dpr));
     this.ctx.clip();
   }
 

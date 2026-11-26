@@ -2,14 +2,14 @@
 // The panels only read: there is no copy, move or delete. F3 turns the other panel into a quick view of the cursor.
 import { START_DIR } from './config.js';
 import { PANE_MIN, ROW } from './metrics.js';
-import { C } from './theme.js';
-import { RV, textWidth, fitText } from './font.js';
+import { C, theme } from './theme.js';
+import { uiFont, textWidth, fitText } from './font.js';
 import { KIND, kindOf, list, known, setOf, formatSize, formatBytes, isApp } from './catalog.js';
 import { Player } from './media.js';
 import { ImageView } from './image.js';
 import { NoteBody } from './note.js';
 import { T, PMC_KEYS } from './texts.js';
-import { box, scrollbar, panelFrame, wellFrame, keyBar, loadBar, LOAD_W, NO_KEYS } from './widgets.js';
+import { box, button, scrollbar, panelFrame, wellFrame, keyBar, loadBar, LOAD_W, NO_KEYS } from './widgets.js';
 
 const COL_SIZE = 56;
 const COL_DATE = 70;
@@ -253,40 +253,52 @@ export class PmcPane {
 
   toolbar(p, hits, bar) {
     const panel = this.panels[this.act];
+    const win55 = theme === 'win-55';
+    const font = uiFont();
     const quick = !!this.quick;
     const view = { x: bar.x + bar.w - 36, y: bar.y + 1, w: 36, h: 14 };
     const field = { x: bar.x, y: bar.y + 1, w: view.x - bar.x - 4, h: 14 };
     box(p, field, false, C.inset, 2);
-    p.text(RV, field.x + 4, field.y + 3, '/' + panel.dir + (panel.dir ? '/' : ''), C.bright);
-    box(p, view, !quick, quick ? C.inset : C.btn, 2);
-    p.text(RV, view.x + 6, view.y + 3, 'View', quick ? C.bright : C.text);
-    hits.add(view, { click: () => this.f3() });
+    const path = '/' + panel.dir + (panel.dir ? '/' : '');
+    p.text(font, field.x + 4, field.y + (win55 ? 1 : 3), win55 ? fitText(font, path, field.w - 8) : path, C.bright);
+    if (win55) button(p, hits, view, 'View', { on: quick, click: () => this.f3() });
+    else {
+      box(p, view, !quick, quick ? C.inset : C.btn, 2);
+      p.text(font, view.x + 6, view.y + 3, 'View', quick ? C.bright : C.text);
+      hits.add(view, { click: () => this.f3() });
+    }
   }
 
   panel(p, hits, idx, r, focused) {
     const panel = this.panels[idx];
+    const win55 = theme === 'win-55';
+    const font = uiFont();
     const active = idx === this.act;
     const quick = !!this.quick && idx === this.quickIdx;
-    const stat = { x: r.x, y: r.y + r.h - 14, w: r.w, h: 14 };
+    const rowH = font.lineHeight ?? ROW;
+    const headH = font.lineHeight ?? 13;
+    const statH = font.lineHeight ?? 14;
+    const stat = { x: r.x, y: r.y + r.h - statH, w: r.w, h: statH };
     // The bar shows the panel's listing: loading, failed, or done.
     const load = panel.error ? { state: 'errr', share: 0 } : panel.entries === null ? { state: 'load', share: 0 } : { state: 'done', share: 1 };
-    const well = wellFrame(p, { x: r.x, y: r.y, w: r.w, h: r.h - 16 });
+    const well = wellFrame(p, { x: r.x, y: r.y, w: r.w, h: r.h - statH - 2 });
     const sb = { x: well.x + well.w - 14, y: well.y, w: 14, h: well.h };
     const col = { x: well.x, y: well.y, w: well.w - 14, h: well.h };
-    const pathBar = { x: col.x, y: col.y, w: col.w, h: 13 };
+    const pathBar = { x: col.x, y: col.y, w: col.w, h: headH };
     p.fill(pathBar.x, pathBar.y, pathBar.w, pathBar.h, active ? C.sel : C.win);
-    p.fill(pathBar.x, pathBar.y + 12, pathBar.w, 1, C.lo);
+    p.fill(pathBar.x, pathBar.y + headH - 1, pathBar.w, 1, C.lo);
     const label = quick ? 'View: ' + this.quick.path.split('/').pop() : '/' + panel.dir + (panel.dir ? '/' : '');
-    const shown = fitText(RV, label, pathBar.w - 8);
-    p.text(RV, pathBar.x + Math.floor((pathBar.w - textWidth(RV, shown)) / 2), pathBar.y + 3, shown, active ? C.dark : C.text);
+    const shown = fitText(font, label, pathBar.w - 8);
+    p.text(font, pathBar.x + Math.floor((pathBar.w - textWidth(font, shown)) / 2), pathBar.y + (font.lineTop ?? 3),
+      shown, active ? (win55 ? C.hi : C.dark) : C.text);
     hits.add(pathBar, { click: () => this.activate(idx) });
-    const body = { x: col.x, y: col.y + 26, w: col.w, h: col.h - 26 };
+    const body = { x: col.x, y: col.y + 2 * headH, w: col.w, h: col.h - 2 * headH };
 
     if (quick) {
       p.fill(body.x, body.y, body.w, body.h, C.inset);
       const view = this.quickView();
       if (view) view.draw(p, body, hits, focused);
-      else p.text(RV, body.x + 4, body.y + 4, T.noViewer, C.cov);
+      else p.text(font, body.x + 4, body.y + 4, T.noViewer, C.cov);
       this.statLine(p, stat, T.quickFooter, '', load);
       return;
     }
@@ -294,20 +306,21 @@ export class PmcPane {
     const items = this.items(panel);
     const n = items.length;
     const nameW = col.w - COL_SIZE - COL_DATE;
-    panel.vis = Math.max(1, Math.floor(body.h / ROW));
+    panel.vis = Math.max(1, Math.floor(body.h / rowH));
     panel.cursor = Math.min(panel.cursor, Math.max(0, n - 1));
     if (panel.cursor < panel.top) panel.top = panel.cursor;
     if (panel.cursor >= panel.top + panel.vis) panel.top = panel.cursor - panel.vis + 1;
     panel.top = Math.max(0, Math.min(panel.top, n - panel.vis));
 
     // The header: the three column names, with the lines between them.
-    p.fill(col.x, col.y + 13, col.w, 13, C.win);
-    p.fill(col.x, col.y + 25, col.w, 1, C.lo);
-    p.text(RV, col.x + 4, col.y + 16, 'Name', C.bright);
-    p.text(RV, col.x + nameW + 4, col.y + 16, 'Size', C.bright);
-    p.text(RV, col.x + nameW + COL_SIZE + 4, col.y + 16, 'Modified', C.bright);
-    p.fill(col.x + nameW, col.y + 13, 1, 13, C.lo);
-    p.fill(col.x + nameW + COL_SIZE, col.y + 13, 1, 13, C.lo);
+    p.fill(col.x, col.y + headH, col.w, headH, C.win);
+    p.fill(col.x, body.y - 1, col.w, 1, C.lo);
+    const hy = col.y + headH + (font.lineTop ?? 3);
+    p.text(font, col.x + 4, hy, 'Name', C.bright);
+    p.text(font, col.x + nameW + 4, hy, 'Size', C.bright);
+    p.text(font, col.x + nameW + COL_SIZE + 4, hy, 'Modified', C.bright);
+    p.fill(col.x + nameW, col.y + headH, 1, headH, C.lo);
+    p.fill(col.x + nameW + COL_SIZE, col.y + headH, 1, headH, C.lo);
 
     p.fill(body.x, body.y, body.w, body.h, C.inset);
     // The list's own hit is added before its rows, so a row's click lies on top of it.
@@ -317,14 +330,14 @@ export class PmcPane {
     });
     p.clip(body);
     for (let i = panel.top; i < Math.min(n, panel.top + panel.vis); i++) {
-      const row = { x: body.x, y: body.y + (i - panel.top) * ROW, w: body.w, h: ROW };
+      const row = { x: body.x, y: body.y + (i - panel.top) * rowH, w: body.w, h: rowH };
       this.row(p, hits, idx, items[i], i, row, nameW, focused && active, active);
     }
     p.unclip();
     p.fill(body.x + nameW, body.y, 1, body.h, C.lo);
     p.fill(body.x + nameW + COL_SIZE, body.y, 1, body.h, C.lo);
     // The error stands in the row after the items, under "..".
-    if (panel.error) p.text(RV, body.x + 4, body.y + (n - panel.top) * ROW + 2, T.folderError, C.red);
+    if (panel.error) p.text(font, body.x + 4, body.y + (n - panel.top) * rowH + (font.lineTop ?? 2), T.folderError, C.red);
     scrollbar(p, hits, sb, {
       top: panel.top, view: panel.vis, total: n,
       onTop: (t) => { panel.top = t; this.ws.requestDraw(); },
@@ -339,17 +352,22 @@ export class PmcPane {
   // One row: the kind code and the name, the size right-aligned in its column, and the date. The cursor is brass
   // in the focused active panel, dark-grey in the other active one, and not shown in the inactive panel, which dims it.
   row(p, hits, idx, item, i, r, nameW, focused, active) {
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    const y = r.y + (font.lineTop ?? 2);
     const cursor = i === this.panels[idx].cursor;
     const dark = cursor && focused;
-    if (cursor && active) p.fill(r.x, r.y, r.w, r.h, focused ? C.sel : C.lo);
+    const ink = dark ? (win55 ? C.hi : C.dark) : win55 && cursor && active ? C.text : null;
+    if (cursor && active) p.fill(r.x, r.y, r.w, r.h, focused ? C.sel : (win55 ? C.cur : C.lo));
     const kind = item.up ? 'up' : kindOf(item);
     const dim = cursor && !active;
     const name = item.dir && !item.up && kind !== 'app' ? item.name + '/' : item.name;
     const size = item.up ? 'UP--DIR' : item.dir ? (kind === 'app' ? 'APP-DIR' : 'SUB-DIR') : formatSize(item.size);
-    p.text(RV, r.x + 4, r.y + 2, KIND[kind].code, dark ? C.dark : C[KIND[kind].color]);
-    p.text(RV, r.x + 22, r.y + 2, fitText(RV, name, nameW - 26), dark ? C.dark : dim ? C.dim : item.dir ? C.bright : C.text);
-    p.text(RV, r.x + nameW + COL_SIZE - 4 - textWidth(RV, size), r.y + 2, size, dark ? C.dark : item.dir ? C.dim : C.text);
-    p.text(RV, r.x + nameW + COL_SIZE + 4, r.y + 2, item.date || '', dark ? C.dark : C.dim);
+    p.text(font, r.x + 4, y, KIND[kind].code, ink || C[KIND[kind].color]);
+    p.text(font, r.x + 22, y, fitText(font, name, nameW - 26), ink || (dim ? C.dim : item.dir ? C.bright : C.text));
+    p.text(font, r.x + nameW + COL_SIZE - 4 - textWidth(font, size), y, size, ink || (item.dir ? C.dim : C.text));
+    const date = item.date || '';
+    p.text(font, r.x + nameW + COL_SIZE + 4, y, win55 ? fitText(font, date, COL_DATE - 8) : date, ink || C.dim);
     hits.add(r, { click: () => this.click(idx, i) });
   }
 
@@ -389,14 +407,19 @@ export class PmcPane {
   // The status line under a panel: what the cursor is on and the load bar at the end of that box, and the date in a
   // sunken box on the right.
   statLine(p, r, text, date, load) {
-    const dateW = textWidth(RV, date) + 12;
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    const y = r.y + (font.lineTop ?? 3);
+    const dateW = textWidth(font, date) + 12;
     const left = { x: r.x, y: r.y, w: r.w - dateW - 2, h: r.h };
-    p.bevel(left, 1, false);
-    p.text(RV, left.x + 6, left.y + 3, fitText(RV, text, left.w - 12 - LOAD_W - 2), C.text);
-    loadBar(p, left.x + left.w - LOAD_W - 2, left.y + 1, load);
+    if (win55) box(p, left, false, C.inset, 2);
+    else p.bevel(left, 1, false);
+    p.text(font, left.x + 6, y, fitText(font, text, left.w - 12 - LOAD_W - 2), C.text);
+    loadBar(p, left.x + left.w - LOAD_W - 2, left.y + (font.lineTop ?? 1), load);
     const right = { x: r.x + r.w - dateW, y: r.y, w: dateW, h: r.h };
-    p.bevel(right, 1, false);
-    p.text(RV, right.x + 6, right.y + 3, date, C.text);
+    if (win55) box(p, right, false, C.inset, 2);
+    else p.bevel(right, 1, false);
+    p.text(font, right.x + 6, y, date, C.text);
   }
 
   // The key bar. Letters only says how the search works; its click makes the panel active, like its keys would.
@@ -437,9 +460,12 @@ class FolderInfo {
   draw(p, r) {
     p.fill(r.x, r.y, r.w, r.h, C.win);
     const rows = [['Path', '/' + this.path + (isApp(this.item.name) ? '' : '/')], ['Type', 'folder'], ['Items', this.failed ? '—' : this.count === null ? '…' : String(this.count)], ['Modified', this.item.date]];
+    const font = uiFont();
+    const lineH = font.lineHeight ?? ROW;
     rows.forEach(([k, v], i) => {
-      p.text(RV, r.x + 8, r.y + 8 + i * 12, k, C.dim);
-      p.text(RV, r.x + 70, r.y + 8 + i * 12, v, C.bright);
+      const y = r.y + 8 + i * lineH;
+      p.text(font, r.x + 8, y, k, C.dim);
+      p.text(font, r.x + 70, y, theme === 'win-55' ? fitText(font, v || '', r.w - 78) : v, C.bright);
     });
   }
 
@@ -450,7 +476,7 @@ class FolderInfo {
 class Message {
   draw(p, r) {
     p.fill(r.x, r.y, r.w, r.h, C.cb);
-    p.text(RV, r.x + 8, r.y + 8, T.noViewer, C.ct);
+    p.text(uiFont(), r.x + 8, r.y + 8, T.noViewer, C.ct);
   }
 
   dispose() {}

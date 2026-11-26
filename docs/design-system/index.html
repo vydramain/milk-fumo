@@ -44,7 +44,8 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 </head>
 <body>
 <h1>MILK-FUMO design system</h1>
-<p>Every component the site draws, drawn by the site's own modules in <a href="../../site/js/"><code>site/js/</code></a>. A stage is a canvas with one component in it. The content of the tiles is the fixture folder <a href="content/"><code>content/</code></a>, read through a network you can slow down. A stage you click takes the keys, as a tile does.</p>
+<p>See the <a href="../audit/README.md">visual and interaction audit</a> for coverage, measurements, screenshots and environment limits.</p>
+<p>Each stage draws a component with the site's <a href="../../site/js/"><code>site/js/</code></a> modules. The stages load <a href="content/"><code>content/</code></a> fixtures through a network simulator. Click a stage to give it keyboard focus. Add <code>?theme=win-55</code> to see Win-55.</p>
 <p class="cap">Open the page from a static server started in the repository root, for example <code>python3 -m http.server 8000</code>, then go to <code>localhost:8000/docs/design-system/</code>. ES modules do not load from <code>file://</code>.</p>
 
 <div class="controls">
@@ -54,7 +55,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
   <button data-net="fast">Fast</button><button data-net="slow">Slow</button><button data-net="stalled">Stalled</button><button data-net="offline">Offline</button>
   <button data-restart>Restart</button>
 </div>
-<p class="cap">Scale is device pixels per layout pixel, the site's UI scale. Slow gives files at 32 KB/s, Stalled holds every file at 40 % until the network changes, Offline fails every request. A change of network affects new and running downloads; Restart opens every stage again with the current settings.</p>
+<p class="cap">Scale is device pixels per layout pixel, the site's UI scale. Slow gives files at 32 KB/s, Stalled holds every file at 40 % until the network changes, Offline fails every request. A network change affects new and running fixture requests; Restart reopens every stage with the current settings. After updating site code, reload with a fresh browser profile or clear cached modules to avoid stale JavaScript modules.</p>
 
 <nav>
   <a href="#foundations">Foundations</a><a href="#primitives">Primitives</a><a href="#widgets">Widgets</a>
@@ -68,7 +69,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <div class="scroll"><div class="stage" data-demo="palette"></div></div>
 
 <h3>Type</h3>
-<p>All text is drawn from bitmap tables, never by the browser. <code>rv_font</code> is the interface and the note text; PxPlus IBM VGA is the text in the navy wells, at its native size or exactly twice it. Bold widens every run by one font pixel, italic shifts the upper half one pixel right. <code>font.js</code>, <code>font_data.js</code>, <code>Paint.text</code>.</p>
+<p>Default text is drawn from bitmap tables; Win-55 uses Canvas 2D. <code>rv_font</code> is the interface and note text; PxPlus IBM VGA is used in navy wells. Bold widens each run by one font pixel, italic shifts its upper half one pixel right. At 1.5×, a bitmap font pixel spans one or two device pixels. See <code>font.js</code>, <code>font_data.js</code> and <code>Paint.text</code>.</p>
 <div class="scroll"><div class="stage" data-demo="type-rv"></div></div>
 <div class="scroll"><div class="stage" data-demo="type-vga"></div></div>
 
@@ -168,7 +169,7 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <div class="scroll"><div class="stage" data-demo="bars-resize"></div></div>
 
 <h3>Browser tab</h3>
-<p>The favicon <code>Mf</code> is the M button of the title bar, made by <code>tools/favicon.js</code>. The tab's title follows the focused tile: its app name.</p>
+<p>The <code>Mf</code> mark uses the M button of the title bar. The tab title follows the focused tile and shows its app name.</p>
 <div class="scroll"><div class="stage" data-demo="favicon"></div></div>
 
 <h3>Share links</h3>

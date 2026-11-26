@@ -1,10 +1,10 @@
 // The design system: every drawing component of the site on its own canvas, drawn by the site's own modules.
 // Nothing here draws a component itself. This file only gives each component a canvas, the pointer and the keys,
 // a network it can slow down, and fixtures in place of the published content.
-import { C } from '../../site/js/theme.js';
+import { C, theme, setTheme } from '../../site/js/theme.js';
 import * as M from '../../site/js/metrics.js';
 import { Paint } from '../../site/js/paint.js';
-import { RV, VGA } from '../../site/js/font.js';
+import { RV, VGA, win55FontReady } from '../../site/js/font.js';
 import { RV_FONT, VGA_9X16 } from '../../site/js/font_data.js';
 import { Hits, box, panelFrame, wellFrame, scrollbar, loadBar, keyBar, keyRows, footBar, messageScreen, errorScreen, NO_KEYS } from '../../site/js/widgets.js';
 import * as L from '../../site/js/layout.js';
@@ -23,6 +23,7 @@ import { NET, params } from './net.js';
 
 view.ui = Number(params.get('ui')) || 2;
 view.dpr = devicePixelRatio || 1;
+setTheme(params.get('theme'));
 
 // ---- stages --------------------------------------------------------------------------------------------------------
 
@@ -304,10 +305,7 @@ const BARS_OF = {
 const KEYBAR_W = 700;
 const KEYBARS = [];
 const oneRow = (name, cells, keys) => KEYBARS.push({ name, cells, w: KEYBAR_W, rows: 1, whole: false, keys });
-const wholeRows = (title, cells, w, keys) => {
-  const rows = keyRows(cells, w);
-  KEYBARS.push({ name: `${title}, ${w} px, ${rows} ${rows === 1 ? 'row' : 'rows'}`, cells, w, rows, whole: true, keys });
-};
+const wholeRows = (title, cells, w, keys) => KEYBARS.push({ title, cells, w, whole: true, keys });
 oneRow('pmc', BARS_OF.pmc);
 oneRow('Image', BARS_OF.Image);
 oneRow('Note', BARS_OF.Note);
@@ -316,7 +314,14 @@ for (const w of [M.PANE_MIN.player.w, 440, KEYBAR_W]) wholeRows(w === M.PANE_MIN
 for (const w of [M.PANE_MIN.video.w, 440]) wholeRows(w === M.PANE_MIN.video.w ? 'Video, the minimum' : 'Video', BARS_OF.Video, w);
 wholeRows('held: S (a plain key sinks its cell), Player', BARS_OF.Player, 440, new Set(['KeyS']));
 oneRow('held: Shift+0 (a Shift cell sinks only with Shift)', BARS_OF.App, new Set(['ShiftLeft', 'Digit0']));
-const KEYBARS_H = 4 + KEYBARS.reduce((h, k) => h + 11 + (k.rows * 16 - 2) + 5, 0);
+function sizeKeyBars() {
+  for (const k of KEYBARS) {
+    if (!k.whole) continue;
+    k.rows = keyRows(k.cells, k.w);
+    k.name = `${k.title}, ${k.w} px, ${k.rows} ${k.rows === 1 ? 'row' : 'rows'}`;
+  }
+  return 4 + KEYBARS.reduce((h, k) => h + 11 + (k.rows * 16 - 2) + 5, 0);
+}
 
 const glyphs = (font) => Object.keys(font).map(Number).filter((c) => c > 0).sort((a, b) => a - b);
 const RV_CODES = glyphs(RV_FONT), VGA_CODES = glyphs(VGA_9X16);
@@ -469,7 +474,7 @@ const DEMOS = {
     loadBar(p, 6, 8, t < 1 ? { state: 'load', share: t } : { state: 'done', share: 1 });
     label(p, 52, 10, t < 1 ? `share ${t.toFixed(2)}` : 'done', C.text);
   }, () => true) },
-  keybars: { w: KEYBAR_W + 12, h: KEYBARS_H, make: drawing((p, hits, W, H, st) => {
+  keybars: { w: KEYBAR_W + 12, h: sizeKeyBars(), make: drawing((p, hits, W, H, st) => {
     const held = st.focused ? st.held : NO_KEYS;
     let y = 4;
     for (const k of KEYBARS) {
@@ -550,8 +555,8 @@ const DEMOS = {
   'pmc-folder': { w: PMC_W, h: 200, make: tileBody(async (ws) => {
     const pmc = new PmcPane(ws);
     await cd(pmc, 0, '', 'apps');
-    pmc.showQuick(0, pmc.cursorItem(0));
-    pmc.switchPanel();
+    pmc.f3();
+    if (pmc.quick) pmc.switchPanel();
     return pmc;
   }) },
   'pmc-states': { w: PMC_W, h: 200, make: tileBody(async (ws) => {
@@ -577,20 +582,24 @@ const DEMOS = {
   'note-error': { w: 300, h: 90, make: tileBody((ws) => new NoteBody(ws, 'notes/missing.md')) },
   player: { w: 440, h: 250, make: tileBody(async (ws) => new Player(ws, 'audio', 'music', await setIn('music', 'audio'), 0)) },
   video: { w: 440, h: 340, make: tileBody(async (ws) => new Player(ws, 'video', 'video', await setIn('video', 'video'), 0)) },
-  'video-full': { w: 480, h: 270, make: (st) => {
-    let player = null;
-    const scene = workspace(async (ws) => {
-      player = new Player(ws, 'video', 'video', await setIn('video', 'video'), 0);
+  'video-full': { w: 480, h: 270, make: workspace((ws) => {
+    const path = 'video/testcard.webm';
+    const id = addTile(ws, new LoadingBody(ws), 'Video');
+    const tile = ws.panes.get(id);
+    ws.L = L.newLayout(L.leaf([id]));
+    ws.setFocus(id);
+    setIn('video', 'video').then((set) => {
+      if (!ws.panes.has(id)) return;
+      const player = new Player(ws, 'video', 'video', set, 0);
       // The browser's fullscreen would take the whole page; here the stage is the screen.
       player.fullscreen = () => { ws.fullVideo = ws.fullVideo ? null : player; ws.requestDraw(); return true; };
-      const id = addTile(ws, player, 'Video');
-      ws.L = L.newLayout(L.leaf([id]));
-      ws.setFocus(id);
+      ws.fillTile(tile, player, 'Video');
       ws.fullVideo = player;
       ws.showPanel();
-    })(st);
-    return scene;
-  } },
+    }).catch(() => {
+      if (ws.panes.has(id)) ws.fillTile(tile, new MessageBody(T.loadError + path), 'Video');
+    });
+  }) },
   image: { w: 440, h: 300, make: tileBody(async (ws) => new ImageView(ws, 'images', await setIn('images', 'image'), 2)) },
   'image-small': { w: 440, h: 120, make: tileBody(async (ws) => new ImageView(ws, 'images', await setIn('images', 'image'), 1)) },
   'image-error': { w: 440, h: 90, make: tileBody(async (ws) => new ImageView(ws, 'images', await setIn('images', 'image'), 0)) },
@@ -661,7 +670,15 @@ for (const el of document.querySelectorAll('[data-demo]')) {
   stages.push(new Stage(el, demo));
 }
 
-// The controls: the scale of the stages, and the network of the fixtures. Restart loads the page again, with both.
+win55FontReady.then((loaded) => {
+  if (loaded && theme === 'win-55') {
+    const keybars = stages.find((st) => st.el.dataset.demo === 'keybars');
+    if (keybars) keybars.h = sizeKeyBars();
+    redrawAll();
+  }
+});
+
+// Restart retains the stage scale, fixture network and selected theme.
 // Shift+S in the Environment stage changes the scale too, so the buttons follow view.ui.
 function syncScaleButtons() {
   for (const b of document.querySelectorAll('[data-ui]')) b.setAttribute('aria-pressed', String(Number(b.dataset.ui) === view.ui));
@@ -682,5 +699,7 @@ for (const b of document.querySelectorAll('[data-net]')) {
   });
 }
 document.querySelector('[data-restart]')?.addEventListener('click', () => {
-  location.search = new URLSearchParams({ ui: view.ui, net: NET.mode }).toString();
+  const settings = new URLSearchParams({ ui: view.ui, net: NET.mode });
+  if (theme === 'win-55') settings.set('theme', theme);
+  location.search = settings.toString();
 });

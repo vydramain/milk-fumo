@@ -21,6 +21,7 @@ Within the first minute a visitor should:
 | [bird-fumo](https://github.com/vydramain/bird-fumo) | viewers and launching: explorer, images, audio, video, web apps; the app `postMessage` protocol (without its privileged messages) |
 | [3dmppc-editor](https://github.com/vydramain/3dmppc-polymer/tree/master/editor) | the workspace: tiles, tabs, minimum sizes; the widget catalog and fonts |
 | [vgui2-deck](https://github.com/vydramain/vgui2-deck) | palette; its fonts are not used on the site |
+| [win-55-ui beta-0.8.0, commit `37620e5c50044291e0c5cafd755677770a102362`](https://github.com/OmskGameJam/win-55-ui/tree/37620e5c50044291e0c5cafd755677770a102362) | the Win-55 palette, typography, control styling and font source |
 | SGI IRIX | the look: raised frames, brass, dense utility type |
 | Midnight Commander, Volkov Commander | the pmc UX: two panels, cursor, function keys |
 
@@ -31,13 +32,13 @@ Stitch, a generated draft, contributed the player queue (its split buttons were 
 - The content is one directory on the server. The owner uploads files over SFTP; nothing has to run after an upload.
 - nginx serves the site files and the content directory. The browser reads a folder as JSON from nginx's autoindex (name, type, size, modification time). Files are plain HTTP GET requests.
 - Visitors only read, over HTTP. Only the owner writes, over SFTP.
-- Nothing is remembered between visits, and nothing is left with the visitor.
+- The browser saves the theme choice in `localStorage` and restores it before the first draw.
 - The whole interface is drawn by the site itself in one `<canvas>` with the Canvas 2D API. The UI is immediate-mode: every frame is rebuilt from the state, and a widget checks clicks on its own rectangle.
 - Drawing happens on events, not 60 times a second, so an idle page does not load the processor.
 - Notes are drawn in the canvas, so their text cannot be selected or copied.
-- Audio and video elements are created by the script and are not inserted into the page; video frames are drawn into the canvas.
+- The script creates audio and desktop video elements outside the DOM. Desktop video frames are drawn into the canvas. Pocket places its video element over the tile.
 - Games and web apps run in an iframe placed over their tile's rectangle, loaded from the same origin as the site. This lets the site catch `Shift+Q` even inside a game.
-- Pixel-perfect rendering: the canvas buffer matches the screen's physical pixels, all coordinates are whole pixels, smoothing is off, and text comes from bitmap font tables, not the browser's text engine.
+- The canvas buffer matches the screen's physical pixels and image smoothing is off. Default draws text from bitmap font tables. Win-55 uses Canvas 2D text drawing for its proportional UI font.
 - Chromium and Firefox are supported.
 - Capacity: about 100 simultaneous visitors. The real limit is the server's outgoing bandwidth for video and music (viewers × bitrate).
 
@@ -71,7 +72,7 @@ The environment bar at the bottom is always visible. It shows the key for each a
 
 ### Start screen
 
-Two tiles split the screen 1:1: the note `readme.md` on the left and **pmc** on the right, focused. A [link](#links) opens one tile instead. There are no buttons; the start screen is the tutorial. `readme.md` merges the author's text and the instructions (the old `home.md` and `tutorial.md` are no longer used), so the content root needs `readme.md`. Its path is set in [`site/js/config.js`](site/js/config.js).
+Two tiles split the screen 1:1: the note `readme.md` on the left and **pmc** on the right, focused. A [link](#links) opens one tile instead. The start screen doubles as the tutorial. `readme.md` merges the author's text and the instructions (the old `home.md` and `tutorial.md` are no longer used), so the content root needs `readme.md`. Its path is set in [`site/js/config.js`](site/js/config.js).
 
 The tutorial is written so that someone who knows i3 recognizes it, and someone who sees tiles for the first time learns how to use them. The table of actions marks progress: `✓` beside an action already done, `›` beside the next one to try.
 
@@ -173,12 +174,12 @@ A phone shows the site as a Pocket PC would: one tile fills the screen, the open
 
 - **Scale.** The layout is 240 px across the screen's short side, as a Pocket PC screen. The scale k is the largest whole number with 240·k ≤ the short side, so font pixels stay whole and k does not change when the phone turns (iPhone 15: 294x639 upright, 639x294 turned); the layout is the device size / k.
 - **Start.** The note `readme.md`. Its `{{actions}}` block is the touch tutorial (`POCKET_ACTIONS` in `texts.js`): open ppmc, enter a folder, open a file, switch tiles, run an app, go back. A [link](#links) opens one tile instead.
-- **Screen.** Top to bottom: the title bar (the tile and the clock, no X), the tile, the key bar (4 cells a row, Back always in the last slot), the message line, the tab strip with the **ppmc** cell at the right. ppmc opens the file panel and is sunken while it is the current tile. Tile names are lowercase; the file panel is `ppmc` in its title bar and its tab.
-- **Turned.** A phone held sideways (wider than tall) gets its own layout for every tile: the title bar across the full width with the clock at its right end; under it the tile on the left and the tile's key cells as a column 64 px wide on the right, from under the title bar, with Back as its bottom cell; the message line and the tab strip across the bottom. Turning back gives the upright layout; a playing track keeps playing and a game keeps its state, since only the frames move.
+- **Screen.** Top to bottom: the title bar (the tile name, Theme button and clock), the tile, the key bar (4 cells a row, Back always in the last slot), the message line, the tab strip with the **ppmc** cell at the right. ppmc opens the file panel and is sunken while it is the current tile. Tile names are lowercase; the file panel is `ppmc` in its title bar and its tab.
+- **Turned.** A phone held sideways (wider than tall) gets its own layout for every tile: the title bar across the full width with the Theme button next to the clock at its right end; under it the tile on the left and the tile's key cells as a column 64 px wide on the right, from under the title bar, with Back as its bottom cell; the message line and the tab strip across the bottom. Turning back gives the upright layout; a playing track keeps playing and a game keeps its state, since only the frames move.
 - **ppmc.** One panel. A tap moves the cursor, a tap on the cursor opens the row; Open, Up and Down in the key bar do the same. A file opens in the tile of its type: note, player, video, image, app; another type gives "no viewer".
 - **Mode.** Chosen once, at load: `main.js` makes either the pocket version or the workspace, never both. A device that changes its primary input keeps its mode until the page is reloaded.
 - **Back.** In a pmc folder, goes up a folder, as Open on `..`; elsewhere, closes the current tile and returns to the one active before it. Each opened tile is a browser history entry, so the system back gesture does the same; Forward does nothing. The last tile is not closed. The history lives one page load: after a reload the page goes back to the first tile's entry, so the next system back leaves the site.
-- **player and video.** The desktop's now-playing well with its lines wrapped by words instead of cut (the title, the artist line, the format line); a taller Position for a finger (track 14 px, knob 6x18, a press band of 18 px); under it a transport row of four 28 px buttons, `|<`, `>` or `||`, `[]`, `>|`; then the playlist or the frame. No volume (the phone has its buttons). The key row is `M Mute`, Back, and for a video `F Full`. The frame is the video element itself, placed over the tile as an app's iframe is: Android Chrome gave the canvas black frames of a video that was not on the page.
+- **player and video.** The desktop's now-playing well with its lines wrapped by words instead of cut (the title, the artist line, the format line), followed by a taller Position slider for a finger (track 14 px, knob 6×18, a press band of 18 px). The playlist or fitted video frame starts immediately below the slider. In portrait, Prev, Play (Pause while playing), Stop and Next form the top row. Mute, Full for video, and Back at the right share the lower row. Both rows use the same cell size, spacing and style. In landscape, the playback cells, Mute and Full for video sit in the right column, with Back at the bottom. No volume (the phone has its buttons). The frame is the video element itself, placed over the tile as an app's iframe is: Android Chrome gave the canvas black frames of a video that was not on the page.
 - **Full.** One mode for a video and a game: `F Full` in the video's or the app's key row (the app's while it loads or runs) covers the whole screen with the frame or the game, and the browser's fullscreen is asked for where it exists (an iPhone refuses it for a page; the frame still covers the screen). Back, the system back or leaving the browser's fullscreen returns to the tile, and the game is not restarted. A tap on a video leaves its Full; a game takes its own taps.
 - **Input.** A tap clicks, a drag scrolls a list or a note, a press on the slider follows the finger. Whatever is under the finger is drawn sunken until the finger lifts or starts a drag: a tab in its slanted shape and ppmc as its cell, although their tap areas are larger. The canvas has `touch-action: none`.
 
@@ -224,7 +225,9 @@ Every screen in its states: the [pocket design system](#design-system).
 
 ## UI
 
-The look is IRIX through 3dmppc-editor:
+Default and Win-55 share the same Canvas 2D workspace, Pocket layout and input handlers. Switching redraws the interface in place, preserving open tiles and tabs, the current file or folder, playback state and position, and running apps.
+
+The Default look is IRIX through 3dmppc-editor:
 
 - rectangles without rounding, a raised tile frame, a sunken content area;
 - **a brass frame around the focused tile**;
@@ -235,7 +238,7 @@ The look is IRIX through 3dmppc-editor:
 
 ### Palette
 
-The main palette is the editor's token table in [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp), with vgui2-deck's state colors:
+The Default palette is the editor's token table in [`rv_editor_theme.hpp`](https://github.com/vydramain/3dmppc-polymer/blob/master/editor/src/theme/rv_editor_theme.hpp), with vgui2-deck's state colors:
 
 | Role | Color |
 |---|---|
@@ -274,11 +277,13 @@ From the editor's [`rv_editor_glyphs.hpp`](https://github.com/vydramain/3dmppc-p
 | `rv_font` 5×7 (pdklib) | interface: title bars, tabs, keys, lists; note headings and body text |
 | PxPlus IBM VGA 9×16 | the playback time in the navy wells of Players and Videos, at 2× (the same font drawn twice as big); code in notes, at its native size |
 
-The fonts are copied from 3dmppc-polymer. The font tables were generated from the pdklib headers and the PxPlus TTF; they reach the site as one JavaScript file, [`site/js/font_data.js`](site/js/font_data.js). The file is committed, and the generator is not kept in the repository. The site does not depend on how the browser draws fonts. Pixel fonts are used only at their native size or a whole multiple of it.
+The Default fonts come from 3dmppc-polymer. The tables generated from the pdklib headers and the PxPlus TTF ship as [`site/js/font_data.js`](site/js/font_data.js). Win-55 UI text uses a bundled TrueType conversion of the upstream 12-pixel bitmap font. [Win-55 font origin](third_party/win-55-font/ORIGIN.md)
 
 PxPlus IBM VGA 9×16 (VileR) and the Cyrillic of `rv_font`, which is redrawn from PxPlus, are CC BY-SA 4.0. The full license text is in [third_party/pxplus-ibm-vga/LICENSE](third_party/pxplus-ibm-vga/LICENSE); the origin of both fonts is described in [third_party/pxplus-ibm-vga/](third_party/pxplus-ibm-vga/ORIGIN.md) and [third_party/rv_font/](third_party/rv_font/ORIGIN.md).
 
 ### Markdown in notes
+
+These descriptions use the Default theme's fonts and colors.
 
 - A first-level heading is `rv_font` at 16 px with a groove under it; a second-level heading is `rv_font` at 8 px with a dithered rule. A heading wider than the tile wraps by words.
 - Body text is `rv_font`; code is PxPlus IBM VGA 9×16 on navy.
@@ -303,14 +308,16 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 | `catalog.js` | reading only: the folder listing (nginx JSON) and file URLs; pmc and the viewers use nothing else |
 | `download.js` | byte-counted downloads (fetch and stream reader), kept as Blobs while the tile is open |
 | `tags.js` | audio tags from the first bytes of a file: ID3v2 in mp3, Vorbis comments in Ogg |
-| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap text (`font_data.js` holds the generated glyph tables), drawing primitives, widgets (including the too-small screen), palette, view |
+| `markdown.js`, `font.js`, `font_data.js`, `paint.js`, `widgets.js`, `theme.js`, `view.js` | Markdown, bitmap and proportional text, drawing primitives, widgets (including the too-small screen), themes, view |
 | `texts.js`, `config.js` | all interface texts; the content root (`/content/`), the start folder, the home note `readme.md` and the app suffix `.exe` |
+
+nginx serves the checked-in site files directly, without a build step.
 
 ### Why iframes stay put
 
 - Moving an `<iframe>` in the DOM reloads it, and a removed `<audio>` or `<video>` pauses. So tiles are rectangles in the canvas, and rearranging only moves rectangles.
 - An iframe is created once and positioned over its tile's rectangle; it is moved or hidden, never re-inserted elsewhere in the DOM.
-- Audio and video elements are created by the script outside the page.
+- Pocket places its video element over the tile once and then moves or hides it as the layout changes. Audio and desktop video elements stay outside the DOM.
 - `Element.moveBefore()` keeps state when an element moves, but not every browser supports it, so the design does not rely on it.
 
 ### Rejected options
@@ -319,15 +326,13 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 - **S3 or other object storage** — MinIO is archived (February 2026); Garage does not give an anonymous folder listing; SeaweedFS is heavy; RustFS is beta with CVE-2026-73290. One nginx container is simpler.
 - **A manifest file instead of the folder listing** — nothing has to run after an upload with the listing.
 - **WebGL, WebGPU, PixiJS, Konva, imgui-js** — heavy for a 2D interface; Canvas 2D is enough.
-- **`fillText`** — text smoothing differs between browsers, so text would not be pixel-perfect.
-- **Node or Python in the project** — not needed: there is no build step, no tools and no tests.
 - **Apps packed as zip** — a browser cannot run a page from an archive without its own unpacker and a Service Worker.
 - **Games from a subdomain or without site access** — the site could not catch `Shift+Q` inside a game.
 - **PDF** — not needed; the formats are Markdown, images, audio, video and web apps.
 
 ## Design system
 
-[`docs/design-system/`](docs/design-system/) is one page with every component the site draws, each on its own canvas and drawn by the modules in `site/js/`. It has no drawing code of its own, so it cannot drift from the site. It replaces the HTML and CSS prototypes the design was first made on.
+The [desktop design system](docs/design-system/) and [Pocket design system](docs/pocket-design-system/) build interactive canvas scenes with the site's rendering modules. Each page supplies its own scene setup and uses the fixtures in `docs/design-system/content/` with a simulated network. Both pages accept `?theme=win-55`. The [Pocket audio and visual audit](docs/audit/README.md) records the scene inventory and browser measurements.
 
 | Section | What it shows |
 |---|---|
@@ -350,7 +355,7 @@ The code is in [`site/js/`](site/js/), plain ES modules loaded by `main.js`:
 
 The page has controls for the scale and the network. Clicking a stage gives it the keys, as a focused tile has them. How to open it: [README](README.md#opening-the-design-system).
 
-[`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the [pocket version](#pocket-version): the foundations and metrics, every tile in its states (the app also in Full, the players with their transport row), the start screen on four phones upright and turned, the error stub upright and turned, and the navigation rules. Its screens are drawn by `pocket.js` over the same fixtures and `net.js` (the network is Fast unless `?net=` says otherwise); each screen is live under the pointer.
+[`docs/pocket-design-system/`](docs/pocket-design-system/) does the same for the [pocket version](#pocket-version): the foundations and metrics, every tile in its states (the app also in Full, the audio and video players in portrait and landscape), the start screen on four phones upright and turned, the error stub upright and turned, and the navigation rules. Its screens are drawn by `pocket.js` over the same fixtures and `net.js` (the network is Fast unless `?net=` says otherwise); each screen is live under the pointer.
 
 ## Open questions
 

@@ -1,19 +1,19 @@
 // A web app: a folder whose name ends in .exe and that holds index.html. It runs in an iframe that lies over
 // the canvas, in the rectangle of its tile. The iframe is created once; a rearranged tile only moves or hides
 // its wrapper, and the wrapper never moves in the page, so the app keeps its state.
-// The app talks to the site by postMessage: APP_READY, TITLE and ERROR, from its own address only. An app that
+// The app talks to the site by postMessage: APP_READY and ERROR, from its own address only. An app that
 // sends nothing is running once its page has loaded.
 import { PANE_MIN } from './metrics.js';
-import { C } from './theme.js';
-import { RV, fitText } from './font.js';
+import { C, theme } from './theme.js';
+import { uiFont, fitText } from './font.js';
 import { urlOf } from './catalog.js';
 import { APP_KEYS as K, T } from './texts.js';
-import { view } from './view.js';
-import { keyBar, footBar } from './widgets.js';
+import { placeOverlay } from './view.js';
+import { keyBar, footBar, wellFrame } from './widgets.js';
 import { Download } from './download.js';
 
 const BAR = 14, STATUS = 14;
-const MESSAGES = new Set(['APP_READY', 'TITLE', 'ERROR']);
+const MESSAGES = new Set(['APP_READY', 'ERROR']);
 
 // Reads a message from an app. Anything else is ignored; text is cut to a sane length.
 export function parseMessage(data) {
@@ -108,16 +108,11 @@ export class AppPane {
     this.ws.requestDraw();
   }
 
-  // Puts the wrapper over the well; the iframe fills the wrapper. The well is in layout pixels; a layout pixel is
-  // view.ui device pixels, and the page's CSS pixels are the device pixels divided by the ratio.
+  // Puts the wrapper over the well, snapped to its Canvas edges. The iframe fills the wrapper.
   place(well) {
-    const k = view.ui / view.dpr;
     const st = this.wrap.style;
     st.display = 'block';
-    st.left = `${well.x * k}px`;
-    st.top = `${well.y * k}px`;
-    st.width = `${well.w * k}px`;
-    st.height = `${well.h * k}px`;
+    placeOverlay(st, well);
   }
 
   // Hides the iframe when its tile is not drawn (another tile is maximized, or it is not the front tab).
@@ -142,11 +137,10 @@ export class AppPane {
     footBar(p, foot, 'index.html', this.load, focused && this.status === 'ready');
 
     const well = { x: r.x, y: r.y, w: r.w, h: Math.max(0, foot.y - 4 - r.y) };
-    p.fill(well.x, well.y, well.w, well.h, C.cb);
-    p.bevel(well, 1, false);
-    const inner = { x: well.x + 1, y: well.y + 1, w: well.w - 2, h: well.h - 2 };
+    const inner = wellFrame(p, well, C.cb, theme === 'win-55' ? 2 : 1);
+    const font = uiFont();
     const status = this.status === 'error' ? this.error || T.appNoIndex : this.status === 'loading' ? T.appLoading : T.appRunning;
-    p.text(RV, inner.x + 6, inner.y + 3, fitText(RV, status, inner.w - 12), this.status === 'error' ? C.red : C.ct);
+    p.text(font, inner.x + 6, inner.y + (theme === 'win-55' ? 1 : 3), fitText(font, status, inner.w - 12), this.status === 'error' ? C.red : C.ct);
     const area = { x: inner.x, y: inner.y + STATUS, w: inner.w, h: inner.h - STATUS };
     if (this.status === 'error') this.hide();
     else this.place(area);

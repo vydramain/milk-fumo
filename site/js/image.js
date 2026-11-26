@@ -2,9 +2,9 @@
 // A picture is shown at its own size, or smaller when the window is smaller; it is never enlarged.
 // It is fetched byte-counted; the field stays empty until the download is done.
 import { formatSize } from './catalog.js';
-import { RV } from './font.js';
-import { C } from './theme.js';
-import { keyBar, footBar } from './widgets.js';
+import { uiFont, fitText } from './font.js';
+import { C, theme } from './theme.js';
+import { keyBar, footBar, wellFrame } from './widgets.js';
 import { Downloads } from './download.js';
 import { IMAGE_KEYS as K, T } from './texts.js';
 
@@ -75,8 +75,8 @@ export class ImageView {
     const foot = { x: r.x, y: bar.y - 4 - BAR, w: r.w, h: BAR };
     const path = this.path(this.index);
     const d = this.downloads.peek(path);
-    const area = { x: r.x, y: r.y, w: r.w, h: Math.max(0, foot.y - 4 - r.y) };
-    p.fill(area.x, area.y, area.w, area.h, C.cb);
+    const frame = { x: r.x, y: r.y, w: r.w, h: Math.max(0, foot.y - 4 - r.y) };
+    const area = wellFrame(p, frame, C.cb, theme === 'win-55' ? 2 : 0);
     const img = this.img;
     const ready = d.state === 'done' && this.shown === path && img.complete && img.naturalWidth;
     if (ready) {
@@ -84,7 +84,9 @@ export class ImageView {
       const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
       p.image(img, area.x + Math.floor((area.w - w) / 2), area.y + Math.floor((area.h - h) / 2), w, h);
     } else if (d.state === 'errr' || (this.shown === path && img.complete)) {
-      p.text(RV, area.x + 6, area.y + 6, T.loadError + this.entry.name, C.red);
+      const font = uiFont();
+      const error = T.loadError + this.entry.name;
+      p.text(font, area.x + 6, area.y + 6, theme === 'win-55' ? fitText(font, error, area.w - 12) : error, C.red);
     }
     const type = this.entry.name.includes('.') ? this.entry.name.split('.').pop().toUpperCase() : '';
     const size = d.blob ? d.blob.size : this.entry.size;

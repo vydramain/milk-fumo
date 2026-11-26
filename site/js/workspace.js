@@ -1,10 +1,10 @@
 // The workspace: the tiles, their focus, the resize and move modes, dragging, the message line and the environment
 // bar. Keys, pointers and the bar's cells all lead to the same commands here.
-import { FRAME, PANE_MIN, TITLE_H, DRAG_START, ENV_H, MSG_H, VIEWPORT_MIN } from './metrics.js';
+import { FRAME, PANE_MIN, DRAG_START, ENV_H, MSG_H, TABS_LEFT, VIEWPORT_MIN } from './metrics.js';
 import * as L from './layout.js';
-import { C } from './theme.js';
-import { RV, textWidth, fitText } from './font.js';
-import { Hits, box, NO_KEYS, keyRows, errorScreen } from './widgets.js';
+import { C, theme } from './theme.js';
+import { RV, uiFont, textWidth, fitText } from './font.js';
+import { Hits, box, button, NO_KEYS, keyRows, errorScreen, titleBackdrop, titleLabel, tileTab } from './widgets.js';
 import { ENV_CELLS, T, TUTORIAL_ACTIONS, ERRORS, LINK_LINES } from './texts.js';
 import { view } from './view.js';
 import { HOME_NOTE } from './config.js';
@@ -19,7 +19,7 @@ import { AppPane } from './app.js';
 export const SCALES = [1, 1.5, 2];
 const MARGIN = 4;
 const ARROWS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale' };
+const KEYS_MENU = { Enter: 'open-pmc', KeyW: 'stack', KeyR: 'resize', KeyF: 'maximize', KeyQ: 'close', KeyS: 'scale', F2: 'theme' };
 const TILE_MIN = PANE_MIN.generic;
 const PANEL_H = 58;        // the fullscreen panel: 6, the position (30), 4, the key bar (14), 4; 16 more per extra key row
 const PANEL_MS = 3000;     // the panel and the cursor hide after 3 s without movement or a player key
@@ -29,7 +29,10 @@ const TYPE_OF = { audio: 'Player', video: 'Video', image: 'Image', note: 'Note' 
 // A file that is still loading, or a list that could not be read.
 export class LoadingBody {
   constructor(ws) { this.ws = ws; this.minimum = TILE_MIN; }
-  draw(p, r) { p.text(RV, r.x + 4, r.y + 4, T.loading, C.cov); }
+  draw(p, r) {
+    if (theme === 'win-55') box(p, r, false, C.inset, 2);
+    p.text(uiFont(), r.x + 4, r.y + 4, T.loading, C.cov);
+  }
   key() { return false; }
   dispose() {}
 }
@@ -51,8 +54,9 @@ function makeTile(body, label, tab) {
 export class Workspace {
   // `link`: the content path of a link, which opens exactly one tile. `stub`: { code, line }, the error screen in place
   // of every tile. `history`: the focused tile's file is written into the address (the site; not the design system).
-  constructor(requestDraw, { link = null, stub = null, history = false } = {}) {
+  constructor(requestDraw, { link = null, stub = null, history = false, toggleTheme = null } = {}) {
     this.requestDraw = requestDraw;
+    this.toggleTheme = toggleTheme;
     this.link = link;
     this.stub = stub;
     this.history = history;
@@ -591,6 +595,7 @@ export class Workspace {
       'focus': () => this.focusNext(),
       'move': () => this.startMove(),
       'scale': () => this.cycleScale(),
+      'theme': () => this.toggleTheme?.(),
     };
     if (actions[name]) actions[name]();
     this.requestDraw();
@@ -684,13 +689,17 @@ export class Workspace {
     if (this.stub) {
       errorScreen(p, this.hits, this.screen, this.stub, this.held, () => location.assign('/'));
     } else {
-      if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
+      if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p);
       else this.renderTiles(p, W, H);
       if (!this.fullVideo) this.drawBars(p, W, H);
     }
-    // Every clickable thing looks pressed the same way while the pointer is down on it.
+    // Repaint the held control with its pressed appearance.
     const held = this.pressed && this.hits.list.find((h) => h.on.click && sameRect(h.r, this.pressed));
-    if (held) p.bevel(held.r, 2, false);
+    if (held?.on.drawPressed) {
+      p.clip(held.r);
+      held.on.drawPressed(p);
+      p.unclip();
+    } else if (held) p.bevel(held.r, 2, false);
     // An app whose tile was not drawn this frame is hidden: its iframe lies over the canvas.
     for (const app of this.apps()) if (app.drawnAt !== this.frame) app.hide();
     // The stub leaves the browser tab's title and the address as they are.
@@ -710,10 +719,11 @@ export class Workspace {
   }
 
   // Only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.
-  renderFullVideo(p, W, H) {
+  renderFullVideo(p) {
     const v = this.fullVideo;
-    p.fill(0, 0, W, H, C.crust);
-    v.drawFrame(p, { x: 0, y: 0, w: W, h: H });
+    const frame = p.bounds();
+    p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
+    v.drawFrame(p, frame);
     if (!this.panelShown()) return;
     const r = this.panelRect();
     p.fill(r.x, r.y, r.w, r.h, C.win);
@@ -724,7 +734,8 @@ export class Workspace {
   }
 
   renderTiles(p, W, H) {
-    p.fill(0, 0, W, H, C.dark);
+    const bounds = p.bounds();
+    p.fill(bounds.x, bounds.y, bounds.w, bounds.h, C.dark);
     this.resize(W, H);
     const placed = L.place(this.L.root, this.area, (id) => this.minOf(id));
     this.lastLeaves = placed.leaves;
@@ -750,14 +761,13 @@ export class Workspace {
     const id = node.tabs[node.active];
     const tile = this.panes.get(id);
     this.tiles.push({ id, r: rect });
-    p.fill(rect.x, rect.y, rect.w, rect.h, C.win);
-    p.bevel(rect, 2, true);
+    box(p, rect, true, C.win, 2);
     if (id === this.focus) this.focusRing(p, rect);
     this.hits.add(rect, { click: () => this.focusByUser(id) });
     // The title bar and the tab strip are inside the tile, and their hits stay inside it too.
     this.hits.clip(rect);
     const titleR = L.titleRect(rect);
-    p.dither(titleR, C.win, C.lo);
+    titleBackdrop(p, titleR);
     this.titleBar(p, id, titleR);
     this.tabStrip(p, node, rect);
     this.hits.unclip();
@@ -780,11 +790,8 @@ export class Workspace {
 
   // The title bar: the drag area first, then the buttons on top of it: X and M.
   titleBar(p, id, titleR) {
-    const label = fitText(RV, this.titleOf(id), titleR.w - 14 - 12 - 6);
-    const ttl = { x: titleR.x + 14, y: titleR.y, w: textWidth(RV, label) + 12, h: TITLE_H };
     this.hits.add(titleR, { press: (x, y) => this.tileDrag(id, x, y) });
-    p.fill(ttl.x, ttl.y, ttl.w, ttl.h, C.win);
-    p.text(RV, ttl.x + 6, ttl.y + 3, label, C.bright);
+    titleLabel(p, titleR, this.titleOf(id), 20, titleR.w - 32);
     const close = { x: titleR.x, y: titleR.y + 1, w: 12, h: 12 };
     const max = { x: titleR.x + titleR.w - 12, y: titleR.y + 1, w: 12, h: 12 };
     this.iconBox(p, close, 'X', false);
@@ -794,22 +801,26 @@ export class Workspace {
   }
 
   iconBox(p, r, label, pressed) {
-    box(p, r, !pressed, pressed ? C.inset : C.win);
+    const win55 = theme === 'win-55';
+    box(p, r, !pressed, pressed && !win55 ? C.inset : C.win, win55 ? 2 : 1);
     p.text(RV, r.x + 3, r.y + 3, label, pressed ? C.sel : C.bright);
   }
 
-  // The tab strip: a slanted tab per pane; the active one is brass with dark text. Always drawn, even for one tab.
+  // The tab strip is always drawn, even for one tab.
   tabStrip(p, node, rect) {
     const strip = L.tabsRect(rect);
-    let x = strip.x + 6;
+    const win55 = theme === 'win-55';
+    let x = strip.x + TABS_LEFT;
+    const labels = node.tabs.map((id) => this.tabLabel(id));
+    const widths = labels.map((label) => textWidth(RV, label) + 18);
+    const available = strip.w - TABS_LEFT;
+    const packed = win55 && widths.reduce((sum, w) => sum + w + 4, 0) > available;
     node.tabs.forEach((id, i) => {
-      const label = this.tabLabel(id);
-      const w = textWidth(RV, label) + 18;
+      const label = labels[i];
+      const w = packed ? Math.floor(available / labels.length) - 4 : widths[i];
       const active = i === node.active;
-      const rows = p.slant(x, strip.y, w, strip.h, 6, active ? C.sel : C.win);
-      if (!active) rows.forEach((rx, r) => { p.fill(rx + w - 1, strip.y + r, 1, 1, C.lo); p.fill(rx + w, strip.y + r, 2, 1, C.hi); });
-      p.text(RV, x + 9, strip.y + 3, label, active ? C.dark : C.text);
-      this.hits.add({ x, y: strip.y, w: w + 6, h: strip.h }, { press: (px, py) => {
+      tileTab(p, { x, y: strip.y, w, h: strip.h }, label, active);
+      this.hits.add({ x, y: strip.y, w: win55 ? w + 4 : w + 6, h: strip.h }, { press: (px, py) => {
         this.focusByUser(id);
         return this.tileDrag(id, px, py);
       } });
@@ -827,9 +838,16 @@ export class Workspace {
     const envY = H - MARGIN - ENV_H;
     const msgY = envY - MARGIN - MSG_H;
     const msg = { x: MARGIN, y: msgY, w: W - 2 * MARGIN, h: MSG_H };
-    p.fill(msg.x, msg.y, msg.w, msg.h, C.inset);
-    p.bevel(msg, 1, false);
-    if (this.msg) p.text(RV, msg.x + 6, msg.y + 3, this.msg, C.bright);
+    if (this.toggleTheme) {
+      const label = T.themeWithShortcut(T.theme[theme]);
+      const w = textWidth(RV, T.themeWithShortcut(T.theme.default)) + 12;
+      msg.w -= w + 2;
+      button(p, this.hits, { x: W - MARGIN - w, y: msgY, w, h: MSG_H }, label, { click: () => this.command('theme') });
+    }
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    box(p, msg, false, C.inset, win55 ? 2 : 1);
+    if (this.msg) p.text(font, msg.x + 6, msg.y + Math.floor((msg.h - font.rows) / 2), fitText(font, this.msg, msg.w - 12), C.bright);
     const cells = ENV_CELLS;
     const has = (...codes) => codes.some((c) => this.held.has(c));
     const gap = 2;
@@ -838,13 +856,13 @@ export class Workspace {
       const r = { x: MARGIN + i * (w + gap), y: envY, w, h: ENV_H };
       const down = has('ShiftLeft', 'ShiftRight') && has(...c.codes) && has('ControlLeft', 'ControlRight') === !!c.ctrl;
       const on = down || (c.command === 'resize' && this.mode === 'resize') || (c.command === 'move' && this.mode === 'move');
-      p.fill(r.x, r.y, r.w, r.h, on ? C.inset : C.win);
-      p.bevel(r, 1, !on);
+      box(p, r, !on, on && !win55 ? C.inset : C.win, win55 ? 2 : 1);
       // The key and the label are cut to the cell, so a narrow window (or UI scale 2x) never runs one into the next.
-      const key = fitText(RV, c.key, w - 8);
-      const kw = textWidth(RV, key);
-      p.text(RV, r.x + 4, r.y + 4, key, C.sel);
-      p.text(RV, r.x + 6 + kw, r.y + 4, fitText(RV, c.label, Math.max(0, w - kw - 12)), C.text);
+      const key = fitText(font, c.key, w - 8);
+      const kw = textWidth(font, key);
+      const y = r.y + Math.floor((r.h - font.rows) / 2);
+      p.text(font, r.x + 4, y, key, C.sel);
+      p.text(font, r.x + 6 + kw, y, fitText(font, c.label, Math.max(0, w - kw - 12)), C.text);
       this.hits.add(r, { click: () => this.command(c.command) });
     });
   }

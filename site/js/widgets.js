@@ -1,7 +1,7 @@
 // Widgets of the immediate-mode UI. A widget draws itself and, in the same call, registers its rectangle
 // with the frame's hit list. A click is checked against the list from the top down.
-import { C } from './theme.js';
-import { RV, VGA, textWidth, fitText } from './font.js';
+import { C, theme } from './theme.js';
+import { RV, VGA, uiFont, textWidth, fitText } from './font.js';
 import { T, ERRORS } from './texts.js';
 import { TITLE_H } from './metrics.js';
 
@@ -14,7 +14,7 @@ export class Hits {
   clip(r) { this.clips.push(r); }
   unclip() { this.clips.pop(); }
 
-  // on: { click(x, y), wheel(dy), press(x, y) -> { move, up } | move | undefined }
+  // on: { click(x, y), drawPressed(p), wheel(dy), press(x, y) -> { move, up } | move | undefined }
   add(r, on) {
     const c = this.clips.at(-1);
     if (c) {
@@ -51,23 +51,109 @@ export function box(p, r, raised, color = C.btn, width = 1) {
   p.bevel(r, width, raised);
 }
 
+// Titlebar.vue and bayerMatrix.ts in win-55-ui beta-0.8.0 use a 45° gradient of 2 px blocks.
+const TITLE_BAYER = [
+  [0, 48, 12, 60, 3, 51, 15, 63],
+  [32, 16, 44, 28, 35, 19, 47, 31],
+  [8, 56, 4, 52, 11, 59, 7, 55],
+  [40, 24, 36, 20, 43, 27, 39, 23],
+  [2, 50, 14, 62, 1, 49, 13, 61],
+  [34, 18, 46, 30, 33, 17, 45, 29],
+  [10, 58, 6, 54, 9, 57, 5, 53],
+  [42, 26, 38, 22, 41, 25, 37, 21],
+];
+
+export function titleBackdrop(p, r) {
+  if (theme !== 'win-55') {
+    p.dither(r, C.win, C.lo);
+    return;
+  }
+  const cols = Math.ceil(r.w / 2);
+  const span = Math.max(1, Math.floor(r.w / 2) + Math.floor(r.h / 2) - 6);
+  const height = Math.max(0, r.h - 2);
+  p.fill(r.x, r.y, r.w, height, '#5555ff');
+  for (let y = 0; 2 * y < height; y++) {
+    for (let x = 0; x < cols; x++) {
+      if ((x + y) / span > (TITLE_BAYER[y % 8][x % 8] + 0.5) / 64) {
+        p.fill(r.x + 2 * x, r.y + 2 * y, Math.min(2, r.w - 2 * x), Math.min(2, height - 2 * y), C.blue);
+      }
+    }
+  }
+  p.fill(r.x, r.y + height, r.w, r.h - height, C.lo);
+}
+
+// The title keeps a 6 px inset on its default plate. Win-55 draws white type with a black shadow.
+export function titleLabel(p, r, title, left, width) {
+  const font = uiFont();
+  const label = fitText(font, title, width);
+  const x = r.x + left;
+  const y = r.y + Math.floor((r.h - font.rows) / 2);
+  if (theme === 'win-55') {
+    if (!label) return;
+    p.clip(r);
+    p.text(font, x + 1, y + 1, label, C.text, 1, true);
+    p.text(font, x, y, label, C.hi, 1, true);
+    p.unclip();
+  } else {
+    p.fill(x - 6, r.y, textWidth(font, label) + 12, r.h, C.win);
+    p.text(font, x, y, label, C.bright);
+  }
+}
+
+// A tab's visible shape. Callers keep their own hit rectangles.
+export function tileTab(p, r, title, active, pressed = false) {
+  if (theme === 'win-55') {
+    const tab = { ...r, w: r.w + 2 };
+    if (tab.w < 2) return;
+    box(p, tab, !pressed, active ? C.sel : C.btn, 2);
+    const font = uiFont();
+    const label = fitText(font, title, tab.w - 8);
+    const offset = pressed ? 1 : 0;
+    p.text(font, tab.x + 4 + offset, tab.y + Math.floor((tab.h - font.rows) / 2) + offset, label, active ? C.hi : C.text);
+    return;
+  }
+
+  const { x, y, w, h } = r;
+  const rows = p.slant(x, y, w, h, 6, pressed ? C.inset : active ? C.sel : C.win);
+  if (pressed) {
+    rows.forEach((rx, i) => {
+      p.fill(rx, y + i, 1, 1, C.lo);
+      p.fill(rx + w - 1, y + i, 1, 1, C.lo);
+    });
+    p.fill(rows[0], y, w, 1, C.lo);
+  } else if (!active) {
+    rows.forEach((rx, i) => {
+      p.fill(rx + w - 1, y + i, 1, 1, C.lo);
+      p.fill(rx + w, y + i, 2, 1, C.hi);
+    });
+  }
+  const label = fitText(RV, title, w - 18);
+  p.text(RV, x + (pressed ? 10 : 9), y + (pressed ? 4 : 3), label, active ? C.dark : C.text);
+}
+
 // The panel frame: a 1 px dark line on the top and left, a light line inside it, and a light
 // shadow outside on the right and bottom. Returns the inside, which is 1 px border and 4 px padding in.
 export function panelFrame(p, r) {
-  p.fill(r.x, r.y, r.w, 1, C.lo);
-  p.fill(r.x, r.y, 1, r.h, C.lo);
-  p.fill(r.x + 1, r.y + 1, r.w - 2, 1, C.hi);
-  p.fill(r.x + 1, r.y + 1, 1, r.h - 2, C.hi);
-  p.fill(r.x + r.w, r.y + 1, 1, r.h, C.hi);
-  p.fill(r.x + 1, r.y + r.h, r.w, 1, C.hi);
+  if (theme === 'win-55') {
+    p.fill(r.x, r.y, r.w, r.h, C.win);
+    p.edge(r, 1, C.win, C.blue);
+    p.edge({ x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 }, 1, C.hi, C.lo);
+  } else {
+    p.fill(r.x, r.y, r.w, 1, C.lo);
+    p.fill(r.x, r.y, 1, r.h, C.lo);
+    p.fill(r.x + 1, r.y + 1, r.w - 2, 1, C.hi);
+    p.fill(r.x + 1, r.y + 1, 1, r.h - 2, C.hi);
+    p.fill(r.x + r.w, r.y + 1, 1, r.h, C.hi);
+    p.fill(r.x + 1, r.y + r.h, r.w, 1, C.hi);
+  }
   return { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 };
 }
 
-// A sunken well with a 2 px frame. Returns the inside.
-export function wellFrame(p, r, color = C.inset) {
+// A sunken well with a 2 px frame by default. Returns the inside.
+export function wellFrame(p, r, color = C.inset, width = 2) {
   p.fill(r.x, r.y, r.w, r.h, color);
-  p.bevel(r, 2, false);
-  return { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 };
+  if (width) p.bevel(r, width, false);
+  return { x: r.x + width, y: r.y + width, w: r.w - 2 * width, h: r.h - 2 * width };
 }
 
 // Text centered in a rectangle: x and y of the text.
@@ -80,10 +166,14 @@ export function centerText(font, r, s, scale = 1) {
 
 // A button: a raised box with a label. `on` makes it pressed.
 export function button(p, hits, r, label, { on = false, color = C.text, click } = {}) {
-  box(p, r, !on, on ? C.inset : C.btn, 2);
-  const at = centerText(RV, r, label);
-  p.text(RV, at.x, at.y, label, on ? C.bright : color);
-  if (click) hits.add(r, { click });
+  const win55 = theme === 'win-55';
+  box(p, r, !on, on && !win55 ? C.inset : C.btn, 2);
+  const font = uiFont();
+  if (win55) label = fitText(font, label, r.w - 6);
+  const at = centerText(font, r, label);
+  const offset = on && win55 ? 1 : 0;
+  p.text(font, at.x + offset, at.y + offset, label, on ? C.bright : color);
+  if (click) hits.add(r, { click, drawPressed: win55 ? (q) => button(q, hits, r, label, { on: true, color }) : undefined });
 }
 
 // A scroll bar at the right of a rectangle: arrows at both ends, a dithered track, a thumb.
@@ -91,21 +181,43 @@ export function button(p, hits, r, label, { on = false, color = C.text, click } 
 export function scrollbar(p, hits, r, { top, view, total, onTop }) {
   const w = 14;
   const x = r.x + r.w - w;
-  p.dither({ x, y: r.y, w, h: r.h }, C.inset, C.lo);
+  const win55 = theme === 'win-55';
+  const track = { x, y: r.y + 14, w, h: r.h - 28 };
+  if (!win55) p.dither({ x, y: r.y, w, h: r.h }, C.inset, C.lo);
+  else if (track.h > 0) {
+    p.fill(x, track.y, w, track.h, C.track);
+    p.edge(track, 1, C.blue, C.dark);
+    if (track.h > 2) {
+      p.edge({ x: x + 1, y: track.y + 1, w: w - 2, h: track.h - 2 }, 1, C.text, null);
+      p.fill(x + w - 2, track.y + 1, 1, 1, C.lo);
+      p.fill(x + 1, track.y + track.h - 2, 1, 1, C.lo);
+    }
+  }
   const up = { x, y: r.y, w, h: 14 }, dn = { x, y: r.y + r.h - 14, w, h: 14 };
-  box(p, up, true);
-  box(p, dn, true);
+  if (!win55) {
+    box(p, up, true);
+    box(p, dn, true);
+  }
   arrow(p, up, true);
   arrow(p, dn, false);
-  const track = { x, y: r.y + 14, w, h: r.h - 28 };
-  if (total > view && track.h > 0) {
-    const th = Math.max(8, Math.floor(track.h * view / total));
+  if (total > view && track.h > (win55 ? 2 : 0)) {
+    const idealHeight = Math.max(8, Math.floor(track.h * view / total));
+    const th = win55 ? Math.min(track.h, idealHeight) : idealHeight;
     const max = total - view;
     const ty = track.y + Math.floor((track.h - th) * top / max);
-    box(p, { x, y: ty, w, h: th }, true);
+    if (win55) {
+      panelFrame(p, { x: x + 2, y: ty + 1, w: w - 3, h: th - 2 });
+      p.fill(x + w - 2, ty + 1, 1, 1, C.win);
+    } else box(p, { x, y: ty, w, h: th }, true);
   }
-  hits.add(up, { click: () => onTop(Math.max(0, top - 1)) });
-  hits.add(dn, { click: () => onTop(Math.min(Math.max(0, total - view), top + 1)) });
+  hits.add(up, {
+    click: () => onTop(Math.max(0, top - 1)),
+    drawPressed: win55 ? (paint) => arrow(paint, up, true, true) : undefined,
+  });
+  hits.add(dn, {
+    click: () => onTop(Math.min(Math.max(0, total - view), top + 1)),
+    drawPressed: win55 ? (paint) => arrow(paint, dn, false, true) : undefined,
+  });
   hits.add(track, {
     press: (px, py) => {
       const pos = (py - track.y) / track.h;
@@ -117,11 +229,25 @@ export function scrollbar(p, hits, r, { top, view, total, onTop }) {
 }
 
 // A 7-pixel triangle in a 14-pixel button: the apex is up or down.
-function arrow(p, r, upward) {
+function arrow(p, r, upward, pressed = false) {
+  const win55 = theme === 'win-55';
+  if (win55) {
+    box(p, r, !pressed, C.btn, 2);
+    if (pressed) {
+      p.fill(r.x + r.w - 2, r.y + 1, 1, 1, C.lo);
+      p.fill(r.x + 1, r.y + r.h - 2, 1, 1, C.lo);
+    } else {
+      p.fill(r.x + r.w - 2, r.y, 1, 1, C.btn);
+      p.fill(r.x, r.y + r.h - 2, 1, 1, C.btn);
+      p.fill(r.x + r.w - 1, r.y, 1, 1, C.lo);
+      p.fill(r.x, r.y + r.h - 1, 1, 1, C.lo);
+    }
+  }
+  const x = r.x + (win55 ? -1 : 0) + Number(pressed);
+  const y = r.y + (win55 && upward ? 4 : 5) + Number(pressed);
   for (let i = 0; i < 4; i++) {
-    const y = r.y + 5 + i;
-    if (upward) p.fill(r.x + 7 - i, y, 1 + 2 * i, 1, C.bright);
-    else p.fill(r.x + 4 + i, y, 7 - 2 * i, 1, C.bright);
+    if (upward) p.fill(x + 7 - i, y + i, 1 + 2 * i, 1, C.bright);
+    else p.fill(x + 4 + i, y + i, 7 - 2 * i, 1, C.bright);
   }
 }
 
@@ -136,8 +262,8 @@ export function bitmap(p, x, y, rows, cols, color, scale = 1) {
 
 export const LOAD_W = 37, LOAD_H = 11;
 
-// The load bar: a 1 px sunken well, a 1 px checker fill of floor(share * 35) px, and the
-// word `load`, `done` or `errr` 6 px in: bright over the empty part, dark over the fill. `load` is
+// The load bar: a 1 px sunken well, a fill of floor(share * 35) px, and the
+// word `load`, `done` or `errr` in contrasting colors over the two parts of the bar. `load` is
 // { state, share } or null, which draws nothing.
 export function loadBar(p, x, y, load) {
   if (!load) return;
@@ -145,11 +271,16 @@ export function loadBar(p, x, y, load) {
   p.fill(x, y, LOAD_W, LOAD_H, C.inset);
   p.bevel(well, 1, false);
   const fill = load.state === 'done' ? 35 : load.state === 'errr' ? 0 : Math.floor(Math.min(1, Math.max(0, load.share)) * 35);
-  if (fill > 0) p.dither({ x: x + 1, y: y + 1, w: fill, h: 9 }, C.sel, C.inset);
-  p.text(RV, x + 7, y + 2, load.state, C.bright);
+  const inner = { x: x + 1, y: y + 1, w: fill, h: 9 };
+  const win55 = theme === 'win-55';
   if (fill > 0) {
-    p.clip({ x: x + 1, y: y + 1, w: fill, h: 9 });
-    p.text(RV, x + 7, y + 2, load.state, C.dark);
+    if (win55) p.fill(inner.x, inner.y, inner.w, inner.h, C.sel);
+    else p.dither(inner, C.sel, C.inset);
+  }
+  p.text(RV, x + 7, y + 2, load.state, win55 && load.state === 'errr' ? C.red : C.bright);
+  if (fill > 0) {
+    p.clip(inner);
+    p.text(RV, x + 7, y + 2, load.state, win55 ? C.hi : C.dark);
     p.unclip();
   }
 }
@@ -163,7 +294,10 @@ export const NO_KEYS = Object.freeze(new Set());
 // name it may switch to, so the rows stay put when it does). Cells are equal and 2 px apart in a row of w px.
 export function keyRows(cells, w) {
   const n = cells.length;
-  const need = Math.max(...cells.map((k) => textWidth(RV, k.key) + textWidth(RV, k.wide || k.label) + 10));
+  const font = uiFont();
+  const padding = theme === 'win-55' ? 12 : 10;
+  const need = Math.max(...cells.map((k) =>
+    textWidth(font, k.key) + Math.max(textWidth(font, k.label), textWidth(font, k.wide || k.label)) + padding));
   for (let rows = 1; rows < n; rows++) {
     const cols = Math.ceil(n / rows);
     if (Math.floor((w - 2 * (cols - 1)) / cols) >= need) return rows;
@@ -185,28 +319,33 @@ export function keyBar(p, hits, r, cells, held, whole = false) {
   cells.forEach((k, i) => {
     const cell = { x: r.x + (i % cols) * (w + 2), y: r.y + Math.floor(i / cols) * 16, w, h: ch };
     const down = shift === k.key.startsWith('Shift+') && k.codes.some((c) => held.has(c) && (c.startsWith('Ctrl+') || !ctrl));
-    box(p, cell, !down, down ? C.inset : C.btn, 1);
+    const win55 = theme === 'win-55';
+    const font = uiFont();
+    const y = cell.y + (win55 ? Math.floor((cell.h - font.rows) / 2) : 3);
+    box(p, cell, !down, down && !win55 ? C.inset : C.btn, win55 ? 2 : 1);
+    if (win55) p.clip(cell);
     if (whole) {
-      const key = fitText(RV, k.key, w - 12);
-      const kw = textWidth(RV, key);
+      const key = fitText(font, k.key, w - 12);
+      const kw = textWidth(font, key);
       p.fill(cell.x + 3, cell.y + 2, kw + 4, 10, C.dark);
-      p.text(RV, cell.x + 5, cell.y + 3, key, C.bright);
+      p.text(font, cell.x + 5, y, key, C.bright);
       const nx = cell.x + 3 + kw + 4 + 3;
-      p.text(RV, nx, cell.y + 3, fitText(RV, k.label, cell.x + w - nx), C.text);
+      p.text(font, nx, y, fitText(font, k.label, cell.x + w - nx - (win55 ? 2 : 0)), C.text);
     } else {
       // A name that does not fit whole is cut to its first two letters, and the key gives way to them, down to one letter.
-      let key = fitText(RV, k.key, w - 14);
+      let key = fitText(font, k.key, w - 14);
       let label = k.label;
-      if (textWidth(RV, label) > w - textWidth(RV, key) - 16) {
+      if (textWidth(font, label) > w - textWidth(font, key) - 16) {
         label = [...label].slice(0, 2).join('');
-        key = fitText(RV, k.key, Math.max(RV.advance, w - 16 - textWidth(RV, label)));
+        key = fitText(font, k.key, Math.max(RV.advance, w - 16 - textWidth(font, label)));
       }
-      const keyW = textWidth(RV, key);
+      const keyW = textWidth(font, key);
       p.fill(cell.x + 4, cell.y + 2, keyW + 6, 10, C.dark);
-      p.text(RV, cell.x + 7, cell.y + 3, key, C.bright);
+      p.text(font, cell.x + 7, y, key, C.bright);
       const nx = cell.x + 4 + keyW + 6 + 4;
-      p.text(RV, nx, cell.y + 3, fitText(RV, label, cell.x + w - nx - 2), C.text);
+      p.text(font, nx, y, fitText(font, label, cell.x + w - nx - 2), C.text);
     }
+    if (win55) p.unclip();
     if (k.click) hits.add(cell, { click: k.click });
   });
 }
@@ -217,42 +356,45 @@ export function messageScreen(p, size, title, lines) {
   p.fill(0, 0, size.w, size.h, C.dark);
   const lineList = Array.isArray(lines) ? lines : [lines];
   const head = title ? TITLE_H + 6 : 0;
-  const w = 360;
+  const win55 = theme === 'win-55';
+  const font = uiFont();
+  const w = win55 ? Math.min(size.w, 360) : 360;
   const h = 7 + head + 8 + lineList.length * 12 + 8 + 7;
   const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
-  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
-  p.bevel(frame, 2, true);
+  box(p, frame, true, C.win, 2);
   if (title) {
     const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
-    p.dither(tr, C.win, C.lo);
-    p.fill(tr.x + 14, tr.y, textWidth(RV, title) + 12, tr.h, C.win);
-    p.text(RV, tr.x + 20, tr.y + 3, title, C.bright);
+    titleBackdrop(p, tr);
+    titleLabel(p, tr, title, 20, win55 ? tr.w - 26 : Infinity);
   }
   const body = { x: frame.x + 7, y: frame.y + 7 + head, w: frame.w - 14, h: h - 14 - head };
-  p.fill(body.x, body.y, body.w, body.h, C.inset);
-  lineList.forEach((s, i) => p.text(RV, body.x + 8, body.y + 8 + i * 12, s, C.text));
+  if (win55) box(p, body, false, C.inset, 2);
+  else p.fill(body.x, body.y, body.w, body.h, C.inset);
+  lineList.forEach((s, i) => p.text(font, body.x + 8, body.y + 8 + i * 12, win55 ? fitText(font, s, body.w - 16) : s, C.text));
 }
 
 // The desktop error stub, centered on the darkest surface: a 360 px box with the code's name on its title plate, the code
 // in VGA 2x and the line in the body, and a key bar of one cell, `Enter Return to /`, whose `click` leaves the stub.
 // `stub` is { code, line }. The cell is drawn sunken while Enter is in `held`.
 export function errorScreen(p, hits, size, { code, line }, held, click) {
-  p.fill(0, 0, size.w, size.h, C.dark);
+  const bounds = p.bounds();
+  p.fill(bounds.x, bounds.y, bounds.w, bounds.h, C.dark);
   const bodyH = 48;
   const w = 360, h = 7 + 20 + bodyH + 2 + 14 + 7;
   const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };
-  p.fill(frame.x, frame.y, frame.w, frame.h, C.win);
-  p.bevel(frame, 2, true);
+  box(p, frame, true, C.win, 2);
+  const win55 = theme === 'win-55';
+  const font = uiFont();
   const name = ERRORS[code].name;
   const tr = { x: frame.x + 7, y: frame.y + 7, w: frame.w - 14, h: TITLE_H };
-  p.dither(tr, C.win, C.lo);
-  p.fill(tr.x + 14, tr.y, textWidth(RV, name) + 12, tr.h, C.win);
-  p.text(RV, tr.x + 20, tr.y + 3, name, C.bright);
+  titleBackdrop(p, tr);
+  titleLabel(p, tr, name, 20, win55 ? tr.w - 26 : Infinity);
   const body = { x: frame.x + 7, y: frame.y + 27, w: frame.w - 14, h: bodyH };
-  p.fill(body.x, body.y, body.w, body.h, C.inset);
+  if (win55) box(p, body, false, C.inset, 2);
+  else p.fill(body.x, body.y, body.w, body.h, C.inset);
   p.text(VGA, body.x + 10, body.y + 8, String(code), C.sel, 2);
   const lx = body.x + 10 + 54 + 12;
-  p.text(RV, lx, body.y + 20, fitText(RV, line, body.x + body.w - 8 - lx), C.text);
+  p.text(font, lx, body.y + 20, fitText(font, line, body.x + body.w - 8 - lx), C.text);
   const cell = { x: body.x, y: body.y + body.h + 2, w: body.w, h: 14 };
   keyBar(p, hits, cell, [{ key: 'Enter', label: T.returnTo, codes: ['Enter'], click }], held);
 }
@@ -260,15 +402,17 @@ export function errorScreen(p, hits, size, { code, line }, held, click) {
 // The foot panel: a sunken field with the line `text`, the load bar after it (2 px from the keyboard field, 1 px down),
 // then the keyboard field: `Keyboard: app` in C.sel when `appKeys`, `Keyboard: —` in C.cov otherwise.
 export function footBar(p, r, text, load, appKeys) {
-  const kw = textWidth(RV, T.keyboardApp) + 12;
+  const font = uiFont();
+  const y = r.y + (theme === 'win-55' ? Math.floor((r.h - font.rows) / 2) : 4);
+  const kw = textWidth(font, T.keyboardApp) + 12;
   const kx = r.x + r.w - kw;
   const bx = kx - 2 - LOAD_W;
   const addr = { x: r.x, y: r.y, w: (load ? bx : kx) - 2 - r.x, h: r.h };
   p.fill(addr.x, addr.y, addr.w, addr.h, C.inset);
   p.bevel(addr, 1, false);
-  p.text(RV, addr.x + 4, addr.y + 4, fitText(RV, text, addr.w - 8), C.bright);
+  p.text(font, addr.x + 4, y, fitText(font, text, addr.w - 8), C.bright);
   loadBar(p, bx, r.y + 1, load);
   p.fill(kx, r.y, kw, r.h, C.inset);
   p.bevel({ x: kx, y: r.y, w: kw, h: r.h }, 1, false);
-  p.text(RV, kx + 6, r.y + 4, appKeys ? T.keyboardApp : T.keyboardNone, appKeys ? C.sel : C.cov);
+  p.text(font, kx + 6, y, appKeys ? T.keyboardApp : T.keyboardNone, appKeys ? C.sel : C.cov);
 }

@@ -8,6 +8,8 @@ import { T, ERRORS } from './texts.js';
 import { linkPath } from './catalog.js';
 import { SCREEN_MIN, VIEWPORT_MIN } from './metrics.js';
 import { view } from './view.js';
+import { theme, setTheme } from './theme.js';
+import { win55FontReady } from './font.js';
 
 // The mode is chosen once, at load: a touch-first device gets the pocket version, any other the workspace. A device
 // that changes its primary input keeps its mode until the page is reloaded.
@@ -18,6 +20,7 @@ let ws = null;
 let pocket = null;
 let queued = false;
 let started = false;
+const THEME_KEY = 'milk-fumo-theme';
 
 // The layout's unit is a UI pixel: view.ui device pixels, 1, 1.5 or 2 by Shift+S. The canvas buffer is the window in
 // device pixels and nothing is smoothed: a font pixel is a whole number of device pixels at 1x and 2x, and 1 or 2 at
@@ -59,7 +62,8 @@ function draw() {
     fitCanvas(size, d);
     const L = layoutOf(size.w, size.h);
     view.ui = L.k;
-    pocket.render(new Paint(ctx, L.k), L.w, L.h);
+    const p = new Paint(ctx, L.k);
+    pocket.render(p, L.w, L.h, p.bounds());
     if (pocket.animated()) requestDraw();
     return;
   }
@@ -81,6 +85,12 @@ function requestDraw() {
   if (queued) return;
   queued = true;
   requestAnimationFrame(draw);
+}
+
+function toggleTheme() {
+  setTheme(theme === 'default' ? 'win-55' : 'default');
+  try { localStorage.setItem(THEME_KEY, theme); } catch { /* the theme still changes when storage is unavailable */ }
+  requestDraw();
 }
 
 // The pointer in the layout's units.
@@ -163,7 +173,7 @@ window.addEventListener('message', (e) => {
 
 // Leaving the browser's fullscreen (Esc, or the browser's own controls) returns the video to its tile.
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) { if (pocket) pocket.full = false; else ws.fullVideo = null; }
+  if (!document.fullscreenElement) { if (pocket) pocket.fullscreen(false); else ws.fullVideo = null; }
   requestDraw();
 });
 
@@ -177,7 +187,11 @@ document.getElementById('fallback')?.remove();
 const link = linkPath(location.search);
 const served = Number(document.querySelector('meta[name="error"]')?.content);
 const code = ERRORS[served] ? served : link && link.code;
-const start = { history: true, link: link && link.path, stub: code ? { code, line: ERRORS[code].line } : null };
+try { setTheme(localStorage.getItem(THEME_KEY)); } catch { /* use the default when storage is unavailable */ }
+const start = { history: true, link: link && link.path, stub: code ? { code, line: ERRORS[code].line } : null, toggleTheme };
 if (MOBILE) pocket = new Pocket(requestDraw, start);
 else ws = new Workspace(requestDraw, start);
 requestDraw();
+win55FontReady.then((loaded) => {
+  if (loaded && theme === 'win-55') requestDraw();
+});

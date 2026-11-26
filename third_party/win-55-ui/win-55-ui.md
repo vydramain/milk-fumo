@@ -1,0 +1,35 @@
+# win-55-ui
+
+Milk Fumo adapts the palette and control borders from [win-55-ui beta-0.8.0, commit 37620e5c50044291e0c5cafd755677770a102362](https://github.com/OmskGameJam/win-55-ui/tree/37620e5c50044291e0c5cafd755677770a102362). The Canvas borders follow `panel-d-1.png`, `panel-d-2.png`, `indent.png`, `indent-dark.png` and the vertical scrollbar graphics. The [font source and notices](../win-55-font/ORIGIN.md) accompany the font.
+
+## MIT License
+
+Copyright (c) 2026 OmskGameJam and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Exception: bundled historical emoji artwork
+
+This license does NOT apply to the image files in the main registry range
+(codes `000`-`BA1`) under `public/win-55-ui/emoji/`. Those files are
+third-party historical artwork included as-is. The custom range (codes
+`C00` and up) in the same directory is original artwork by this project's
+contributors and remains covered by this license. See
+[public/win-55-ui/emoji/NOTICE.md](https://github.com/OmskGameJam/win-55-ui/blob/37620e5c50044291e0c5cafd755677770a102362/public/win-55-ui/emoji/NOTICE.md) for the
+full split and provenance.

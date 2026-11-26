@@ -26,7 +26,16 @@ const LATENCY = 300;        // ms before a listing comes, on the slow and stalle
 const STALL_AT = 0.4;       // the stalled network holds every file at this share
 
 export const params = new URLSearchParams(location.search);
-export const NET = { mode: params.get('net') || 'slow' };   // fast | slow | stalled | offline
+let mode = params.get('net') || 'slow';   // fast | slow | stalled | offline
+const activeTransfers = new Set();
+export const NET = {
+  get mode() { return mode; },
+  set mode(next) {
+    if (mode === next) return;
+    mode = next;
+    for (const update of activeTransfers) update();
+  },
+};
 
 const realFetch = window.fetch.bind(window);
 const ROOT = new URL(CONTENT_ROOT, location.href).pathname;
@@ -38,9 +47,40 @@ window.fetch = async (input, opts = {}) => {
   const path = decodeURIComponent(url.pathname.slice(ROOT.length));
   if (NET.mode === 'offline') { await sleep(LATENCY); return new Response('', { status: 503 }); }
   if (path === '' || path.endsWith('/')) return listing(path.replace(/\/$/, ''));
-  const res = await realFetch(input, opts);
-  return NET.mode === 'fast' || !res.ok ? res : slowed(res, opts.signal);
+  return download(input, opts);
 };
+
+async function download(input, opts) {
+  const { signal: callerSignal = input.signal } = opts;
+  const controller = new AbortController();
+  const signal = callerSignal ? AbortSignal.any([callerSignal, controller.signal]) : controller.signal;
+  signal.throwIfAborted();
+
+  function update() {
+    if (NET.mode === 'offline') controller.abort(new TypeError('offline'));
+  }
+
+  let abort;
+  const interrupted = new Promise((_, reject) => {
+    abort = () => reject(signal.reason);
+  });
+  signal.addEventListener('abort', abort);
+  activeTransfers.add(update);
+
+  try {
+    const headers = realFetch(input, { ...opts, signal }).then((res) => {
+      if (signal.aborted) {
+        res.body?.cancel(signal.reason).catch(() => {});
+        throw signal.reason;
+      }
+      return res.ok && res.body ? transfer(res, signal) : res;
+    });
+    return await Promise.race([interrupted, headers]);
+  } finally {
+    activeTransfers.delete(update);
+    signal.removeEventListener('abort', abort);
+  }
+}
 
 async function listing(dir) {
   if (NET.mode !== 'fast') await sleep(LATENCY);
@@ -59,28 +99,81 @@ async function listing(dir) {
   return Response.json(entries);
 }
 
-// The body of a response, given out at RATE in CHUNK pieces; on the stalled network it stops at STALL_AT of the file
-// until the network changes. The headers stay, so the download knows its total.
-function slowed(res, signal) {
+// The headers stay so the download knows its total. Mode changes also reach a pending read or delay.
+function transfer(res, signal) {
   const total = Number(res.headers.get('content-length')) || 0;
   const reader = res.body.getReader();
   let sent = 0;
+  let ctl, wake, timer;
+  let active = true;
+
+  function wait(ms) {
+    return new Promise((done) => {
+      wake = () => {
+        clearTimeout(timer);
+        timer = undefined;
+        wake = undefined;
+        done();
+      };
+      if (ms !== undefined) timer = setTimeout(wake, ms);
+    });
+  }
+
+  function finish() {
+    active = false;
+    activeTransfers.delete(update);
+    signal?.removeEventListener('abort', abort);
+    wake?.();
+  }
+
+  function fail(error) {
+    finish();
+    ctl.error(error);
+    reader.cancel(error).catch(() => {});
+  }
+
+  function abort() { fail(signal.reason); }
+
+  function update() {
+    if (NET.mode === 'offline') fail(new TypeError('offline'));
+    else if (NET.mode === 'fast' || timer === undefined) wake?.();
+  }
+
   const body = new ReadableStream({
-    async pull(ctl) {
-      const { done, value } = await reader.read();
-      if (done) { ctl.close(); return; }
-      for (let i = 0; i < value.length; i += CHUNK) {
-        const part = value.subarray(i, i + CHUNK);
-        while (NET.mode === 'stalled' && total && sent + part.length > total * STALL_AT && !signal?.aborted) await sleep(200);
-        if (NET.mode !== 'fast') await sleep(part.length / RATE * 1000);
-        if (signal?.aborted) { reader.cancel(); ctl.close(); return; }
-        // Going offline breaks a download under way, as a lost connection does: the reader fails and the bar says errr.
-        if (NET.mode === 'offline') { reader.cancel(); ctl.error(new TypeError('offline')); return; }
-        ctl.enqueue(part);
-        sent += part.length;
+    start(controller) {
+      ctl = controller;
+      activeTransfers.add(update);
+      signal?.addEventListener('abort', abort);
+      if (signal?.aborted) abort();
+      else update();
+    },
+    async pull() {
+      try {
+        const { done, value } = await reader.read();
+        if (!active) return;
+        if (done) { finish(); ctl.close(); return; }
+        for (let i = 0; i < value.length; i += CHUNK) {
+          const part = value.subarray(i, i + CHUNK);
+          let paced = false;
+          while (active) {
+            if (NET.mode === 'stalled' && total && sent + part.length > total * STALL_AT) await wait();
+            else if (NET.mode !== 'fast' && !paced) {
+              await wait(part.length / RATE * 1000);
+              paced = true;
+            } else break;
+          }
+          if (!active) return;
+          ctl.enqueue(part);
+          sent += part.length;
+        }
+      } catch (error) {
+        if (active) fail(error);
       }
     },
-    cancel() { reader.cancel(); },
+    cancel(reason) {
+      finish();
+      return reader.cancel(reason);
+    },
   });
-  return new Response(body, { status: res.status, headers: res.headers });
+  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
 }
