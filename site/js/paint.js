@@ -1,7 +1,8 @@
-// Drawing on the canvas. Coordinates are CSS pixels. Rectangles snap to whole device pixels.
+// Drawing on the canvas. Coordinates are layout pixels. Rectangles snap to whole device pixels.
 // Text uses the bitmap tables or the browser font from font.js.
 import { C, theme } from './theme.js';
 import { glyphOf, textWidth } from './font.js';
+import { rasterRect } from './view.js';
 
 export class Paint {
   constructor(ctx, dpr) {
@@ -10,13 +11,16 @@ export class Paint {
     this.patterns = new Map();
   }
 
+  bounds() {
+    const { width, height } = this.ctx.canvas;
+    return { x: 0, y: 0, w: width / this.dpr, h: height / this.dpr };
+  }
+
   fill(x, y, w, h, color) {
-    const d = this.dpr;
-    const x0 = Math.round(x * d), y0 = Math.round(y * d);
-    const x1 = Math.round((x + w) * d), y1 = Math.round((y + h) * d);
-    if (x1 <= x0 || y1 <= y0) return;
+    const [left, top, width, height] = rasterRect(x, y, w, h, this.dpr);
+    if (width <= 0 || height <= 0) return;
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    this.ctx.fillRect(left, top, width, height);
   }
 
   // A bevel `width` px wide: light on the top and left, dark on the bottom and right; sunken swaps them.
@@ -47,12 +51,10 @@ export class Paint {
 
   // A checkerboard of two colors, one pixel per cell: the dither of the title bars and the scroll tracks.
   dither(r, a, b) {
-    const d = this.dpr;
-    const x0 = Math.round(r.x * d), y0 = Math.round(r.y * d);
-    const x1 = Math.round((r.x + r.w) * d), y1 = Math.round((r.y + r.h) * d);
-    if (x1 <= x0 || y1 <= y0) return;
+    const [left, top, width, height] = rasterRect(r.x, r.y, r.w, r.h, this.dpr);
+    if (width <= 0 || height <= 0) return;
     this.ctx.fillStyle = this.pattern(a, b);
-    this.ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    this.ctx.fillRect(left, top, width, height);
   }
 
   pattern(a, b) {
@@ -73,7 +75,7 @@ export class Paint {
     return this.patterns.get(key);
   }
 
-  // Text at a top-left corner, at an integer scale: a font pixel is `scale` CSS pixels. Bold widens every run by one
+  // Text at a top-left corner uses `scale` layout pixels per font pixel. Bold widens every run by one
   // font pixel; italic shifts the upper half of the cell one font pixel right.
   text(font, x, y, s, color, scale = 1, bold = false, italic = false) {
     if (font.family) {
@@ -124,16 +126,14 @@ export class Paint {
 
   // A picture or a video frame, scaled to a rectangle without smoothing.
   image(src, x, y, w, h) {
-    const d = this.dpr;
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.drawImage(src, Math.round(x * d), Math.round(y * d), Math.round(w * d), Math.round(h * d));
+    this.ctx.drawImage(src, ...rasterRect(x, y, w, h, this.dpr));
   }
 
-  clip(r) {
-    const d = this.dpr;
+  clip({ x, y, w, h }) {
     this.ctx.save();
     this.ctx.beginPath();
-    this.ctx.rect(Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d));
+    this.ctx.rect(...rasterRect(x, y, w, h, this.dpr));
     this.ctx.clip();
   }
 

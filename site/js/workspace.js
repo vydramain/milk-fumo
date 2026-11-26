@@ -689,7 +689,7 @@ export class Workspace {
     if (this.stub) {
       errorScreen(p, this.hits, this.screen, this.stub, this.held, () => location.assign('/'));
     } else {
-      if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p, W, H);
+      if (this.fullVideo && this.tileOf(this.fullVideo)) this.renderFullVideo(p);
       else this.renderTiles(p, W, H);
       if (!this.fullVideo) this.drawBars(p, W, H);
     }
@@ -719,10 +719,11 @@ export class Workspace {
   }
 
   // Only the video frame, fitted, on black; while the panel shows, the position and the key bar over its bottom.
-  renderFullVideo(p, W, H) {
+  renderFullVideo(p) {
     const v = this.fullVideo;
-    p.fill(0, 0, W, H, C.crust);
-    v.drawFrame(p, { x: 0, y: 0, w: W, h: H });
+    const frame = p.bounds();
+    p.fill(frame.x, frame.y, frame.w, frame.h, C.crust);
+    v.drawFrame(p, frame);
     if (!this.panelShown()) return;
     const r = this.panelRect();
     p.fill(r.x, r.y, r.w, r.h, C.win);
@@ -733,7 +734,8 @@ export class Workspace {
   }
 
   renderTiles(p, W, H) {
-    p.fill(0, 0, W, H, C.dark);
+    const bounds = p.bounds();
+    p.fill(bounds.x, bounds.y, bounds.w, bounds.h, C.dark);
     this.resize(W, H);
     const placed = L.place(this.L.root, this.area, (id) => this.minOf(id));
     this.lastLeaves = placed.leaves;

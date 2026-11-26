@@ -359,8 +359,9 @@ export class Player {
         frame.y + Math.floor((frame.h - font.rows) / 2), t, theme === 'win-55' ? C.text : C.cov);
       return;
     }
-    const s = Math.min(frame.w / v.videoWidth, frame.h / v.videoHeight);
-    const w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
+    const sx = frame.w / v.videoWidth, sy = frame.h / v.videoHeight;
+    const w = sx <= sy ? frame.w : Math.min(frame.w, Math.round(v.videoWidth * sy));
+    const h = sy <= sx ? frame.h : Math.min(frame.h, Math.round(v.videoHeight * sx));
     p.clip(frame);
     p.image(v, frame.x + Math.floor((frame.w - w) / 2), frame.y + Math.floor((frame.h - h) / 2), w, h);
     p.unclip();

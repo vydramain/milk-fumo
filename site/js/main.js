@@ -62,7 +62,8 @@ function draw() {
     fitCanvas(size, d);
     const L = layoutOf(size.w, size.h);
     view.ui = L.k;
-    pocket.render(new Paint(ctx, L.k), L.w, L.h);
+    const p = new Paint(ctx, L.k);
+    pocket.render(p, L.w, L.h, p.bounds());
     if (pocket.animated()) requestDraw();
     return;
   }

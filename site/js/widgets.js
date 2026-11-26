@@ -377,7 +377,8 @@ export function messageScreen(p, size, title, lines) {
 // in VGA 2x and the line in the body, and a key bar of one cell, `Enter Return to /`, whose `click` leaves the stub.
 // `stub` is { code, line }. The cell is drawn sunken while Enter is in `held`.
 export function errorScreen(p, hits, size, { code, line }, held, click) {
-  p.fill(0, 0, size.w, size.h, C.dark);
+  const bounds = p.bounds();
+  p.fill(bounds.x, bounds.y, bounds.w, bounds.h, C.dark);
   const bodyH = 48;
   const w = 360, h = 7 + 20 + bodyH + 2 + 14 + 7;
   const frame = { x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w, h };

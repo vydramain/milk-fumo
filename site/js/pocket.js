@@ -14,7 +14,7 @@ import { ImageView } from './image.js';
 import { AppPane } from './app.js';
 import { HOME_NOTE, START_DIR } from './config.js';
 import { POCKET_ACTIONS, P, T, ERRORS, LINK_LINES } from './texts.js';
-import { view } from './view.js';
+import { placeOverlay } from './view.js';
 
 export const POCKET_W = 240;   // the layout width of a Pocket PC screen; the scale is the largest whole one that fits
 export const ROW = 16;         // a list row: pmc's 12 grown for a finger
@@ -268,7 +268,8 @@ export class Pocket {
 
   // ---- drawing ----
 
-  render(p, W, H) {
+  // The outer frame may reach past the last whole layout pixel.
+  render(p, W, H, screen = { x: 0, y: 0, w: W, h: H }) {
     this.frame++;
     const hits = this.hits = new Hits();
     const video = this.active === 'Video' && this.players.video;
@@ -276,22 +277,21 @@ export class Pocket {
     // Full: a video or a game covers the whole screen. The video's tap leaves it; the game's iframe lies over the
     // canvas and takes the touches, so Back or the system back leaves it.
     if (this.full && (video || game)) {
-      const all = { x: 0, y: 0, w: W, h: H };
-      p.fill(0, 0, W, H, C.crust);
+      p.fill(screen.x, screen.y, screen.w, screen.h, C.crust);
       if (video) {
         if (this.app) this.app.hide();
-        this.placeVideo(all);
-        hits.add(all, { click: () => this.fullscreen(false) });
+        this.placeVideo(screen);
+        hits.add(screen, { click: () => this.fullscreen(false) });
       } else {
         this.placeVideo(null);
-        this.app.place(all);
+        this.app.place(screen);
       }
       return;
     }
     if (!video) this.placeVideo(null);
 
     // The one tile: a raised frame over the whole screen, as a maximized tile.
-    box(p, { x: 0, y: 0, w: W, h: H }, true, C.win, 2);
+    box(p, screen, true, C.win, 2);
     this.titleBar(p, { x: 4, y: 4, w: W - 8, h: 14 });
 
     const start = this.stub || this.loading;   // no tile yet: the stub, or the screen of a link that loads
@@ -402,8 +402,9 @@ export class Pocket {
       el.style.cssText = 'position:absolute;object-fit:contain;pointer-events:none;';
       document.body.append(el);
     }
-    const k = view.ui / view.dpr;
-    Object.assign(el.style, { display: 'block', backgroundColor: C.crust, left: `${r.x * k}px`, top: `${r.y * k}px`, width: `${r.w * k}px`, height: `${r.h * k}px` });
+    el.style.display = 'block';
+    el.style.backgroundColor = C.crust;
+    placeOverlay(el.style, r);
   }
 
   title() {

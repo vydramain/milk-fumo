@@ -8,7 +8,7 @@ import { C, theme } from './theme.js';
 import { uiFont, fitText } from './font.js';
 import { urlOf } from './catalog.js';
 import { APP_KEYS as K, T } from './texts.js';
-import { view } from './view.js';
+import { placeOverlay } from './view.js';
 import { keyBar, footBar, wellFrame } from './widgets.js';
 import { Download } from './download.js';
 
@@ -108,16 +108,11 @@ export class AppPane {
     this.ws.requestDraw();
   }
 
-  // Puts the wrapper over the well; the iframe fills the wrapper. The well is in layout pixels; a layout pixel is
-  // view.ui device pixels, and the page's CSS pixels are the device pixels divided by the ratio.
+  // Puts the wrapper over the well, snapped to its Canvas edges. The iframe fills the wrapper.
   place(well) {
-    const k = view.ui / view.dpr;
     const st = this.wrap.style;
     st.display = 'block';
-    st.left = `${well.x * k}px`;
-    st.top = `${well.y * k}px`;
-    st.width = `${well.w * k}px`;
-    st.height = `${well.h * k}px`;
+    placeOverlay(st, well);
   }
 
   // Hides the iframe when its tile is not drawn (another tile is maximized, or it is not the front tab).
