@@ -68,10 +68,12 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 <div class="row" id="s-note"></div>
 <h3>ppmc</h3>
 <div class="row" id="s-pmc"></div>
-<h3>player</h3>
+<h3 id="player">player</h3>
 <div class="row" id="s-player"></div>
-<h3>video</h3>
+<div class="scroll"><div class="row" id="s-player-turned"></div></div>
+<h3 id="video">video</h3>
 <div class="row" id="s-video"></div>
+<div class="scroll"><div class="row" id="s-video-turned"></div></div>
 <h3>image</h3>
 <div class="row" id="s-image"></div>
 <h3>app</h3>
@@ -205,10 +207,12 @@ stage('s-pmc', 'Back in <code>/music/</code>: ppmc goes up, as Open on <code>..<
 stage('s-pmc', 'A folder that cannot be listed: the error stands in the row under <code>..</code>.', async (pk) => { await pk.go('locked/'); pk.msg = ''; });
 stage('s-pmc', 'A file with no viewer: the message line says so.', (pk) => pk.go('notes/plain.txt'));
 
-stage('s-player', 'The now-playing well wraps its lines by words: no clock, the folder name only. A taller Position slider, then the transport row <code>|&lt;</code> <code>&gt;</code> <code>[]</code> <code>&gt;|</code>, the playlist with load bars and lengths. The key row: <code>M Mute</code>, Back. No volume.', (pk) => pk.go('music/01 brass-hum.mp3', { autoplay: false }));
-stage('s-player', 'The last track, an untagged file. The transport row is Prev, Play (Pause while playing), Stop, Next; the key row keeps Mute and Back in the last slot.', (pk) => pk.go('music/03 untagged.mp3', { autoplay: false }));
+stage('s-player', 'Portrait: Position is followed by the playlist. Prev, Play/Pause, Stop and Next sit above Mute and Back.', (pk) => pk.go('music/01 brass-hum.mp3', { autoplay: false }));
+stage('s-player', 'The last track, an untagged file.', (pk) => pk.go('music/03 untagged.mp3', { autoplay: false }));
+stage('s-player-turned', 'Landscape: playback keys and Mute sit in the right column, with Back at the bottom.', (pk) => pk.go('music/01 brass-hum.mp3', { autoplay: false }), PHONE_T.w, PHONE_T.h);
 
-stage('s-video', 'A video opened, not playing yet: the same well, Position and transport row, then the frame, always fitted. The key row: <code>M Mute</code>, <code>F Full</code>, Back.', (pk) => pk.go('video/testcard.webm', { autoplay: false }));
+stage('s-video', 'Portrait: the fitted frame starts below Position. Playback keys sit above Mute, Full and Back.', (pk) => pk.go('video/testcard.webm', { autoplay: false }));
+stage('s-video-turned', 'Landscape: playback keys, Mute and Full sit in the right column, with Back at the bottom.', (pk) => pk.go('video/testcard.webm', { autoplay: false }), PHONE_T.w, PHONE_T.h);
 stage('s-video', 'Full: the frame fills the screen; a tap or Back leaves it.', async (pk) => { await pk.go('video/testcard.webm', { autoplay: false }); pk.fullscreen(true); });
 
 stage('s-image', 'A picture at whole-number scale, centered. Prev and Next go through the folder\'s pictures.', (pk) => pk.go('images/sprite-48.png'));
