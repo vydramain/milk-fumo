@@ -190,3 +190,23 @@ for (const action of ['pause', 'stop']) {
     assert.equal(media.currentTime, action === 'pause' ? media.duration : 0);
   });
 }
+
+for (const [status, message] of [[503, 'folder listing fails'], [200, 'file is missing from the listing']]) {
+  test(`opening a Pocket demo keeps the requested folder when the ${message}`, async (t) => {
+    const dir = `missing-media-${status}`;
+    t.mock.method(globalThis, 'fetch', async (url) => {
+      if (url === `/content/${dir}/` && status === 503) return new Response(null, { status });
+      return Response.json([]);
+    });
+    const pocket = new Pocket(() => {}, { stub: {} });
+    pocket.stub = null;
+
+    await pocket.go(`${dir}/track.mp3`, { autoplay: false });
+    const frame = new Frame({}, 1);
+    pocket.render(frame, 393, 852);
+    const labels = frame.labels.map(({ label }) => label);
+    assert.ok(labels.includes(`/${dir}/`), `requested folder disappeared: ${labels.join(' | ')}`);
+    assert.ok(labels.includes('..'));
+    assert.equal(labels.includes('Could not load this folder'), status === 503);
+  });
+}

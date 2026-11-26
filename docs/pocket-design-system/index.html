@@ -201,9 +201,13 @@ stage('s-note', 'Progress: done actions are dim with a green tick.', (pk) => { [
 stage('s-note', 'Another note, opened from ppmc in the same note tile; ppmc is a tab.', (pk) => pk.go('notes/short.md'));
 
 stage('s-pmc', 'The root: folders first, two-letter kind codes, SUB-DIR for folders. Open, Up, Down, Back; ppmc is sunken: it is here.', async (pk) => { await pk.go(''); pk.msg = P.pmcHint; });
-stage('s-pmc', 'The cursor on a folder after the first tap.', async (pk) => { await pk.go(''); pk.pmc.cursor = 4; pk.msg = P.again(pk.rows()[4].name); });
+stage('s-pmc', 'The cursor on a folder after the first tap.', async (pk) => {
+  await pk.go('');
+  const row = pk.rows()[4];
+  if (row) { pk.pmc.cursor = 4; pk.msg = P.again(row.name); }
+});
 stage('s-pmc', 'A folder: <code>..</code> on top as UP--DIR, the path in brass.', async (pk) => { await pk.go('music/'); pk.pmc.cursor = 2; pk.msg = ''; });
-stage('s-pmc', 'Back in <code>/music/</code>: ppmc goes up, as Open on <code>..</code>, and the cursor stands on the folder it left.', async (pk) => { await pk.go('music/'); pk.back(); await pk.pmc.load; pk.msg = ''; });
+stage('s-pmc', 'Back in <code>/music/</code>: ppmc goes up, as Open on <code>..</code>, and the cursor stands on the folder it left.', async (pk) => { await pk.go('music/'); await pk.back(); pk.msg = ''; });
 stage('s-pmc', 'A folder that cannot be listed: the error stands in the row under <code>..</code>.', async (pk) => { await pk.go('locked/'); pk.msg = ''; });
 stage('s-pmc', 'A file with no viewer: the message line says so.', (pk) => pk.go('notes/plain.txt'));
 

@@ -127,7 +127,7 @@ export class Pocket {
     if (!this.tiles.length) return;
     if (this.full) { this.fullscreen(false); return; }
     // In a folder, pmc's Back goes up, as Open on `..`; at the root it closes pmc.
-    if (this.active === 'pmc' && this.pmc.dir) { this.openRow(this.rows()[0]); return; }
+    if (this.active === 'pmc' && this.pmc.dir) return this.openRow(this.rows()[0]);
     if (this.tiles.length === 1) { this.msg = P.lastTile; return; }
     if (this.useHistory && window.history.state && window.history.state.pocket > 1) window.history.back();
     else this.closeActive();
@@ -258,10 +258,9 @@ export class Pocket {
     const parts = path.split('/').filter(Boolean);
     const file = path && !path.endsWith('/') ? parts.pop() : null;
     this.open('pmc');
-    await this.changeDir(parts.join('/'));
+    await this.changeDir(parts.join('/'), file);
     if (file) {
-      this.pmc.cursor = Math.max(0, this.rows().findIndex((r) => r.name === file));
-      const row = this.rows()[this.pmc.cursor];
+      const row = this.pmc.entries?.find((e) => e.name === file);
       if (row) await this.openRow(row, autoplay);
     }
     this.requestDraw();
