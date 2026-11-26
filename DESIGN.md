@@ -332,7 +332,7 @@ nginx serves the checked-in site files directly, without a build step.
 
 ## Design system
 
-[`docs/design-system/`](docs/design-system/) is one page with every component the site draws, each on its own canvas and drawn by the modules in `site/js/`. It has no drawing code of its own, so it cannot drift from the site. It replaces the HTML and CSS prototypes the design was first made on.
+The [desktop design system](docs/design-system/) and [Pocket design system](docs/pocket-design-system/) build interactive canvas scenes with the site's rendering modules. Each page supplies its own scene setup and uses the fixtures in `docs/design-system/content/` with a simulated network. Both pages accept `?theme=win-55`. The [Pocket audio and visual audit](docs/audit/README.md) records the scene inventory and browser measurements.
 
 | Section | What it shows |
 |---|---|

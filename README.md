@@ -1,7 +1,5 @@
 # MILK-FUMO
 
-![Start screen](docs/screenshots/start-screen.png)
-
 A personal portfolio site shaped as a tiling window manager. The browser window is divided into tiles, as in i3: the tiles hold a file browser over the published content, notes, audio and video players, and web games. The content is a plain directory on the owner's server, served by nginx.
 
 - The interface is drawn in one `<canvas>`. The site is plain JavaScript modules in [`site/`](site/), with no dependencies and no build step.
@@ -50,6 +48,8 @@ python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
 Open <http://localhost:8000/docs/design-system/>. The server must serve the repository root, because the page loads the site's modules from `../../site/js/`; a page opened as a file does not work, since browsers do not load ES modules from `file://`. The content is the fixtures in [`docs/design-system/content/`](docs/design-system/content/); Docker and nginx are not needed. The scale and the network are set by the controls on the page, or in the address: `?ui=2&net=slow` (`net` is `fast`, `slow`, `stalled` or `offline`). The pocket version's design system is <http://localhost:8000/docs/pocket-design-system/>, from the same server. `Ctrl+C` stops the server.
+
+Both design systems use Default on the initial visit. Add `?theme=win-55` or combine it with settings such as `?theme=win-55&net=slow`. For screenshots and tested configurations, see the [Pocket audio and visual audit](docs/audit/README.md).
 
 ### Dev build
 
@@ -114,5 +114,3 @@ The project document, covering the purpose, the structure and the reasons behind
 The screen is divided into tiles of six types: pmc, note, player, video, app and image. Each of pmc, note, player, video and image has one tile; an app has one tile per app. Every tile ends with a key bar whose cells can be clicked.
 
 pmc is the file manager: two panels in one tile, in the spirit of early Midnight Commander. Details of the tiles and of pmc are in [DESIGN.md](DESIGN.md).
-
-![Tiles](docs/screenshots/tiles.png)

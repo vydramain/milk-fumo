@@ -38,16 +38,17 @@ th { color: var(--bright); font-weight: normal; background: var(--win); }
 </head>
 <body>
 <h1>MILK-FUMO pocket design system</h1>
-<p>The phone version of the site, as a Pocket PC would show it: one tile fills the screen, the open tiles are tabs at the bottom, and Back closes the current tile. Every screen here is drawn by the site's own <a href="../../site/js/pocket.js"><code>pocket.js</code></a>, the module a touch-first device runs, over the fixtures of the <a href="../design-system/">design system</a> (<a href="../design-system/net.js"><code>net.js</code></a> lists them as nginx would), so the page cannot drift from the site. Every screen is live: tap it, drag it.</p>
-<p class="cap" style="max-width:80ch">Open from a static server in the repository root: <code>python3 -m http.server 8000</code>, then <code>localhost:8000/docs/pocket-design-system/</code>. Screens are shown at about 2 CSS pixels per layout pixel. The network is fast; <code>?net=slow</code>, <code>stalled</code> or <code>offline</code> as in the design system.</p>
+<p>See the <a href="../audit/README.md">visual and interaction audit</a> for coverage, measurements, screenshots and environment limits.</p>
+<p>One tile fills the Pocket screen. Open tiles appear as tabs at the bottom, and Back closes the current tile. Each stage runs <a href="../../site/js/pocket.js"><code>pocket.js</code></a> against the fixtures and simulated network of the <a href="../design-system/">desktop design system</a>. Add <code>?theme=win-55</code> to see Win-55.</p>
+<p class="cap" style="max-width:80ch">Open from a static server in the repository root: <code>python3 -m http.server 8000</code>, then <code>localhost:8000/docs/pocket-design-system/</code>. Screens are shown at about 2 CSS pixels per layout pixel. The network is fast; <code>?net=slow</code>, <code>stalled</code> or <code>offline</code> selects other simulated conditions. After updating site code, reload with a fresh browser profile or clear cached modules to avoid stale JavaScript modules.</p>
 <nav><a href="#foundations">Foundations</a><a href="#screens">Screens</a><a href="#devices">Devices</a><a href="#links">Links and errors</a><a href="#navigation">Navigation</a></nav>
 
 <h2 id="foundations">Foundations</h2>
 <h3>Palette</h3>
-<p>The site's palette, unchanged (<a href="../../site/js/theme.js"><code>theme.js</code></a>): olive surfaces and brass focus for pmc and notes, the navy wells of Catppuccin Mocha for the player and apps.</p>
+<p>In Default, the site's palette (<a href="../../site/js/theme.js"><code>theme.js</code></a>) uses olive surfaces and brass focus for pmc and notes, and navy wells for the player and apps.</p>
 <div id="palette" class="row"></div>
 <h3>Fonts</h3>
-<p>The site's two bitmap fonts at their native size or a whole multiple: <code>rv_font</code> 5×7 for everything, at 2x for a note's first heading and the track name; PxPlus IBM VGA 9×16 at 2x for the playback time.</p>
+<p>Default uses the site's bitmap fonts; Win-55 text uses Canvas 2D. The 5×7 <code>rv_font</code> is used throughout, at 2× for a note's first heading and the track name; PxPlus IBM VGA 9×16 is used at 2× for playback time.</p>
 <h3>Metrics</h3>
 <table>
 <tr><th>Name</th><th>Value</th><th>Why</th></tr>
